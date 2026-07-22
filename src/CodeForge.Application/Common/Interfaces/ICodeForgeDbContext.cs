@@ -27,6 +27,11 @@ namespace CodeForge.Application.Common.Interfaces
         DbSet<QuizOption> QuizOptions { get; }
         DbSet<QuizAttempt> QuizAttempts { get; }
         DbSet<QuizAnswer> QuizAnswers { get; }
+        DbSet<AttendanceRecord> AttendanceRecords { get; }
+        DbSet<Assignment> Assignments { get; }
+        DbSet<AssignmentTestCase> AssignmentTestCases { get; }
+        DbSet<AssignmentSubmission> AssignmentSubmissions { get; }
+        DbSet<AssignmentTestResult> AssignmentTestResults { get; }
         DbSet<Announcement> Announcements { get; }
         DbSet<Lead> Leads { get; }
         DbSet<ActivityLog> ActivityLogs { get; }

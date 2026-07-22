@@ -38,6 +38,10 @@ namespace CodeForge.Domain.Entities
         public virtual ICollection<Track> CreatedTracks { get; set; } = new List<Track>();
         public virtual ICollection<Coupon> CreatedCoupons { get; set; } = new List<Coupon>();
         public virtual ICollection<Enrollment> CancelledEnrollments { get; set; } = new List<Enrollment>();
+        public virtual ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
+        public virtual ICollection<AttendanceRecord> MarkedAttendanceRecords { get; set; } = new List<AttendanceRecord>();
+        public virtual ICollection<AssignmentSubmission> AssignmentSubmissions { get; set; } = new List<AssignmentSubmission>();
+        public virtual ICollection<AssignmentSubmission> GradedAssignmentSubmissions { get; set; } = new List<AssignmentSubmission>();
     }
 
     public class PasswordResetToken
@@ -79,7 +83,6 @@ namespace CodeForge.Domain.Entities
         public virtual ICollection<Module> Modules { get; set; } = new List<Module>();
         public virtual ICollection<EnrollmentRequest> EnrollmentRequests { get; set; } = new List<EnrollmentRequest>();
         public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
-        public virtual ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();
         public virtual ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
         public virtual ICollection<TrackCourse> TrackCourses { get; set; } = new List<TrackCourse>();
         public virtual ICollection<Cohort> Cohorts { get; set; } = new List<Cohort>();
@@ -174,6 +177,8 @@ namespace CodeForge.Domain.Entities
         public virtual Course Course { get; set; } = null!;
         public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();
         public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
+        public virtual ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();
+        public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
     }
 
     /// <summary>
@@ -204,6 +209,7 @@ namespace CodeForge.Domain.Entities
         public virtual User? Instructor { get; set; }
         public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
         public virtual ICollection<SessionProgress> Progresses { get; set; } = new List<SessionProgress>();
+        public virtual ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
     }
 
     public class Material
@@ -332,19 +338,30 @@ namespace CodeForge.Domain.Entities
         public virtual Session Session { get; set; } = null!;
     }
 
+    /// <summary>
+    /// Shared table for both quizzes and exams (Type = "quiz"/"exam", see
+    /// AssessmentTypes) — both are MCQ-based, timed, pass-score assessments; exams add
+    /// stricter controls (MaxAttempts forced to 1, RandomizeQuestions,
+    /// DisableCopyPaste). Mirrors how Session merges live/in_person/recorded_lesson
+    /// into one type-discriminated table (see docs/DATABASE.md §6, §7).
+    /// </summary>
     public class Quiz
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-        public Guid CourseId { get; set; }
+        public Guid ModuleId { get; set; }
+        public string Type { get; set; } = null!; // quiz, exam
         public string Title { get; set; } = null!;
         public int? TimeLimitMinutes { get; set; }
-        public int? PassScore { get; set; }
-        public bool AllowRetake { get; set; } = true;
+        public int? PassScore { get; set; } // percentage 0-100, enforced by chk_quiz_pass_score
+        public bool IsPractice { get; set; } = false;
+        public int? MaxAttempts { get; set; } // null = unlimited; exams are validated to 1
+        public bool RandomizeQuestions { get; set; } = false;
+        public bool DisableCopyPaste { get; set; } = false; // frontend UX deterrent only — no proctoring
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
-        public virtual Course Course { get; set; } = null!;
+        public virtual Module Module { get; set; } = null!;
         public virtual ICollection<QuizQuestion> Questions { get; set; } = new List<QuizQuestion>();
         public virtual ICollection<QuizAttempt> Attempts { get; set; } = new List<QuizAttempt>();
     }
@@ -379,6 +396,7 @@ namespace CodeForge.Domain.Entities
         public Guid Id { get; set; } = Guid.NewGuid();
         public Guid QuizId { get; set; }
         public Guid StudentId { get; set; }
+        public int AttemptNumber { get; set; } = 1;
         public int? Score { get; set; }
         public bool? Passed { get; set; }
         public DateTime StartedAt { get; set; } = DateTime.UtcNow;
@@ -401,6 +419,105 @@ namespace CodeForge.Domain.Entities
         public virtual QuizAttempt Attempt { get; set; } = null!;
         public virtual QuizQuestion Question { get; set; } = null!;
         public virtual QuizOption? SelectedOption { get; set; }
+    }
+
+    // ============================================================================
+    // 4b. ATTENDANCE
+    // ============================================================================
+
+    public class AttendanceRecord
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid SessionId { get; set; }
+        public Guid StudentId { get; set; }
+        public string Status { get; set; } = null!; // present, absent, late, excused
+        public Guid MarkedById { get; set; }
+        public DateTime MarkedAt { get; set; } = DateTime.UtcNow;
+        public string? Notes { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
+        public virtual Session Session { get; set; } = null!;
+        public virtual User Student { get; set; } = null!;
+        public virtual User MarkedBy { get; set; } = null!;
+    }
+
+    // ============================================================================
+    // 4c. ASSIGNMENTS (code, Python auto-grader via ICodeExecutionService)
+    // ============================================================================
+
+    public class Assignment
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid ModuleId { get; set; }
+        public string Title { get; set; } = null!;
+        public string Description { get; set; } = null!; // instructions
+        public bool IsPractice { get; set; } = false;
+        public int? MaxAttempts { get; set; } // null = unlimited
+        public DateTime? DueAt { get; set; } // soft deadline — late allowed, never blocked
+        public int? PassScore { get; set; } // percentage 0-100
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
+        public virtual Module Module { get; set; } = null!;
+        public virtual ICollection<AssignmentTestCase> TestCases { get; set; } = new List<AssignmentTestCase>();
+        public virtual ICollection<AssignmentSubmission> Submissions { get; set; } = new List<AssignmentSubmission>();
+    }
+
+    public class AssignmentTestCase
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid AssignmentId { get; set; }
+        public string Input { get; set; } = null!; // stdin fed to the student's program
+        public string ExpectedOutput { get; set; } = null!;
+        public bool IsHidden { get; set; } = false; // hidden cases count toward score but aren't shown as examples
+        public int Points { get; set; } = 1;
+        public int OrderIndex { get; set; }
+
+        // Navigation properties
+        public virtual Assignment Assignment { get; set; } = null!;
+        public virtual ICollection<AssignmentTestResult> Results { get; set; } = new List<AssignmentTestResult>();
+    }
+
+    public class AssignmentSubmission
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid AssignmentId { get; set; }
+        public Guid StudentId { get; set; }
+        public string Code { get; set; } = null!;
+        public int AttemptNumber { get; set; } = 1;
+        public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+        public bool IsLate { get; set; } = false; // computed at submission time vs Assignment.DueAt
+        public int? AutoScore { get; set; }
+        public string AutoGradingStatus { get; set; } = "pending"; // pending, completed, failed
+        public int? ManualScore { get; set; }
+        public string? ManualFeedback { get; set; }
+        public int? FinalScore { get; set; } // ManualScore ?? AutoScore
+        public Guid? GradedById { get; set; }
+        public DateTime? GradedAt { get; set; }
+
+        // Navigation properties
+        public virtual Assignment Assignment { get; set; } = null!;
+        public virtual User Student { get; set; } = null!;
+        public virtual User? GradedBy { get; set; }
+        public virtual ICollection<AssignmentTestResult> TestResults { get; set; } = new List<AssignmentTestResult>();
+    }
+
+    public class AssignmentTestResult
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid SubmissionId { get; set; }
+        public Guid TestCaseId { get; set; }
+        public bool Passed { get; set; }
+        public string? ActualOutput { get; set; }
+        public string? ErrorMessage { get; set; }
+        public int? ExecutionTimeMs { get; set; }
+
+        // Navigation properties
+        public virtual AssignmentSubmission Submission { get; set; } = null!;
+        public virtual AssignmentTestCase TestCase { get; set; } = null!;
     }
 
     // ============================================================================

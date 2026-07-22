@@ -34,6 +34,11 @@ namespace CodeForge.Infrastructure.Data
         public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
         public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
         public DbSet<QuizAnswer> QuizAnswers => Set<QuizAnswer>();
+        public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+        public DbSet<Assignment> Assignments => Set<Assignment>();
+        public DbSet<AssignmentTestCase> AssignmentTestCases => Set<AssignmentTestCase>();
+        public DbSet<AssignmentSubmission> AssignmentSubmissions => Set<AssignmentSubmission>();
+        public DbSet<AssignmentTestResult> AssignmentTestResults => Set<AssignmentTestResult>();
         public DbSet<Announcement> Announcements => Set<Announcement>();
         public DbSet<Lead> Leads => Set<Lead>();
         public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
@@ -54,7 +59,9 @@ namespace CodeForge.Infrastructure.Data
                     entry.Entity is Announcement ||
                     entry.Entity is Track ||
                     entry.Entity is Cohort ||
-                    entry.Entity is Coupon)
+                    entry.Entity is Coupon ||
+                    entry.Entity is AttendanceRecord ||
+                    entry.Entity is Assignment)
                 {
                     if (entry.State == EntityState.Modified)
                     {
@@ -532,19 +539,26 @@ namespace CodeForge.Infrastructure.Data
                 entity.ToTable("quizzes");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-                entity.Property(e => e.CourseId).HasColumnName("course_id").IsRequired();
+                entity.Property(e => e.ModuleId).HasColumnName("module_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
                 entity.Property(e => e.TimeLimitMinutes).HasColumnName("time_limit_minutes");
                 entity.Property(e => e.PassScore).HasColumnName("pass_score");
-                entity.Property(e => e.AllowRetake).HasColumnName("allow_retake").HasDefaultValue(true);
+                entity.Property(e => e.IsPractice).HasColumnName("is_practice").HasDefaultValue(false);
+                entity.Property(e => e.MaxAttempts).HasColumnName("max_attempts");
+                entity.Property(e => e.RandomizeQuestions).HasColumnName("randomize_questions").HasDefaultValue(false);
+                entity.Property(e => e.DisableCopyPaste).HasColumnName("disable_copy_paste").HasDefaultValue(false);
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
 
-                entity.HasIndex(e => e.CourseId);
+                entity.HasIndex(e => e.ModuleId);
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "chk_quiz_pass_score",
+                    "pass_score IS NULL OR (pass_score BETWEEN 0 AND 100)"));
 
-                entity.HasOne(d => d.Course)
+                entity.HasOne(d => d.Module)
                     .WithMany(p => p.Quizzes)
-                    .HasForeignKey(d => d.CourseId)
+                    .HasForeignKey(d => d.ModuleId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -589,6 +603,7 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(e => e.QuizId).HasColumnName("quiz_id").IsRequired();
                 entity.Property(e => e.StudentId).HasColumnName("student_id").IsRequired();
+                entity.Property(e => e.AttemptNumber).HasColumnName("attempt_number").HasDefaultValue(1);
                 entity.Property(e => e.Score).HasColumnName("score");
                 entity.Property(e => e.Passed).HasColumnName("passed");
                 entity.Property(e => e.StartedAt).HasColumnName("started_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
@@ -629,6 +644,155 @@ namespace CodeForge.Infrastructure.Data
                 entity.HasOne(d => d.SelectedOption)
                     .WithMany(p => p.QuizAnswers)
                     .HasForeignKey(d => d.SelectedOptionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ============================================================================
+            // 4b. ATTENDANCE
+            // ============================================================================
+
+            modelBuilder.Entity<AttendanceRecord>(entity =>
+            {
+                entity.ToTable("attendance_records");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.SessionId).HasColumnName("session_id").IsRequired();
+                entity.Property(e => e.StudentId).HasColumnName("student_id").IsRequired();
+                entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+                entity.Property(e => e.MarkedById).HasColumnName("marked_by").IsRequired();
+                entity.Property(e => e.MarkedAt).HasColumnName("marked_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.Notes).HasColumnName("notes").HasColumnType("text");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+
+                entity.HasIndex(e => new { e.SessionId, e.StudentId }).IsUnique();
+
+                entity.HasOne(d => d.Session)
+                    .WithMany(p => p.AttendanceRecords)
+                    .HasForeignKey(d => d.SessionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.Student)
+                    .WithMany(p => p.AttendanceRecords)
+                    .HasForeignKey(d => d.StudentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.MarkedBy)
+                    .WithMany(p => p.MarkedAttendanceRecords)
+                    .HasForeignKey(d => d.MarkedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ============================================================================
+            // 4c. ASSIGNMENTS
+            // ============================================================================
+
+            modelBuilder.Entity<Assignment>(entity =>
+            {
+                entity.ToTable("assignments");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.ModuleId).HasColumnName("module_id").IsRequired();
+                entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
+                entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text").IsRequired();
+                entity.Property(e => e.IsPractice).HasColumnName("is_practice").HasDefaultValue(false);
+                entity.Property(e => e.MaxAttempts).HasColumnName("max_attempts");
+                entity.Property(e => e.DueAt).HasColumnName("due_at").HasColumnType("timestamp with time zone");
+                entity.Property(e => e.PassScore).HasColumnName("pass_score");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+
+                entity.HasIndex(e => e.ModuleId);
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "chk_assignment_pass_score",
+                    "pass_score IS NULL OR (pass_score BETWEEN 0 AND 100)"));
+
+                entity.HasOne(d => d.Module)
+                    .WithMany(p => p.Assignments)
+                    .HasForeignKey(d => d.ModuleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AssignmentTestCase>(entity =>
+            {
+                entity.ToTable("assignment_test_cases");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.AssignmentId).HasColumnName("assignment_id").IsRequired();
+                entity.Property(e => e.Input).HasColumnName("input").HasColumnType("text").IsRequired();
+                entity.Property(e => e.ExpectedOutput).HasColumnName("expected_output").HasColumnType("text").IsRequired();
+                entity.Property(e => e.IsHidden).HasColumnName("is_hidden").HasDefaultValue(false);
+                entity.Property(e => e.Points).HasColumnName("points").HasDefaultValue(1);
+                entity.Property(e => e.OrderIndex).HasColumnName("order_index").IsRequired();
+
+                entity.HasIndex(e => e.AssignmentId);
+
+                entity.HasOne(d => d.Assignment)
+                    .WithMany(p => p.TestCases)
+                    .HasForeignKey(d => d.AssignmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AssignmentSubmission>(entity =>
+            {
+                entity.ToTable("assignment_submissions");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.AssignmentId).HasColumnName("assignment_id").IsRequired();
+                entity.Property(e => e.StudentId).HasColumnName("student_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").HasColumnType("text").IsRequired();
+                entity.Property(e => e.AttemptNumber).HasColumnName("attempt_number").HasDefaultValue(1);
+                entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.IsLate).HasColumnName("is_late").HasDefaultValue(false);
+                entity.Property(e => e.AutoScore).HasColumnName("auto_score");
+                entity.Property(e => e.AutoGradingStatus).HasColumnName("auto_grading_status").HasMaxLength(20).HasDefaultValue("pending");
+                entity.Property(e => e.ManualScore).HasColumnName("manual_score");
+                entity.Property(e => e.ManualFeedback).HasColumnName("manual_feedback").HasColumnType("text");
+                entity.Property(e => e.FinalScore).HasColumnName("final_score");
+                entity.Property(e => e.GradedById).HasColumnName("graded_by");
+                entity.Property(e => e.GradedAt).HasColumnName("graded_at").HasColumnType("timestamp with time zone");
+
+                entity.HasIndex(e => e.AssignmentId);
+                entity.HasIndex(e => e.StudentId);
+
+                entity.HasOne(d => d.Assignment)
+                    .WithMany(p => p.Submissions)
+                    .HasForeignKey(d => d.AssignmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.Student)
+                    .WithMany(p => p.AssignmentSubmissions)
+                    .HasForeignKey(d => d.StudentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.GradedBy)
+                    .WithMany(p => p.GradedAssignmentSubmissions)
+                    .HasForeignKey(d => d.GradedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<AssignmentTestResult>(entity =>
+            {
+                entity.ToTable("assignment_test_results");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.SubmissionId).HasColumnName("submission_id").IsRequired();
+                entity.Property(e => e.TestCaseId).HasColumnName("test_case_id").IsRequired();
+                entity.Property(e => e.Passed).HasColumnName("passed").IsRequired();
+                entity.Property(e => e.ActualOutput).HasColumnName("actual_output").HasColumnType("text");
+                entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
+                entity.Property(e => e.ExecutionTimeMs).HasColumnName("execution_time_ms");
+
+                entity.HasIndex(e => e.SubmissionId);
+
+                entity.HasOne(d => d.Submission)
+                    .WithMany(p => p.TestResults)
+                    .HasForeignKey(d => d.SubmissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.TestCase)
+                    .WithMany(p => p.Results)
+                    .HasForeignKey(d => d.TestCaseId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
