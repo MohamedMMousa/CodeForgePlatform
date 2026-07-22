@@ -31,17 +31,29 @@ namespace CodeForge.Application.Analytics.GetAdminBusinessDashboard
                 .Where(r => r.Status == EnrollmentRequestStatuses.Approved)
                 .SumAsync(r => (decimal?)r.FinalPrice, cancellationToken) ?? 0m;
 
-            var topCoursesByRevenue = await _context.EnrollmentRequests
+            // Group by the scalar CourseId only (grouping by a joined navigation string
+            // does not translate on Npgsql), then attach titles in a second query.
+            var revenueRaw = await _context.EnrollmentRequests
                 .Where(r => r.Status == EnrollmentRequestStatuses.Approved && r.CourseId != null)
-                .GroupBy(r => new { r.CourseId, r.Course!.Title })
-                .Select(g => new RevenueByCourseDto(
-                    g.Key.CourseId!.Value,
-                    g.Key.Title,
-                    g.Sum(r => r.FinalPrice),
-                    g.Count()))
+                .GroupBy(r => r.CourseId!.Value)
+                .Select(g => new { CourseId = g.Key, Revenue = g.Sum(r => r.FinalPrice), ApprovedRequests = g.Count() })
                 .OrderByDescending(x => x.Revenue)
                 .Take(5)
                 .ToListAsync(cancellationToken);
+
+            var revenueCourseIds = revenueRaw.Select(x => x.CourseId).ToList();
+            var revenueTitles = await _context.Courses
+                .Where(c => revenueCourseIds.Contains(c.Id))
+                .Select(c => new { c.Id, c.Title })
+                .ToDictionaryAsync(c => c.Id, c => c.Title, cancellationToken);
+
+            var topCoursesByRevenue = revenueRaw
+                .Select(x => new RevenueByCourseDto(
+                    x.CourseId,
+                    revenueTitles.GetValueOrDefault(x.CourseId, "—"),
+                    x.Revenue,
+                    x.ApprovedRequests))
+                .ToList();
 
             // Enrollments per month for the last 6 calendar months (small, bounded set → group in memory).
             var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
