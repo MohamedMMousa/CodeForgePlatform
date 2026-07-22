@@ -173,10 +173,22 @@ SQL. This bit us once already for `chk_enrollment_status` (fixed in
 
 **Known constraints of this kind still in the database** (from `schema.sql`):
 `chk_user_role`, `chk_course_status`, `chk_resource_type`, `chk_resource_target`,
-`chk_request_status`, `chk_quiz_pass_score`. **Before adding a new allowed value to
-any status/enum-like constant tied to one of these columns, add a migration that
+`chk_request_status`. **Before adding a new allowed value to any status/enum-like
+constant tied to one of these columns, add a migration that
 `ALTER TABLE ... DROP/ADD CONSTRAINT` to match** — don't assume the C# constants file
 is the only place that needs updating.
+
+`chk_quiz_pass_score` **used to be listed here as one of these legacy constraints,
+but that was stale** — direct inspection during Phase 3 found it was never actually
+carried from `schema.sql` into the EF migrations (the `quizzes` table had no CHECK
+constraint at all in the real dev DB, only a plain `pass_score integer` column,
+despite existing on the live DB from a prior manual `psql` run predating EF's model —
+see §7). Phase 3 added it properly through EF's fluent config
+(`entity.ToTable(t => t.HasCheckConstraint(...))`), with the migration guarding the
+`ADD CONSTRAINT` behind a `DROP CONSTRAINT IF EXISTS` specifically because a
+same-named constraint already existed unmanaged on disk — see
+`20260722084131_AddAttendanceAssessments`. It is now a normal, EF-tracked constraint
+and no longer belongs in this "hand-authored, untracked" list.
 
 ## 6. Phase 2 Additions — Modules, Sessions, Materials
 
@@ -271,7 +283,96 @@ Per `SRS.md` §11, this is a simple query, not a calendar entity: upcoming `live
 enrollment in, plus recent announcements (platform-wide + their enrolled courses),
 sorted by date. No read/seen tracking in this phase.
 
-## 7. Migrations
+## 7. Phase 3 Additions — Attendance, Assessments, Assignments
+
+The `quizzes`/`quiz_questions`/`quiz_options`/`quiz_attempts`/`quiz_answers` cluster
+already existed from `InitialCreate` (Phase 0) but was dormant — zero rows, zero
+Application/Api code, and `Quiz.CourseId` predated the Phase 2 module system. Phase 3
+altered it in place (safe, zero data) rather than building a parallel structure, and
+added two fully new clusters: attendance and code assignments.
+
+### `quizzes` (altered — now shared by quizzes *and* exams)
+| Column | Change |
+|---|---|
+| course_id | **removed** |
+| module_id | **new**, required FK → `modules` — matches Sessions/Materials attaching at the module level (SRS §2: "modules... contain... assignments and quizzes") |
+| order_index | **new** — position within the module's assessment list |
+| type | **new**, `quiz` / `exam` (`AssessmentTypes`) — merges what would otherwise be a near-duplicate `exams` table, mirroring how Phase 2 merged `live`/`in_person`/`recorded_lesson` into one `sessions` table |
+| allow_retake | **removed**, replaced by `max_attempts` |
+| max_attempts | **new**, int? — null = unlimited; exams are validated to exactly `1` |
+| is_practice | **new**, bool — graded vs. practice (SRS §7) |
+| randomize_questions | **new**, bool |
+| disable_copy_paste | **new**, bool — frontend UX deterrent only, no server enforcement (SRS: "no proctoring") |
+| pass_score | unchanged, now enforced by `chk_quiz_pass_score CHECK (pass_score IS NULL OR pass_score BETWEEN 0 AND 100)` — see §4a |
+
+`quiz_attempts` gains `attempt_number int` (tracks which attempt this is, needed to
+enforce `max_attempts`). `quiz_options` gains `order_index int` — added after
+Phase 3 shipped when cross-query option ordering turned out to be non-deterministic
+without it (EF doesn't guarantee navigation-collection order without an explicit
+sort key); see `20260722095447_AddQuizOptionOrdering`.
+
+**Cohort scoping (no schema change):** like Sessions/Materials, quizzes/exams/
+assignments are course-content, shared across every cohort of that course — there is
+no `cohort_id` anywhere in this cluster, matching the precedent already set by
+`session_progress` in Phase 0/2.
+
+### `attendance_records` (new)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| session_id | uuid FK → sessions, cascade | attendance only applies to `live`/`in_person` sessions in practice, not enforced at the DB level |
+| student_id | uuid FK → users, cascade | |
+| status | text | `present` / `absent` / `late` / `excused` (`AttendanceStatuses`) |
+| marked_by | uuid FK → users, restrict | instructor/admin who marked it |
+| marked_at | timestamptz | |
+| notes | text? | |
+| created_at, updated_at | timestamptz | |
+
+Unique `(session_id, student_id)` — marking is an upsert, not append-only.
+
+**Attendance rate is computed, not stored** (same "compute, don't store" philosophy as
+cohort seat availability, `DATABASE.md` §4): for a given enrollment, "sessions held"
+= `live`/`in_person` sessions in the course whose `scheduled_at` falls within
+`[cohort.start_date, cohort.end_date + cohort.grace_period_days]` and has already
+happened (`scheduled_at <= now`). Rate = (present + late) ÷ (held − excused), so an
+excused absence never counts against the student. See
+`AttendanceRateCalculator` (`Application/Attendance/Common/`).
+
+### `assignments` cluster (new — code assignments, Python auto-grader)
+- **`assignments`**: `id, module_id (FK→modules, cascade), title, description
+  (instructions), order_index, is_practice, max_attempts int?, due_at timestamptz?
+  (soft deadline — SRS: late allowed+flagged, never blocked), pass_score int?
+  (`chk_assignment_pass_score`, same shape as the quiz constraint), created_at,
+  updated_at`.
+- **`assignment_test_cases`**: `id, assignment_id (FK, cascade), input text (stdin),
+  expected_output text, is_hidden bool (hidden cases count toward score but aren't
+  shown to students as examples), points int, order_index int`.
+- **`assignment_submissions`**: `id, assignment_id (FK, cascade), student_id (FK,
+  cascade), code text, attempt_number int, submitted_at, is_late bool (computed at
+  submission time vs. `due_at`), auto_score int?, auto_grading_status text
+  (`pending`/`completed`/`failed`), manual_score int?, manual_feedback text?,
+  final_score int? (`manual_score ?? auto_score`), graded_by (FK→users, nullable,
+  set-null), graded_at?`.
+- **`assignment_test_results`**: `id, submission_id (FK→assignment_submissions,
+  cascade), test_case_id (FK→assignment_test_cases, restrict), passed bool,
+  actual_output text?, error_message text?, execution_time_ms int?`.
+
+### Auto-grader engine — deferred, not wired to a working service
+`ICodeExecutionService` (`Application/Common/Interfaces/`) isolates the actual code
+runner, per `ARCHITECTURE.md` §1's "isolate volatile/external concerns" principle.
+Piston (`emkc.org`) was the initial choice (free, no Docker needed) and
+`PistonCodeExecutionService` is fully implemented and registered in DI — but Piston's
+public API **went whitelist-only on 2026-02-15** (confirmed via a direct 401 during
+Phase 3 verification), so it cannot currently reach a real engine. The active
+`ICodeExecutionService` implementation is `DeferredCodeExecutionService`, which throws
+immediately; `SubmitAssignmentCommandHandler` catches this and sets
+`auto_grading_status = 'failed'` without blocking the submission — instructors grade
+manually via `GradeSubmission`, which SRS §7 already requires as a first-class path
+regardless of auto-grading. Swap the DI registration back to
+`PistonCodeExecutionService` once whitelisted, or replace with a self-hosted engine
+once hosting is decided (Phase 5).
+
+## 8. Migrations
 
 History: `20260629194500_InitialCreate` (Phase 0, regenerated with proper
 snapshot/Designer files — see `ARCHITECTURE.md` §3), then
@@ -284,7 +385,13 @@ Two `DropIndex` calls in that migration were converted to guarded
 `DROP INDEX IF EXISTS` raw SQL because the live DB's index names for
 `enrollments.source_request_id` / the old `(student_id, course_id)` unique index
 didn't exactly match what the regenerated `InitialCreate` snapshot assumed — a
-one-time consequence of the Phase 0 snapshot fix, harmless and now resolved. Generate
+one-time consequence of the Phase 0 snapshot fix, harmless and now resolved. Then
+three Phase 3 migrations: `20260722084131_AddAttendanceAssessments` (§7's main
+schema, including the guarded `chk_quiz_pass_score` add), followed by
+`20260722085233_AddAssessmentOrdering` (quiz/assignment `order_index`, discovered
+missing after building the Assessments module) and
+`20260722095447_AddQuizOptionOrdering` (discovered missing during end-to-end
+verification, when option order proved non-deterministic across queries). Generate
 further migrations with:
 
 ```

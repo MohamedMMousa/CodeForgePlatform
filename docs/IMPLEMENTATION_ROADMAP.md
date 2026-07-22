@@ -131,11 +131,78 @@ Attendance marking (Phase 3), quizzes/assignments/exams (Phase 3), certificates
 scoped this to a simple list), private/signed recording storage (still external
 links per SRS — upgrade planned but unscheduled).
 
-## Phase 3 — Attendance & Assessments
+## Phase 3 — Attendance & Assessments — ✅ COMPLETE
 
-Manual attendance marking + reporting; quizzes, assignments (+ Python auto-grader —
-engine choice deferred to this phase), exams (basic controls, no proctoring); grading
-+ gradebook. Frontend: attendance UI, quiz/exam taking, submission + grading screens.
+**Goal:** instructors can mark per-session attendance and see a course attendance
+report; author quizzes and formal exams (MCQ, timed, attempt-limited) and code
+assignments (instructor test cases, Python auto-grading + manual override); students
+attend/take/submit and see their own results; both roles see a gradebook combining
+attendance rate with assessment/assignment scores. Matches `SRS.md` §7, §8, §9 (partial
+— full two-tier certificate logic is Phase 4).
+
+Data model: see `DATABASE.md` §7 — the dormant `quizzes` cluster (Phase 0 schema, zero
+Application/Api code) is altered in place to serve both quizzes and exams (`Type`
+discriminator, reattached to `module_id` instead of `course_id`), mirroring how
+Phase 2 merged session types; `attendance_records` and the `assignments` cluster are
+fully new.
+
+### Backend
+
+| Module | Endpoints | Notes |
+|---|---|---|
+| **Attendance** | `PUT /sessions/{id}/attendance` (bulk roster upsert), `GET /sessions/{id}/attendance` (roster + current marks), `GET /courses/{id}/attendance-report` (instructor/admin, per-student rate), `GET /my-courses/{id}/attendance` (student) | Admin + assigned instructor for marking; rate computed from the enrollment's cohort date window, never stored (`AttendanceRateCalculator`). |
+| **Assessments** (quiz + exam) | `POST/PUT/DELETE /assessments`, `PUT /modules/{id}/assessments/reorder`, `POST/PUT/DELETE` on `/assessments/{id}/questions`, `PUT .../questions/reorder`, `GET /modules/{id}/assessments` \| `/assessments/{id}` (manage view, correct answers), `GET /assessments/{id}/attempt` (student view, answers stripped + optional randomization), `POST /assessments/{id}/attempts` (start), `PUT /attempts/{id}/submit` (auto-grades MCQ), `GET /assessments/{id}/my-attempts` \| `/attempts/{id}` \| `/assessments/{id}/results` | Exams are validated to `max_attempts = 1` at creation. A stale in-progress attempt only blocks a new start while the quiz's own time limit hasn't elapsed — otherwise an abandoned attempt would permanently lock a student out. |
+| **Assignments** | `POST/PUT/DELETE /assignments`, `PUT /modules/{id}/assignments/reorder`, `POST/PUT/DELETE` on `/assignments/{id}/test-cases`, `PUT .../test-cases/reorder`, `GET /modules/{id}/assignments` \| `/assignments/{id}` (manage) \| `/assignments/{id}/submission` (student, hidden test cases excluded), `POST /assignments/{id}/submissions` (auto-runs via `ICodeExecutionService`), `PUT /submissions/{id}/grade` (manual override), `GET /assignments/{id}/my-submissions` \| `/submissions/{id}` \| `/assignments/{id}/submissions` (instructor grading queue) | Auto-grading failure (currently the default state — see below) never blocks a submission from saving; it just leaves `auto_grading_status = 'failed'` and manual grading as the only score source. |
+| **Gradebook** | `GET /my-courses/{id}/grades` (student), `GET /courses/{id}/gradebook` (instructor/admin, full roster) | Shares a `GradebookCalculator` that aggregates best quiz/exam score+pass and best assignment final score per student. |
+
+### Frontend
+
+- **Instructor** (`/[locale]/instructor/courses/[id]/modules/[moduleId]`) — attendance
+  marking panel per session, assessment authoring (type-aware form + question/option
+  builder, single-correct-answer enforced via radio group), assignment authoring
+  (test-case builder), submission grading (manual score + feedback). Course-level
+  gradebook table on the course page.
+- **Student** — quiz/exam-taking flow (`/my-courses/[id]/assessments/[assessmentId]`,
+  countdown timer with client-side auto-submit, disable-copy-paste UX deterrent,
+  correct-answer reveal only after submission), assignment submission
+  (`/my-courses/[id]/assignments/[assignmentId]`, code textarea, sample test cases,
+  auto-graded results with hidden-case results limited to pass/fail), a "my grades"
+  toggle on the course view.
+
+### Verified (end-to-end, via API + live browser)
+
+Attendance marking persisted and reflected in the gradebook; quiz creation +
+question/option authoring + student attempt + correct MCQ auto-grading; exam creation
++ single-attempt enforcement (confirmed a second attempt is rejected) + auto-grading;
+assignment creation + test cases + student code submission + graceful auto-grading
+failure + instructor manual override, all reflected correctly in both the instructor
+gradebook and the student's own grades view; bilingual (en/ar) rendering confirmed on
+the new student-facing pages.
+
+**Bugs found and fixed during verification** (see `handoff_phase3_attendance_assessments.md`
+for full detail): `QuizOption` had no explicit ordering column, so option order was
+non-deterministic across queries (fixed, `AddQuizOptionOrdering` migration);
+`SubmitAttemptCommandHandler`/`UpdateQuestionCommandHandler`/
+`SubmitAssignmentCommandHandler` added new child entities via a navigation collection
+on an already-tracked parent, which EF Core's graph-tracking heuristic misjudged as
+Modified instead of Added — this crashed **every** quiz/exam submission with a 500
+before the fix (explicit `DbSet.AddRange` now used instead); an abandoned
+in-progress attempt had no expiry and would have permanently locked a student out of
+retaking an assessment (fixed — only blocks while the quiz's time limit hasn't
+elapsed); a React stale-closure race in the option editor could scramble option order
+under rapid edits (fixed with functional `setState`).
+
+**Auto-grader status:** Piston's public API went whitelist-only mid-phase (see
+`ARCHITECTURE.md` §7) — assignments currently rely on 100% manual grading, which was
+always a required path per `SRS.md` §7 regardless of auto-grading availability.
+
+### Out of scope for Phase 3 (later phases)
+
+Two-tier certificate logic and thresholds (Phase 4, consumes the attendance rate and
+pass/fail computed here), admin cross-course analytics dashboards (Phase 4), a
+working auto-grader engine (blocked on Piston whitelisting, self-hosting, or a
+different provider), multiple-correct-answer MCQ (single-correct only), additional
+auto-grader languages (Python only, per SRS).
 
 ## Phase 4 — Certificates & Analytics
 

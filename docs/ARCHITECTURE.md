@@ -17,8 +17,10 @@
   `CODING_STANDARDS.md` for the exact pattern.
 - **Isolate volatile/external concerns behind interfaces**: notifications (email now,
   WhatsApp later), file storage (local disk now, object storage + signed URLs later),
-  code execution (Python auto-grader, engine TBD), video (external links only, never
-  embedded).
+  code execution (`ICodeExecutionService` — Piston was the Phase 3 choice, but its
+  public API went whitelist-only mid-phase; `DeferredCodeExecutionService` is the
+  active implementation for now, `PistonCodeExecutionService` stays registered and
+  ready — see §4 and `DATABASE.md` §7), video (external links only, never embedded).
 - **Bilingual and public-facing from day one** — culture resolution and CORS are
   foundation concerns, not afterthoughts.
 
@@ -94,12 +96,13 @@ Vertical slices under `src/CodeForge.Application/<Feature>/`:
 | Materials | ✅ built (Phase 2) | Renamed from Resources; files/text/links attached to a module or session. |
 | Announcements | ✅ built (Phase 2) | Schema existed, Application/Api built this phase. Platform-wide (admin) or course-scoped (instructor). |
 | MyCourses (student) | ✅ built (Phase 2) | Enrollment-gated course-content read view + dashboard "upcoming items". |
-| Attendance | ⏳ Phase 3 | Manual per-session marking + reporting. |
-| Assessments | ⏳ Phase 3 | Quizzes (exists in schema, not yet in Application), Assignments (new), Exams (new), auto-grader integration. |
+| Attendance | ✅ built (Phase 3) | Manual per-session marking (roster upsert); rate computed from the enrollment's cohort date window, not stored. |
+| Assessments | ✅ built (Phase 3) | Quizzes + exams share one type-discriminated table (`Quiz`, `Type` = quiz/exam), mirroring how Phase 2 merged session types. Question/option authoring, timed attempts, auto-graded MCQ scoring. |
+| Assignments | ✅ built (Phase 3) | Code assignments with instructor-defined test cases; student code submission; auto-grader integration via `ICodeExecutionService` (currently deferred to manual grading — see §7); instructor manual score/feedback override. |
+| Gradebook | ✅ built (Phase 3) | Per-student attendance rate + best assessment score/pass + assignment final score, for both the instructor's course roster and a student's own course view. Admin cross-course analytics stays out of scope, reserved for Phase 4. |
 | Certificates | ⏳ Phase 4 | Two-tier completion logic. |
 | Notifications | ⏳ Phase 5 | Channel-agnostic dispatch; email now (Phase 0), WhatsApp later. |
 | Reports/Analytics | ⏳ Phase 4 | Admin + instructor dashboards. |
-| Leads | 🚧 Phase 1 | Public contact form; reused for "notify me about next batch." |
 
 Legend: ✅ done · 🚧 in progress this phase · ⏳ not started.
 
@@ -130,8 +133,14 @@ file uploads, rate limiting, versioning stance).
 
 ## 7. Deferred / Open Architectural Decisions
 
-- **Python auto-grader engine** (Judge0 vs. custom Docker runner vs. managed service) —
-  deferred to Phase 3.
+- **Python auto-grader engine** — Piston (`emkc.org`) was chosen in Phase 3 (free,
+  no Docker needed in this dev environment), and `PistonCodeExecutionService` was
+  built and verified working. Mid-phase, Piston's public API went whitelist-only
+  (2026-02-15) and is no longer usable without prior approval. Currently deferred to
+  100% manual grading (`DeferredCodeExecutionService`, see `DATABASE.md` §7) until
+  either Piston whitelists this use case, a self-hosted Judge0/Piston instance is
+  stood up (needs Docker, not available in this dev environment), or another engine
+  is chosen.
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.
