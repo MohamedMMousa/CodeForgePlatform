@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using CodeForge.Application.Common.Interfaces;
 using CodeForge.Application.Common.Models;
+using CodeForge.Infrastructure.Assessments;
 using CodeForge.Infrastructure.Authentication;
 using CodeForge.Infrastructure.Data;
 using CodeForge.Infrastructure.Email;
@@ -58,6 +59,14 @@ namespace CodeForge.Infrastructure
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();
             services.AddSingleton<ITemporaryPasswordGenerator, TemporaryPasswordGenerator>();
             services.AddScoped<IEnrollmentNotificationService, LoggingEnrollmentNotificationService>();
+
+            // Auto-grader: Piston (emkc.org), a free hosted sandboxed code-execution
+            // API — no Docker required locally. Swap for a self-hosted engine once
+            // hosting is decided (Phase 5).
+            services.AddHttpClient<ICodeExecutionService, PistonCodeExecutionService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(20);
+            });
 
             return services;
         }
