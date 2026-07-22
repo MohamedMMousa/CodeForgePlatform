@@ -259,6 +259,93 @@ export interface Dictionary {
     hiddenTest: string;
     grades: string;
     noGrades: string;
+    certificates: string;
+    noCertificates: string;
+  };
+  certificates: {
+    title: string;
+    myCertificates: string;
+    noCertificates: string;
+    completion: string;
+    participation: string;
+    tier: string;
+    serial: string;
+    issuedOn: string;
+    issuedBy: string;
+    verificationCode: string;
+    status: string;
+    valid: string;
+    revoked: string;
+    attendanceRate: string;
+    assessmentsPassed: string;
+    candidates: string;
+    recommendedTier: string;
+    attendanceMet: string;
+    assessmentsMet: string;
+    requiredAssessments: string;
+    issue: string;
+    issuing: string;
+    issued: string;
+    revoke: string;
+    revoking: string;
+    revokeReason: string;
+    override: string;
+    view: string;
+    download: string;
+    print: string;
+    back: string;
+    student: string;
+    yes: string;
+    no: string;
+    verifyTitle: string;
+    verifySubtitle: string;
+    verifyPlaceholder: string;
+    verifyButton: string;
+    verifying: string;
+    verifyValid: string;
+    verifyRevoked: string;
+    verifyNotFound: string;
+    verifiedCertificate: string;
+    loadError: string;
+  };
+  analytics: {
+    title: string;
+    businessDashboard: string;
+    academicDashboard: string;
+    instructorDashboard: string;
+    totalStudents: string;
+    publishedCourses: string;
+    publishedTracks: string;
+    activeEnrollments: string;
+    pendingRequests: string;
+    totalRevenue: string;
+    totalLeads: string;
+    uncontactedLeads: string;
+    openCohorts: string;
+    topCoursesByRevenue: string;
+    enrollmentsByMonth: string;
+    revenue: string;
+    approvedRequests: string;
+    certificatesIssued: string;
+    completionCerts: string;
+    participationCerts: string;
+    revokedCerts: string;
+    totalAssessments: string;
+    submittedAttempts: string;
+    passRate: string;
+    totalAssignments: string;
+    totalSubmissions: string;
+    perCourse: string;
+    course: string;
+    students: string;
+    assessments: string;
+    attempts: string;
+    certificates: string;
+    assignedCourses: string;
+    totalActiveStudents: string;
+    status: string;
+    noData: string;
+    loadError: string;
   };
 }
 
@@ -509,7 +596,94 @@ const dictionaries: Record<Locale, Dictionary> = {
       testResults: "Test results",
       hiddenTest: "Hidden test",
       grades: "My grades",
-      noGrades: "No grades yet."
+      noGrades: "No grades yet.",
+      certificates: "My certificates",
+      noCertificates: "No certificates yet."
+    },
+    certificates: {
+      title: "Certificates",
+      myCertificates: "My certificates",
+      noCertificates: "No certificates yet.",
+      completion: "Completion",
+      participation: "Participation",
+      tier: "Tier",
+      serial: "Serial",
+      issuedOn: "Issued on",
+      issuedBy: "Issued by",
+      verificationCode: "Verification code",
+      status: "Status",
+      valid: "Valid",
+      revoked: "Revoked",
+      attendanceRate: "Attendance rate",
+      assessmentsPassed: "Assessments passed",
+      candidates: "Certificate candidates",
+      recommendedTier: "Recommended",
+      attendanceMet: "Attendance met",
+      assessmentsMet: "Assessments passed",
+      requiredAssessments: "Required assessments",
+      issue: "Issue",
+      issuing: "Issuing…",
+      issued: "Issued",
+      revoke: "Revoke",
+      revoking: "Revoking…",
+      revokeReason: "Reason for revocation (optional)",
+      override: "Tier",
+      view: "View",
+      download: "Download",
+      print: "Print / Save as PDF",
+      back: "Back",
+      student: "Student",
+      yes: "Yes",
+      no: "No",
+      verifyTitle: "Verify a certificate",
+      verifySubtitle: "Enter the verification code printed on a CodeForge certificate.",
+      verifyPlaceholder: "Verification code",
+      verifyButton: "Verify",
+      verifying: "Verifying…",
+      verifyValid: "This certificate is valid.",
+      verifyRevoked: "This certificate has been revoked.",
+      verifyNotFound: "No certificate matches that code.",
+      verifiedCertificate: "Verified certificate",
+      loadError: "Could not load certificates. Please try again."
+    },
+    analytics: {
+      title: "Analytics",
+      businessDashboard: "Business overview",
+      academicDashboard: "Academic overview",
+      instructorDashboard: "My analytics",
+      totalStudents: "Students",
+      publishedCourses: "Published courses",
+      publishedTracks: "Published tracks",
+      activeEnrollments: "Active enrollments",
+      pendingRequests: "Pending requests",
+      totalRevenue: "Revenue (approved)",
+      totalLeads: "Leads",
+      uncontactedLeads: "Uncontacted leads",
+      openCohorts: "Open cohorts",
+      topCoursesByRevenue: "Top courses by revenue",
+      enrollmentsByMonth: "Enrollments by month",
+      revenue: "Revenue",
+      approvedRequests: "Approved requests",
+      certificatesIssued: "Certificates issued",
+      completionCerts: "Completion",
+      participationCerts: "Participation",
+      revokedCerts: "Revoked",
+      totalAssessments: "Assessments",
+      submittedAttempts: "Submitted attempts",
+      passRate: "Pass rate",
+      totalAssignments: "Assignments",
+      totalSubmissions: "Submissions",
+      perCourse: "Per course",
+      course: "Course",
+      students: "Students",
+      assessments: "Assessments",
+      attempts: "Attempts",
+      certificates: "Certificates",
+      assignedCourses: "Assigned courses",
+      totalActiveStudents: "Active students",
+      status: "Status",
+      noData: "No data yet.",
+      loadError: "Could not load analytics. Please try again."
     }
   },
   ar: {
@@ -757,7 +931,94 @@ const dictionaries: Record<Locale, Dictionary> = {
       testResults: "نتائج الاختبار",
       hiddenTest: "اختبار مخفي",
       grades: "درجاتي",
-      noGrades: "لا توجد درجات بعد."
+      noGrades: "لا توجد درجات بعد.",
+      certificates: "شهاداتي",
+      noCertificates: "لا توجد شهادات بعد."
+    },
+    certificates: {
+      title: "الشهادات",
+      myCertificates: "شهاداتي",
+      noCertificates: "لا توجد شهادات بعد.",
+      completion: "إتمام",
+      participation: "مشاركة",
+      tier: "النوع",
+      serial: "الرقم التسلسلي",
+      issuedOn: "تاريخ الإصدار",
+      issuedBy: "أصدرها",
+      verificationCode: "رمز التحقق",
+      status: "الحالة",
+      valid: "سارية",
+      revoked: "ملغاة",
+      attendanceRate: "نسبة الحضور",
+      assessmentsPassed: "اجتياز التقييمات",
+      candidates: "المرشحون للشهادة",
+      recommendedTier: "الموصى به",
+      attendanceMet: "تحقق الحضور",
+      assessmentsMet: "اجتياز التقييمات",
+      requiredAssessments: "التقييمات المطلوبة",
+      issue: "إصدار",
+      issuing: "جارٍ الإصدار…",
+      issued: "تم الإصدار",
+      revoke: "إلغاء",
+      revoking: "جارٍ الإلغاء…",
+      revokeReason: "سبب الإلغاء (اختياري)",
+      override: "النوع",
+      view: "عرض",
+      download: "تنزيل",
+      print: "طباعة / حفظ PDF",
+      back: "رجوع",
+      student: "الطالب",
+      yes: "نعم",
+      no: "لا",
+      verifyTitle: "التحقق من شهادة",
+      verifySubtitle: "أدخل رمز التحقق المطبوع على شهادة كود فورج.",
+      verifyPlaceholder: "رمز التحقق",
+      verifyButton: "تحقق",
+      verifying: "جارٍ التحقق…",
+      verifyValid: "هذه الشهادة سارية.",
+      verifyRevoked: "تم إلغاء هذه الشهادة.",
+      verifyNotFound: "لا توجد شهادة مطابقة لهذا الرمز.",
+      verifiedCertificate: "شهادة موثّقة",
+      loadError: "تعذّر تحميل الشهادات. حاول مرة أخرى."
+    },
+    analytics: {
+      title: "التحليلات",
+      businessDashboard: "نظرة عامة على الأعمال",
+      academicDashboard: "نظرة عامة أكاديمية",
+      instructorDashboard: "تحليلاتي",
+      totalStudents: "الطلاب",
+      publishedCourses: "الدورات المنشورة",
+      publishedTracks: "المسارات المنشورة",
+      activeEnrollments: "التسجيلات النشطة",
+      pendingRequests: "الطلبات المعلّقة",
+      totalRevenue: "الإيرادات (المعتمدة)",
+      totalLeads: "العملاء المحتملون",
+      uncontactedLeads: "لم يتم التواصل معهم",
+      openCohorts: "المجموعات المفتوحة",
+      topCoursesByRevenue: "أعلى الدورات إيرادًا",
+      enrollmentsByMonth: "التسجيلات شهريًا",
+      revenue: "الإيرادات",
+      approvedRequests: "الطلبات المعتمدة",
+      certificatesIssued: "الشهادات الصادرة",
+      completionCerts: "إتمام",
+      participationCerts: "مشاركة",
+      revokedCerts: "ملغاة",
+      totalAssessments: "التقييمات",
+      submittedAttempts: "المحاولات المُسلَّمة",
+      passRate: "نسبة النجاح",
+      totalAssignments: "الواجبات",
+      totalSubmissions: "التسليمات",
+      perCourse: "حسب الدورة",
+      course: "الدورة",
+      students: "الطلاب",
+      assessments: "التقييمات",
+      attempts: "المحاولات",
+      certificates: "الشهادات",
+      assignedCourses: "الدورات المسندة",
+      totalActiveStudents: "الطلاب النشطون",
+      status: "الحالة",
+      noData: "لا توجد بيانات بعد.",
+      loadError: "تعذّر تحميل التحليلات. حاول مرة أخرى."
     }
   }
 };

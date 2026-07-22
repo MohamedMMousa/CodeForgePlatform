@@ -1168,3 +1168,246 @@ export interface CourseGradebook {
 export function getCourseGradebook(courseId: string, token: string): Promise<CourseGradebook> {
   return apiFetch<CourseGradebook>(`/courses/${courseId}/gradebook`, { token });
 }
+
+// ---------------------------------------------------------------------------
+// Course detail + threshold config (admin)
+// ---------------------------------------------------------------------------
+
+export interface CourseInstructorEntry {
+  id: string;
+  instructorId: string;
+  instructorName: string;
+  instructorEmail: string;
+  assignedAt: string;
+}
+
+export interface CourseDetail {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  category: string | null;
+  price: number;
+  currency: string;
+  status: string;
+  completionAttendanceThreshold: number | null;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  instructors: CourseInstructorEntry[];
+}
+
+export function getCourseById(courseId: string, token: string): Promise<CourseDetail> {
+  return apiFetch<CourseDetail>(`/courses/${courseId}`, { token });
+}
+
+export function updateCourse(
+  courseId: string,
+  input: {
+    title: string;
+    slug: string;
+    description: string | null;
+    thumbnailUrl: string | null;
+    category: string | null;
+    price: number;
+    currency: string;
+    completionAttendanceThreshold: number | null;
+  },
+  token: string
+): Promise<CourseDetail> {
+  return apiFetch<CourseDetail>(`/courses/${courseId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+    token
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Certificates
+// ---------------------------------------------------------------------------
+
+export type CertificateTier = "completion" | "participation";
+
+export interface Certificate {
+  id: string;
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  courseId: string;
+  courseTitle: string;
+  cohortId: string;
+  cohortName: string;
+  tier: CertificateTier;
+  serialNumber: string;
+  verificationCode: string;
+  attendanceRate: number;
+  assessmentsPassed: boolean;
+  issuedByName: string;
+  issuedAt: string;
+  isRevoked: boolean;
+  revokedAt: string | null;
+  revocationReason: string | null;
+}
+
+export interface CertificateCandidate {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  cohortId: string;
+  cohortName: string;
+  attendanceRate: number;
+  attendanceThreshold: number;
+  attendanceMet: boolean;
+  assessmentsPassed: boolean;
+  requiredAssessmentCount: number;
+  recommendedTier: CertificateTier;
+  existingCertificate: Certificate | null;
+}
+
+export interface CourseCertificateCandidates {
+  courseId: string;
+  courseTitle: string;
+  candidates: CertificateCandidate[];
+}
+
+export function getCourseCertificateCandidates(
+  courseId: string,
+  token: string
+): Promise<CourseCertificateCandidates> {
+  return apiFetch<CourseCertificateCandidates>(`/courses/${courseId}/certificate-candidates`, { token });
+}
+
+export function issueCertificate(
+  enrollmentId: string,
+  tier: CertificateTier | null,
+  token: string
+): Promise<Certificate> {
+  return apiFetch<Certificate>("/certificates", {
+    method: "POST",
+    body: JSON.stringify({ enrollmentId, tier }),
+    token
+  });
+}
+
+export function revokeCertificate(
+  certificateId: string,
+  reason: string | null,
+  token: string
+): Promise<Certificate> {
+  return apiFetch<Certificate>(`/certificates/${certificateId}/revoke`, {
+    method: "PUT",
+    body: JSON.stringify({ reason }),
+    token
+  });
+}
+
+export function getMyCertificates(token: string): Promise<Certificate[]> {
+  return apiFetch<Certificate[]>("/my-certificates", { token });
+}
+
+export function getCertificateById(certificateId: string, token: string): Promise<Certificate> {
+  return apiFetch<Certificate>(`/certificates/${certificateId}`, { token });
+}
+
+export interface CertificateVerification {
+  found: boolean;
+  isValid: boolean;
+  studentName: string | null;
+  courseTitle: string | null;
+  tier: CertificateTier | null;
+  serialNumber: string | null;
+  issuedAt: string | null;
+  isRevoked: boolean;
+}
+
+/** Public — no auth token needed. */
+export function verifyCertificate(code: string): Promise<CertificateVerification> {
+  return apiFetch<CertificateVerification>(`/certificates/verify/${encodeURIComponent(code)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+export interface MonthlyCount {
+  year: number;
+  month: number;
+  count: number;
+}
+
+export interface RevenueByCourse {
+  courseId: string;
+  title: string;
+  revenue: number;
+  approvedRequests: number;
+}
+
+export interface AdminBusinessDashboard {
+  totalStudents: number;
+  publishedCourses: number;
+  publishedTracks: number;
+  activeEnrollments: number;
+  pendingEnrollmentRequests: number;
+  totalRevenue: number;
+  totalLeads: number;
+  uncontactedLeads: number;
+  openCohorts: number;
+  topCoursesByRevenue: RevenueByCourse[];
+  enrollmentsByMonth: MonthlyCount[];
+}
+
+export function getAdminBusinessDashboard(token: string): Promise<AdminBusinessDashboard> {
+  return apiFetch<AdminBusinessDashboard>("/analytics/admin/business", { token });
+}
+
+export interface CourseAcademicRow {
+  courseId: string;
+  title: string;
+  activeEnrollments: number;
+  assessments: number;
+  submittedAttempts: number;
+  assessmentPassRate: number;
+  certificatesIssued: number;
+}
+
+export interface AdminAcademicDashboard {
+  certificatesIssued: number;
+  completionCertificates: number;
+  participationCertificates: number;
+  revokedCertificates: number;
+  totalAssessments: number;
+  submittedAttempts: number;
+  assessmentPassRate: number;
+  totalAssignments: number;
+  totalSubmissions: number;
+  courses: CourseAcademicRow[];
+}
+
+export function getAdminAcademicDashboard(token: string): Promise<AdminAcademicDashboard> {
+  return apiFetch<AdminAcademicDashboard>("/analytics/admin/academic", { token });
+}
+
+export interface InstructorCourseRow {
+  courseId: string;
+  title: string;
+  status: string;
+  activeEnrollments: number;
+  assessments: number;
+  submittedAttempts: number;
+  assessmentPassRate: number;
+  certificatesIssued: number;
+}
+
+export interface InstructorDashboard {
+  assignedCourses: number;
+  totalActiveStudents: number;
+  certificatesIssued: number;
+  courses: InstructorCourseRow[];
+}
+
+export function getInstructorDashboard(token: string): Promise<InstructorDashboard> {
+  return apiFetch<InstructorDashboard>("/analytics/instructor", { token });
+}
