@@ -310,6 +310,143 @@ export interface Dictionary {
     verifiedCertificate: string;
     loadError: string;
   };
+  admin: {
+    title: string;
+    navCourses: string;
+    navTracks: string;
+    navCoupons: string;
+    navEnrollmentRequests: string;
+    navUsers: string;
+    navAnalytics: string;
+
+    loadError: string;
+    save: string;
+    saving: string;
+    cancel: string;
+    create: string;
+    creating: string;
+    edit: string;
+    delete: string;
+    confirmDelete: string;
+    actions: string;
+    search: string;
+    status: string;
+    all: string;
+
+    fieldTitle: string;
+    fieldSlug: string;
+    fieldDescription: string;
+    fieldThumbnailUrl: string;
+    fieldCategory: string;
+    fieldPrice: string;
+    fieldCurrency: string;
+
+    coursesTitle: string;
+    addCourse: string;
+    noCourses: string;
+    statusDraft: string;
+    statusPublished: string;
+    statusArchived: string;
+    publish: string;
+    archive: string;
+    manageContent: string;
+
+    instructorsTitle: string;
+    assignInstructor: string;
+    selectInstructor: string;
+    removeInstructor: string;
+    noInstructorsAssigned: string;
+
+    cohortsTitle: string;
+    addCohort: string;
+    cohortName: string;
+    startDate: string;
+    endDate: string;
+    enrollmentCutoffDate: string;
+    capacity: string;
+    gracePeriodDays: string;
+    openCohort: string;
+    cancelCohort: string;
+    completeCohort: string;
+    cohortStatusDraft: string;
+    cohortStatusOpen: string;
+    cohortStatusCancelled: string;
+    cohortStatusCompleted: string;
+    seatsLeft: string;
+    enrolledCount: string;
+    noCohorts: string;
+
+    tracksTitle: string;
+    addTrack: string;
+    noTracks: string;
+    coursesInTrack: string;
+    addCourseToTrack: string;
+    removeCourseFromTrack: string;
+    sortOrder: string;
+    selectCourse: string;
+
+    couponsTitle: string;
+    addCoupon: string;
+    code: string;
+    couponType: string;
+    typePercent: string;
+    typeFixed: string;
+    value: string;
+    validFrom: string;
+    validUntil: string;
+    usageLimit: string;
+    usedCount: string;
+    active: string;
+    inactive: string;
+    deactivate: string;
+    noCoupons: string;
+
+    requestsTitle: string;
+    applicant: string;
+    applicantEmailLabel: string;
+    applicantPhoneLabel: string;
+    courseOrTrack: string;
+    paymentMethod: string;
+    paymentProof: string;
+    downloadPaymentProof: string;
+    originalPrice: string;
+    couponCode: string;
+    discountAmount: string;
+    finalPrice: string;
+    submittedAt: string;
+    requestStatusPending: string;
+    requestStatusApproved: string;
+    requestStatusRejected: string;
+    approve: string;
+    approving: string;
+    reject: string;
+    rejecting: string;
+    rejectionReasonLabel: string;
+    reviewedBy: string;
+    reviewedAt: string;
+    targetCohorts: string;
+    resultingEnrollments: string;
+    cancelEnrollment: string;
+    cancelReasonLabel: string;
+    markAsRefunded: string;
+    noRequests: string;
+    viewDetails: string;
+    backToRequests: string;
+
+    usersTitle: string;
+    addInstructor: string;
+    fullNameLabel: string;
+    emailLabel: string;
+    phoneLabel: string;
+    roleLabel: string;
+    roleAdmin: string;
+    roleInstructor: string;
+    roleStudent: string;
+    isActiveLabel: string;
+    reactivate: string;
+    temporaryPasswordCreated: string;
+    noUsers: string;
+  };
   analytics: {
     title: string;
     businessDashboard: string;
@@ -650,6 +787,143 @@ const dictionaries: Record<Locale, Dictionary> = {
       verifiedCertificate: "Verified certificate",
       loadError: "Could not load certificates. Please try again."
     },
+    admin: {
+      title: "Admin",
+      navCourses: "Courses",
+      navTracks: "Tracks",
+      navCoupons: "Coupons",
+      navEnrollmentRequests: "Enrollment Requests",
+      navUsers: "Users",
+      navAnalytics: "Analytics",
+
+      loadError: "Could not load. Please try again.",
+      save: "Save",
+      saving: "Saving…",
+      cancel: "Cancel",
+      create: "Create",
+      creating: "Creating…",
+      edit: "Edit",
+      delete: "Delete",
+      confirmDelete: "Are you sure you want to delete this?",
+      actions: "Actions",
+      search: "Search",
+      status: "Status",
+      all: "All",
+
+      fieldTitle: "Title",
+      fieldSlug: "Slug",
+      fieldDescription: "Description",
+      fieldThumbnailUrl: "Thumbnail URL",
+      fieldCategory: "Category",
+      fieldPrice: "Price",
+      fieldCurrency: "Currency",
+
+      coursesTitle: "Courses",
+      addCourse: "Add course",
+      noCourses: "No courses yet.",
+      statusDraft: "Draft",
+      statusPublished: "Published",
+      statusArchived: "Archived",
+      publish: "Publish",
+      archive: "Archive",
+      manageContent: "Manage content",
+
+      instructorsTitle: "Instructors",
+      assignInstructor: "Assign",
+      selectInstructor: "Select an instructor",
+      removeInstructor: "Remove",
+      noInstructorsAssigned: "No instructors assigned.",
+
+      cohortsTitle: "Cohorts",
+      addCohort: "Add cohort",
+      cohortName: "Batch name",
+      startDate: "Start date",
+      endDate: "End date",
+      enrollmentCutoffDate: "Enrollment cutoff",
+      capacity: "Capacity",
+      gracePeriodDays: "Grace period (days)",
+      openCohort: "Open",
+      cancelCohort: "Cancel",
+      completeCohort: "Complete",
+      cohortStatusDraft: "Draft",
+      cohortStatusOpen: "Open",
+      cohortStatusCancelled: "Cancelled",
+      cohortStatusCompleted: "Completed",
+      seatsLeft: "Seats left",
+      enrolledCount: "Enrolled",
+      noCohorts: "No cohorts yet.",
+
+      tracksTitle: "Tracks",
+      addTrack: "Add track",
+      noTracks: "No tracks yet.",
+      coursesInTrack: "Courses in this track",
+      addCourseToTrack: "Add course",
+      removeCourseFromTrack: "Remove",
+      sortOrder: "Sort order",
+      selectCourse: "Select a course",
+
+      couponsTitle: "Coupons",
+      addCoupon: "Add coupon",
+      code: "Code",
+      couponType: "Type",
+      typePercent: "Percent",
+      typeFixed: "Fixed amount",
+      value: "Value",
+      validFrom: "Valid from",
+      validUntil: "Valid until",
+      usageLimit: "Usage limit",
+      usedCount: "Used",
+      active: "Active",
+      inactive: "Inactive",
+      deactivate: "Deactivate",
+      noCoupons: "No coupons yet.",
+
+      requestsTitle: "Enrollment Requests",
+      applicant: "Applicant",
+      applicantEmailLabel: "Email",
+      applicantPhoneLabel: "Phone",
+      courseOrTrack: "Course / Track",
+      paymentMethod: "Payment method",
+      paymentProof: "Payment proof",
+      downloadPaymentProof: "Download payment proof",
+      originalPrice: "Original price",
+      couponCode: "Coupon",
+      discountAmount: "Discount",
+      finalPrice: "Final price",
+      submittedAt: "Submitted",
+      requestStatusPending: "Pending",
+      requestStatusApproved: "Approved",
+      requestStatusRejected: "Rejected",
+      approve: "Approve",
+      approving: "Approving…",
+      reject: "Reject",
+      rejecting: "Rejecting…",
+      rejectionReasonLabel: "Rejection reason",
+      reviewedBy: "Reviewed by",
+      reviewedAt: "Reviewed at",
+      targetCohorts: "Target batches",
+      resultingEnrollments: "Resulting enrollments",
+      cancelEnrollment: "Cancel enrollment",
+      cancelReasonLabel: "Cancellation reason",
+      markAsRefunded: "Mark as refunded",
+      noRequests: "No enrollment requests.",
+      viewDetails: "View details",
+      backToRequests: "Back to requests",
+
+      usersTitle: "Users",
+      addInstructor: "Add instructor",
+      fullNameLabel: "Full name",
+      emailLabel: "Email",
+      phoneLabel: "Phone",
+      roleLabel: "Role",
+      roleAdmin: "Admin",
+      roleInstructor: "Instructor",
+      roleStudent: "Student",
+      isActiveLabel: "Active",
+      reactivate: "Reactivate",
+      temporaryPasswordCreated: "Instructor account created. A temporary password was emailed to them.",
+      noUsers: "No users found."
+    },
     analytics: {
       title: "Analytics",
       businessDashboard: "Business overview",
@@ -986,6 +1260,143 @@ const dictionaries: Record<Locale, Dictionary> = {
       verifyNotFound: "لا توجد شهادة مطابقة لهذا الرمز.",
       verifiedCertificate: "شهادة موثّقة",
       loadError: "تعذّر تحميل الشهادات. حاول مرة أخرى."
+    },
+    admin: {
+      title: "الإدارة",
+      navCourses: "الدورات",
+      navTracks: "المسارات",
+      navCoupons: "الكوبونات",
+      navEnrollmentRequests: "طلبات التسجيل",
+      navUsers: "المستخدمون",
+      navAnalytics: "التحليلات",
+
+      loadError: "تعذّر التحميل. حاول مرة أخرى.",
+      save: "حفظ",
+      saving: "جارٍ الحفظ…",
+      cancel: "إلغاء",
+      create: "إنشاء",
+      creating: "جارٍ الإنشاء…",
+      edit: "تعديل",
+      delete: "حذف",
+      confirmDelete: "هل أنت متأكد من الحذف؟",
+      actions: "الإجراءات",
+      search: "بحث",
+      status: "الحالة",
+      all: "الكل",
+
+      fieldTitle: "العنوان",
+      fieldSlug: "المعرّف (slug)",
+      fieldDescription: "الوصف",
+      fieldThumbnailUrl: "رابط الصورة المصغرة",
+      fieldCategory: "الفئة",
+      fieldPrice: "السعر",
+      fieldCurrency: "العملة",
+
+      coursesTitle: "الدورات",
+      addCourse: "إضافة دورة",
+      noCourses: "لا توجد دورات بعد.",
+      statusDraft: "مسودة",
+      statusPublished: "منشورة",
+      statusArchived: "مؤرشفة",
+      publish: "نشر",
+      archive: "أرشفة",
+      manageContent: "إدارة المحتوى",
+
+      instructorsTitle: "المدرّسون",
+      assignInstructor: "تعيين",
+      selectInstructor: "اختر مدرّسًا",
+      removeInstructor: "إزالة",
+      noInstructorsAssigned: "لا يوجد مدرّسون معيّنون.",
+
+      cohortsTitle: "الدفعات",
+      addCohort: "إضافة دفعة",
+      cohortName: "اسم الدفعة",
+      startDate: "تاريخ البدء",
+      endDate: "تاريخ الانتهاء",
+      enrollmentCutoffDate: "آخر موعد للتسجيل",
+      capacity: "السعة",
+      gracePeriodDays: "فترة السماح (أيام)",
+      openCohort: "فتح",
+      cancelCohort: "إلغاء",
+      completeCohort: "إنهاء",
+      cohortStatusDraft: "مسودة",
+      cohortStatusOpen: "مفتوحة",
+      cohortStatusCancelled: "ملغاة",
+      cohortStatusCompleted: "منتهية",
+      seatsLeft: "المقاعد المتبقية",
+      enrolledCount: "المسجّلون",
+      noCohorts: "لا توجد دفعات بعد.",
+
+      tracksTitle: "المسارات",
+      addTrack: "إضافة مسار",
+      noTracks: "لا توجد مسارات بعد.",
+      coursesInTrack: "الدورات ضمن هذا المسار",
+      addCourseToTrack: "إضافة دورة",
+      removeCourseFromTrack: "إزالة",
+      sortOrder: "الترتيب",
+      selectCourse: "اختر دورة",
+
+      couponsTitle: "الكوبونات",
+      addCoupon: "إضافة كوبون",
+      code: "الرمز",
+      couponType: "النوع",
+      typePercent: "نسبة مئوية",
+      typeFixed: "مبلغ ثابت",
+      value: "القيمة",
+      validFrom: "صالح من",
+      validUntil: "صالح حتى",
+      usageLimit: "حد الاستخدام",
+      usedCount: "مرات الاستخدام",
+      active: "فعّال",
+      inactive: "غير فعّال",
+      deactivate: "إيقاف",
+      noCoupons: "لا توجد كوبونات بعد.",
+
+      requestsTitle: "طلبات التسجيل",
+      applicant: "المتقدّم",
+      applicantEmailLabel: "البريد الإلكتروني",
+      applicantPhoneLabel: "الهاتف",
+      courseOrTrack: "الدورة / المسار",
+      paymentMethod: "طريقة الدفع",
+      paymentProof: "إثبات الدفع",
+      downloadPaymentProof: "تنزيل إثبات الدفع",
+      originalPrice: "السعر الأصلي",
+      couponCode: "الكوبون",
+      discountAmount: "الخصم",
+      finalPrice: "السعر النهائي",
+      submittedAt: "تاريخ التقديم",
+      requestStatusPending: "قيد الانتظار",
+      requestStatusApproved: "مقبول",
+      requestStatusRejected: "مرفوض",
+      approve: "قبول",
+      approving: "جارٍ القبول…",
+      reject: "رفض",
+      rejecting: "جارٍ الرفض…",
+      rejectionReasonLabel: "سبب الرفض",
+      reviewedBy: "تمت المراجعة بواسطة",
+      reviewedAt: "تاريخ المراجعة",
+      targetCohorts: "الدفعات المستهدفة",
+      resultingEnrollments: "التسجيلات الناتجة",
+      cancelEnrollment: "إلغاء التسجيل",
+      cancelReasonLabel: "سبب الإلغاء",
+      markAsRefunded: "وضع علامة كمسترد",
+      noRequests: "لا توجد طلبات تسجيل.",
+      viewDetails: "عرض التفاصيل",
+      backToRequests: "العودة إلى الطلبات",
+
+      usersTitle: "المستخدمون",
+      addInstructor: "إضافة مدرّس",
+      fullNameLabel: "الاسم الكامل",
+      emailLabel: "البريد الإلكتروني",
+      phoneLabel: "الهاتف",
+      roleLabel: "الدور",
+      roleAdmin: "مدير",
+      roleInstructor: "مدرّس",
+      roleStudent: "طالب",
+      isActiveLabel: "فعّال",
+      reactivate: "إعادة تفعيل",
+      temporaryPasswordCreated: "تم إنشاء حساب المدرّس. تم إرسال كلمة مرور مؤقتة عبر البريد الإلكتروني.",
+      noUsers: "لم يتم العثور على مستخدمين."
     },
     analytics: {
       title: "التحليلات",

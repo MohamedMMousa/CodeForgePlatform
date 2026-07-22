@@ -1194,8 +1194,8 @@ export function getCourseGradebook(courseId: string, token: string): Promise<Cou
 export interface CourseInstructorEntry {
   id: string;
   instructorId: string;
-  instructorName: string;
-  instructorEmail: string;
+  fullName: string;
+  email: string;
   assignedAt: string;
 }
 
@@ -1428,4 +1428,426 @@ export interface InstructorDashboard {
 
 export function getInstructorDashboard(token: string): Promise<InstructorDashboard> {
   return apiFetch<InstructorDashboard>("/analytics/instructor", { token });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Users
+// ---------------------------------------------------------------------------
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  role: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
+export function getUsers(
+  params: { role?: string; isActive?: boolean; search?: string },
+  token: string
+): Promise<AdminUser[]> {
+  const query = new URLSearchParams();
+  if (params.role) query.set("role", params.role);
+  if (params.isActive !== undefined) query.set("isActive", String(params.isActive));
+  if (params.search) query.set("search", params.search);
+  const qs = query.toString();
+  return apiFetch<AdminUser[]>(`/users${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function createInstructor(
+  input: { fullName: string; email: string; phone?: string },
+  token: string
+): Promise<AdminUser> {
+  return apiFetch<AdminUser>("/users/instructors", { method: "POST", body: JSON.stringify(input), token });
+}
+
+export function deactivateUser(userId: string, token: string): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/deactivate`, { method: "PUT", token });
+}
+
+export function reactivateUser(userId: string, token: string): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/reactivate`, { method: "PUT", token });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Courses
+// ---------------------------------------------------------------------------
+
+export interface CourseMutationResult {
+  courseId: string;
+  message: string;
+}
+
+export function getAdminCourses(
+  params: { status?: string; category?: string; search?: string },
+  token: string
+): Promise<CourseListItem[]> {
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.category) query.set("category", params.category);
+  if (params.search) query.set("search", params.search);
+  const qs = query.toString();
+  return apiFetch<CourseListItem[]>(`/courses${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function createCourse(
+  input: {
+    title: string;
+    slug: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
+    category?: string | null;
+    price: number;
+    currency: string;
+  },
+  token: string
+): Promise<CourseDetail> {
+  return apiFetch<CourseDetail>("/courses", { method: "POST", body: JSON.stringify(input), token });
+}
+
+export function publishCourse(courseId: string, token: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/publish`, { method: "PUT", token });
+}
+
+export function archiveCourse(courseId: string, token: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/archive`, { method: "PUT", token });
+}
+
+export function deleteCourse(courseId: string, token: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}`, { method: "DELETE", token });
+}
+
+export function assignInstructorToCourse(
+  courseId: string,
+  instructorId: string,
+  token: string
+): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/instructors/${instructorId}`, {
+    method: "POST",
+    token
+  });
+}
+
+export function removeInstructorFromCourse(
+  courseId: string,
+  instructorId: string,
+  token: string
+): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/instructors/${instructorId}`, {
+    method: "DELETE",
+    token
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Tracks
+// ---------------------------------------------------------------------------
+
+export interface TrackCourseEntry {
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
+  coursePrice: number;
+  sortOrder: number;
+}
+
+export interface TrackDetail {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  price: number;
+  currency: string;
+  status: string;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  courses: TrackCourseEntry[];
+}
+
+export interface TrackMutationResult {
+  trackId: string;
+  message: string;
+}
+
+export function getAdminTracks(
+  params: { status?: string; search?: string },
+  token: string
+): Promise<TrackListItem[]> {
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  const qs = query.toString();
+  return apiFetch<TrackListItem[]>(`/tracks${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function getTrackById(trackId: string, token: string): Promise<TrackDetail> {
+  return apiFetch<TrackDetail>(`/tracks/${trackId}`, { token });
+}
+
+export function createTrack(
+  input: {
+    title: string;
+    slug: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
+    price: number;
+    currency: string;
+  },
+  token: string
+): Promise<TrackDetail> {
+  return apiFetch<TrackDetail>("/tracks", { method: "POST", body: JSON.stringify(input), token });
+}
+
+export function updateTrack(
+  trackId: string,
+  input: {
+    title: string;
+    slug: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
+    price: number;
+    currency: string;
+  },
+  token: string
+): Promise<TrackDetail> {
+  return apiFetch<TrackDetail>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(input), token });
+}
+
+export function publishTrack(trackId: string, token: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/publish`, { method: "PUT", token });
+}
+
+export function archiveTrack(trackId: string, token: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/archive`, { method: "PUT", token });
+}
+
+export function deleteTrack(trackId: string, token: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}`, { method: "DELETE", token });
+}
+
+export function addCourseToTrack(
+  trackId: string,
+  courseId: string,
+  sortOrder: number,
+  token: string
+): Promise<TrackCourseEntry> {
+  return apiFetch<TrackCourseEntry>(`/tracks/${trackId}/courses/${courseId}`, {
+    method: "POST",
+    body: JSON.stringify({ sortOrder }),
+    token
+  });
+}
+
+export function removeCourseFromTrack(
+  trackId: string,
+  courseId: string,
+  token: string
+): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/courses/${courseId}`, { method: "DELETE", token });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Cohorts
+// ---------------------------------------------------------------------------
+
+export interface CohortMutationResult {
+  cohortId: string;
+  message: string;
+}
+
+export function getCourseCohortsAdmin(courseId: string, token: string): Promise<CohortInfo[]> {
+  return apiFetch<CohortInfo[]>(`/courses/${courseId}/cohorts`, { token });
+}
+
+export function createCohort(
+  courseId: string,
+  input: {
+    name: string;
+    startDate: string;
+    endDate: string;
+    enrollmentCutoffDate: string;
+    capacity: number;
+    gracePeriodDays: number;
+  },
+  token: string
+): Promise<CohortInfo> {
+  return apiFetch<CohortInfo>(`/courses/${courseId}/cohorts`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    token
+  });
+}
+
+export function updateCohort(
+  cohortId: string,
+  input: {
+    name: string;
+    startDate: string;
+    endDate: string;
+    enrollmentCutoffDate: string;
+    capacity: number;
+    gracePeriodDays: number;
+  },
+  token: string
+): Promise<CohortInfo> {
+  return apiFetch<CohortInfo>(`/cohorts/${cohortId}`, { method: "PUT", body: JSON.stringify(input), token });
+}
+
+export function openCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/open`, { method: "PUT", token });
+}
+
+export function cancelCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/cancel`, { method: "PUT", token });
+}
+
+export function completeCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/complete`, { method: "PUT", token });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Coupons
+// ---------------------------------------------------------------------------
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  type: string;
+  value: number;
+  isActive: boolean;
+  validFrom: string | null;
+  validUntil: string | null;
+  usageLimit: number | null;
+  usedCount: number;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function getCoupons(isActive: boolean | undefined, token: string): Promise<AdminCoupon[]> {
+  const qs = isActive !== undefined ? `?isActive=${isActive}` : "";
+  return apiFetch<AdminCoupon[]>(`/coupons${qs}`, { token });
+}
+
+export function createCoupon(
+  input: { code: string; type: string; value: number; validFrom?: string | null; validUntil?: string | null; usageLimit?: number | null },
+  token: string
+): Promise<AdminCoupon> {
+  return apiFetch<AdminCoupon>("/coupons", { method: "POST", body: JSON.stringify(input), token });
+}
+
+export function updateCoupon(
+  couponId: string,
+  input: {
+    type: string;
+    value: number;
+    isActive: boolean;
+    validFrom?: string | null;
+    validUntil?: string | null;
+    usageLimit?: number | null;
+  },
+  token: string
+): Promise<AdminCoupon> {
+  return apiFetch<AdminCoupon>(`/coupons/${couponId}`, { method: "PUT", body: JSON.stringify(input), token });
+}
+
+export function deactivateCoupon(couponId: string, token: string): Promise<AdminCoupon> {
+  return apiFetch<AdminCoupon>(`/coupons/${couponId}/deactivate`, { method: "PUT", token });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Enrollment requests + enrollment cancellation
+// ---------------------------------------------------------------------------
+
+export interface EnrollmentRequestTargetCohort {
+  cohortId: string;
+  cohortName: string;
+  courseId: string;
+  courseTitle: string;
+}
+
+export interface EnrollmentRequestDetail {
+  id: string;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string | null;
+  courseId: string | null;
+  courseTitle: string | null;
+  trackId: string | null;
+  trackTitle: string | null;
+  paymentMethod: string;
+  paymentProofDownloadUrl: string;
+  originalPrice: number;
+  couponCode: string | null;
+  discountAmount: number;
+  finalPrice: number;
+  status: string;
+  rejectionReason: string | null;
+  reviewedById: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  targetCohorts: EnrollmentRequestTargetCohort[];
+  resultingEnrollmentIds: string[];
+}
+
+export function getEnrollmentRequests(
+  params: { status?: string; courseId?: string; trackId?: string },
+  token: string
+): Promise<EnrollmentRequestResult[]> {
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.courseId) query.set("courseId", params.courseId);
+  if (params.trackId) query.set("trackId", params.trackId);
+  const qs = query.toString();
+  return apiFetch<EnrollmentRequestResult[]>(`/enrollment-requests${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function getEnrollmentRequestById(id: string, token: string): Promise<EnrollmentRequestDetail> {
+  return apiFetch<EnrollmentRequestDetail>(`/enrollment-requests/${id}`, { token });
+}
+
+export interface EnrollmentApprovalResult {
+  requestId: string;
+  studentId: string;
+  enrollmentIds: string[];
+  studentCreated: boolean;
+  message: string;
+}
+
+export function approveEnrollmentRequest(id: string, token: string): Promise<EnrollmentApprovalResult> {
+  return apiFetch<EnrollmentApprovalResult>(`/enrollment-requests/${id}/approve`, { method: "PUT", token });
+}
+
+export function rejectEnrollmentRequest(
+  id: string,
+  rejectionReason: string,
+  token: string
+): Promise<{ requestId: string; message: string }> {
+  return apiFetch(`/enrollment-requests/${id}/reject`, {
+    method: "PUT",
+    body: JSON.stringify({ rejectionReason }),
+    token
+  });
+}
+
+export function cancelEnrollment(
+  enrollmentId: string,
+  reason: string,
+  markAsRefunded: boolean,
+  token: string
+): Promise<unknown> {
+  return apiFetch(`/enrollments/${enrollmentId}/cancel`, {
+    method: "PUT",
+    body: JSON.stringify({ reason, markAsRefunded }),
+    token
+  });
 }

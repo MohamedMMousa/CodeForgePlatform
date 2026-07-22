@@ -47,16 +47,11 @@ export default function AdminAnalyticsPage({
   }, [session, ta.loadError]);
 
   if (!session || session.role !== "admin") {
-    return (
-      <main className="container">
-        <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>
-      </main>
-    );
+    return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
   }
 
   return (
-    <main className="container">
-      <h1>{ta.title}</h1>
+    <>
       {error && <p className="notice err">{error}</p>}
 
       <h2 style={{ marginTop: "1.5rem" }}>{ta.businessDashboard}</h2>
@@ -177,6 +172,6 @@ export default function AdminAnalyticsPage({
           </div>
         </>
       )}
-    </main>
+    </>
   );
 }

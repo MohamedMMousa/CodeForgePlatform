@@ -4,23 +4,34 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import {
+  AdminUser,
   AnnouncementItem,
   ApiRequestError,
+  CohortInfo,
   CourseCertificateCandidates,
   CourseDetail,
   CourseGradebook,
   CertificateTier,
   ModuleItem,
+  assignInstructorToCourse,
+  cancelCohort,
+  completeCohort,
   createAnnouncement,
+  createCohort,
   createModule,
   deleteModule,
   getAnnouncements,
   getCourseById,
   getCourseCertificateCandidates,
+  getCourseCohortsAdmin,
   getCourseGradebook,
   getCourseModules,
+  getUsers,
   issueCertificate,
+  openCohort,
+  removeInstructorFromCourse,
   revokeCertificate,
+  updateCohort,
   updateCourse
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
@@ -34,6 +45,7 @@ export default function InstructorCoursePage({
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
   const t = getDictionary(locale).instructor;
   const tc = getDictionary(locale).certificates;
+  const ta = getDictionary(locale).admin;
 
   const { session } = useAuth();
   const isAdmin = session?.role === "admin";
@@ -59,10 +71,123 @@ export default function InstructorCoursePage({
   const [thresholdInput, setThresholdInput] = useState("");
   const [savingThreshold, setSavingThreshold] = useState(false);
 
+  const [availableInstructors, setAvailableInstructors] = useState<AdminUser[]>([]);
+  const [selectedInstructorId, setSelectedInstructorId] = useState("");
+  const [assigningInstructor, setAssigningInstructor] = useState(false);
+
+  const [cohorts, setCohorts] = useState<CohortInfo[] | null>(null);
+  const [editingCohortId, setEditingCohortId] = useState<string | null>(null);
+  const [cohortName, setCohortName] = useState("");
+  const [cohortStartDate, setCohortStartDate] = useState("");
+  const [cohortEndDate, setCohortEndDate] = useState("");
+  const [cohortCutoffDate, setCohortCutoffDate] = useState("");
+  const [cohortCapacity, setCohortCapacity] = useState("20");
+  const [cohortGraceDays, setCohortGraceDays] = useState("14");
+  const [savingCohort, setSavingCohort] = useState(false);
+  const [cohortBusyId, setCohortBusyId] = useState<string | null>(null);
+
   function reload() {
     if (!session) return;
     getCourseModules(courseId, session.accessToken).then(setModules).catch(onError);
     getAnnouncements(session.accessToken, courseId).then(setAnnouncements).catch(onError);
+    if (isAdmin) {
+      getCourseById(courseId, session.accessToken)
+        .then((c) => {
+          setCourseDetail(c);
+          setThresholdInput(c.completionAttendanceThreshold?.toString() ?? "");
+        })
+        .catch(onError);
+      getCourseCohortsAdmin(courseId, session.accessToken).then(setCohorts).catch(onError);
+      getUsers({ role: "instructor", isActive: true }, session.accessToken)
+        .then(setAvailableInstructors)
+        .catch(() => {});
+    }
+  }
+
+  function resetCohortForm() {
+    setEditingCohortId(null);
+    setCohortName("");
+    setCohortStartDate("");
+    setCohortEndDate("");
+    setCohortCutoffDate("");
+    setCohortCapacity("20");
+    setCohortGraceDays("14");
+  }
+
+  function onEditCohort(c: CohortInfo) {
+    setEditingCohortId(c.id);
+    setCohortName(c.name);
+    setCohortStartDate(c.startDate.slice(0, 16));
+    setCohortEndDate(c.endDate.slice(0, 16));
+    setCohortCutoffDate(c.enrollmentCutoffDate.slice(0, 16));
+    setCohortCapacity(String(c.capacity));
+    setCohortGraceDays(String(c.gracePeriodDays));
+  }
+
+  async function onSaveCohort(e: React.FormEvent) {
+    e.preventDefault();
+    if (!session) return;
+    setSavingCohort(true);
+    try {
+      const input = {
+        name: cohortName,
+        startDate: new Date(cohortStartDate).toISOString(),
+        endDate: new Date(cohortEndDate).toISOString(),
+        enrollmentCutoffDate: new Date(cohortCutoffDate).toISOString(),
+        capacity: Number(cohortCapacity),
+        gracePeriodDays: Number(cohortGraceDays)
+      };
+      if (editingCohortId) {
+        await updateCohort(editingCohortId, input, session.accessToken);
+      } else {
+        await createCohort(courseId, input, session.accessToken);
+      }
+      resetCohortForm();
+      reload();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setSavingCohort(false);
+    }
+  }
+
+  async function onCohortLifecycle(id: string, action: "open" | "cancel" | "complete") {
+    if (!session) return;
+    setCohortBusyId(id);
+    try {
+      const fn = action === "open" ? openCohort : action === "cancel" ? cancelCohort : completeCohort;
+      await fn(id, session.accessToken);
+      reload();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setCohortBusyId(null);
+    }
+  }
+
+  async function onAssignInstructor(e: React.FormEvent) {
+    e.preventDefault();
+    if (!session || !selectedInstructorId) return;
+    setAssigningInstructor(true);
+    try {
+      await assignInstructorToCourse(courseId, selectedInstructorId, session.accessToken);
+      setSelectedInstructorId("");
+      reload();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setAssigningInstructor(false);
+    }
+  }
+
+  async function onRemoveInstructor(instructorId: string) {
+    if (!session) return;
+    try {
+      await removeInstructorFromCourse(courseId, instructorId, session.accessToken);
+      reload();
+    } catch (err) {
+      onError(err);
+    }
   }
 
   function onError(err: unknown) {
@@ -122,19 +247,10 @@ export default function InstructorCoursePage({
     getCourseCertificateCandidates(courseId, session.accessToken).then(setCandidates).catch(onError);
   }
 
-  async function toggleCerts() {
-    if (!session) return;
+  function toggleCerts() {
     setShowCerts(!showCerts);
     if (!showCerts && !candidates) {
       reloadCandidates();
-      if (isAdmin) {
-        await getCourseById(courseId, session.accessToken)
-          .then((c) => {
-            setCourseDetail(c);
-            setThresholdInput(c.completionAttendanceThreshold?.toString() ?? "");
-          })
-          .catch(onError);
-      }
     }
   }
 
@@ -402,6 +518,166 @@ export default function InstructorCoursePage({
             </div>
           )}
         </div>
+      )}
+
+      {isAdmin && (
+        <>
+          <h1 style={{ marginTop: "2.5rem" }}>{ta.instructorsTitle}</h1>
+          {courseDetail && courseDetail.instructors.length === 0 && (
+            <p className="muted">{ta.noInstructorsAssigned}</p>
+          )}
+          {courseDetail && courseDetail.instructors.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{ta.fullNameLabel}</th>
+                  <th>{ta.emailLabel}</th>
+                  <th>{ta.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courseDetail.instructors.map((i) => (
+                  <tr key={i.id}>
+                    <td>{i.fullName}</td>
+                    <td>{i.email}</td>
+                    <td>
+                      <button className="btn secondary" onClick={() => onRemoveInstructor(i.instructorId)}>
+                        {ta.removeInstructor}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <form onSubmit={onAssignInstructor} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginTop: "0.75rem" }}>
+            <label>
+              {ta.selectInstructor}
+              <select value={selectedInstructorId} onChange={(e) => setSelectedInstructorId(e.target.value)} required>
+                <option value="" disabled>
+                  {ta.selectInstructor}
+                </option>
+                {availableInstructors
+                  .filter((ins) => !courseDetail?.instructors.some((ci) => ci.instructorId === ins.id))
+                  .map((ins) => (
+                    <option key={ins.id} value={ins.id}>
+                      {ins.fullName} ({ins.email})
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button className="btn" type="submit" disabled={assigningInstructor || !selectedInstructorId}>
+              {ta.assignInstructor}
+            </button>
+          </form>
+
+          <h1 style={{ marginTop: "2.5rem" }}>{ta.cohortsTitle}</h1>
+          {cohorts !== null && cohorts.length === 0 && <p className="muted">{ta.noCohorts}</p>}
+          {cohorts !== null && cohorts.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{ta.cohortName}</th>
+                    <th>{ta.startDate}</th>
+                    <th>{ta.endDate}</th>
+                    <th>{ta.capacity}</th>
+                    <th>{ta.enrolledCount}</th>
+                    <th>{ta.seatsLeft}</th>
+                    <th>{ta.status}</th>
+                    <th>{ta.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cohorts.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td>{new Date(c.startDate).toLocaleDateString(locale)}</td>
+                      <td>{new Date(c.endDate).toLocaleDateString(locale)}</td>
+                      <td>{c.capacity}</td>
+                      <td>{c.enrolledCount}</td>
+                      <td>{c.seatsLeft}</td>
+                      <td><span className="badge">{c.status}</span></td>
+                      <td style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                        <button className="btn secondary" onClick={() => onEditCohort(c)}>
+                          {ta.edit}
+                        </button>
+                        {c.status === "draft" && (
+                          <button
+                            className="btn secondary"
+                            disabled={cohortBusyId === c.id}
+                            onClick={() => onCohortLifecycle(c.id, "open")}
+                          >
+                            {ta.openCohort}
+                          </button>
+                        )}
+                        {(c.status === "draft" || c.status === "open") && (
+                          <button
+                            className="btn secondary"
+                            disabled={cohortBusyId === c.id}
+                            onClick={() => onCohortLifecycle(c.id, "cancel")}
+                          >
+                            {ta.cancelCohort}
+                          </button>
+                        )}
+                        {c.status === "open" && (
+                          <button
+                            className="btn secondary"
+                            disabled={cohortBusyId === c.id}
+                            onClick={() => onCohortLifecycle(c.id, "complete")}
+                          >
+                            {ta.completeCohort}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <form
+            className="card"
+            onSubmit={onSaveCohort}
+            style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "24rem", marginTop: "0.75rem" }}
+          >
+            <label>
+              {ta.cohortName}
+              <input value={cohortName} onChange={(e) => setCohortName(e.target.value)} required />
+            </label>
+            <label>
+              {ta.startDate}
+              <input type="datetime-local" value={cohortStartDate} onChange={(e) => setCohortStartDate(e.target.value)} required />
+            </label>
+            <label>
+              {ta.endDate}
+              <input type="datetime-local" value={cohortEndDate} onChange={(e) => setCohortEndDate(e.target.value)} required />
+            </label>
+            <label>
+              {ta.enrollmentCutoffDate}
+              <input type="datetime-local" value={cohortCutoffDate} onChange={(e) => setCohortCutoffDate(e.target.value)} required />
+            </label>
+            <label>
+              {ta.capacity}
+              <input type="number" min="1" value={cohortCapacity} onChange={(e) => setCohortCapacity(e.target.value)} required />
+            </label>
+            <label>
+              {ta.gracePeriodDays}
+              <input type="number" min="0" value={cohortGraceDays} onChange={(e) => setCohortGraceDays(e.target.value)} required />
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button className="btn" type="submit" disabled={savingCohort}>
+                {savingCohort ? ta.saving : editingCohortId ? ta.save : ta.addCohort}
+              </button>
+              {editingCohortId && (
+                <button type="button" className="btn secondary" onClick={resetCohortForm}>
+                  {ta.cancel}
+                </button>
+              )}
+            </div>
+          </form>
+        </>
       )}
 
       <h1 style={{ marginTop: "2.5rem" }}>{t.announcements}</h1>
