@@ -204,11 +204,74 @@ working auto-grader engine (blocked on Piston whitelisting, self-hosting, or a
 different provider), multiple-correct-answer MCQ (single-correct only), additional
 auto-grader languages (Python only, per SRS).
 
-## Phase 4 — Certificates & Analytics
+## Phase 4 — Certificates & Analytics — ✅ COMPLETE
 
-Two-tier completion logic (attendance % + pass mark, configurable per course with
-platform defaults); admin business + academic dashboards; instructor analytics.
-Frontend: dashboards, certificate view/download.
+**Goal:** the academy can issue two-tier credentials and see how the business and the
+teaching are doing. Admin reviews who is eligible per course and issues a Completion or
+Participation certificate (stored, with a serial + public verification code); students see
+and print/verify their certificates; anyone can verify a certificate by its code without
+logging in. Admins get business + academic dashboards, instructors get analytics for their
+own courses. Matches `SRS.md` §9 (certification) and the reporting intent of §12.
+
+Data model: see `DATABASE.md` §7b — one nullable `courses.completion_attendance_threshold`
+column (null = platform default 75) and a new `certificates` table. Analytics adds **no**
+tables; every dashboard number is computed read-side.
+
+**Eligibility rule (confirmed with the user):** Completion = attendance rate ≥ the course
+threshold **AND** every non-practice assessment passed (each by its own pass score);
+otherwise Participation. `CertificateEligibilityCalculator` is the single source of truth,
+fed by `CourseEligibilityEvaluator`, which reuses the exact `AttendanceRateCalculator` +
+`GradebookCalculator` logic the gradebook uses — so a certificate can never disagree with
+the gradebook. **Issuance is admin-reviewed**, not automatic.
+
+### Backend
+
+| Module | Endpoints | Notes |
+|---|---|---|
+| **Certificates** | `GET /courses/{id}/certificate-candidates` (admin/assigned instructor — roster with computed recommended tier + any issued cert), `POST /certificates` (admin, issue; optional tier override), `PUT /certificates/{id}/revoke` (admin), `GET /my-certificates` (student), `GET /certificates/{id}` (owner/admin/instructor), `GET /certificates/verify/{code}` (**public**) | Certifiable enrollments are `active`/`expired`, never cancelled/refunded. One certificate per enrollment (unique). Metrics snapshotted at issue time. Revoke keeps the row for audit; the code still verifies but as invalid. |
+| **Analytics** | `GET /analytics/admin/business` (admin), `GET /analytics/admin/academic` (admin), `GET /analytics/instructor` (instructor, own courses) | All read-side aggregation over existing tables; pure `AnalyticsCalculator` for pass-rate math. The per-course threshold is set through the existing admin `PUT /courses/{id}` (extended with `completionAttendanceThreshold`). |
+
+### Frontend
+
+- **Admin** (`/[locale]/admin/analytics`) — business overview (students, published
+  courses/tracks, active enrollments, pending requests, approved revenue, leads, open
+  cohorts, top-courses-by-revenue table, a simple enrollments-by-month bar chart) and
+  academic overview (certificates by tier, assessment pass rate, per-course table).
+- **Admin/instructor** (on the existing instructor course page) — certificate candidate
+  roster with attendance-vs-threshold, assessments-passed, recommended tier, and (admin
+  only) Issue / Revoke buttons plus an inline per-course attendance-threshold config.
+- **Instructor** (`/[locale]/instructor`) — analytics summary + per-course table above the
+  course list.
+- **Student** (`/[locale]/my-certificates`) — printable certificate cards with serial,
+  verification code, and a link into the verifier.
+- **Public** (`/[locale]/verify`) — verify a certificate by code (auto-verifies from a
+  `?code=` link); reachable from the nav signed-out.
+
+### Verified (end-to-end, via API + live browser)
+
+Both admin dashboards render real seeded data (revenue, per-course pass rates,
+certificate counts). Full certificate lifecycle confirmed: candidate roster computes the
+correct tier (verified both a Completion case — attendance bar met *and* all assessments
+passed — and a Participation case where one assessment was failed), admin issues a
+certificate, the public verify-by-code endpoint returns it as valid, a duplicate issue is
+rejected (400), the student sees it under "my certificates", and after revocation the same
+code verifies as invalid. Authorization boundaries spot-checked (student→business 403,
+admin→instructor-dashboard 403 by the `InstructorOnly` policy, student→issue 403).
+Bilingual (en/ar, RTL) confirmed on the public verify page.
+
+**Bug found and fixed during verification:** the business dashboard's
+top-courses-by-revenue query grouped approved enrollment requests by a *joined*
+`Course.Title`, which Npgsql cannot translate (runtime 400). Fixed by grouping on the
+scalar `course_id` and attaching titles in a second query.
+
+### Out of scope for Phase 4 (later phases)
+
+WhatsApp notifications and a certificate-issued notification event (Phase 5), PDF
+certificate generation (current "view/print" uses the browser's print-to-PDF; a branded
+server-rendered PDF is a later polish), a per-course numeric "minimum average score" knob
+(the confirmed rule is all-assessments-passed, so it would be dead config today),
+franchise/multi-tenant analytics scoping, and any working Python auto-grader (still blocked
+on the Phase 3 Piston/hosting decision).
 
 ## Phase 5 — Notifications & Polish
 

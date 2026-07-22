@@ -372,6 +372,48 @@ regardless of auto-grading. Swap the DI registration back to
 `PistonCodeExecutionService` once whitelisted, or replace with a self-hosted engine
 once hosting is decided (Phase 5).
 
+## 7b. Phase 4 Additions — Certificates
+
+### `courses` (extended)
+One nullable column added: `completion_attendance_threshold numeric(5,2)` — the minimum
+attendance rate (%) a student must reach for a **Completion** certificate in this course.
+`NULL` means "use the platform default" (`CertificateDefaults.AttendanceThreshold` = 75).
+Guarded by `chk_course_attendance_threshold CHECK (… IS NULL OR BETWEEN 0 AND 100)`. The
+assessment half of the bar is fixed logic (every non-practice assessment passed, each by
+its own `pass_score`) rather than a stored per-course number — see §4-style "rules live in
+Application" note and `CertificateEligibilityCalculator`.
+
+### `certificates` (new)
+`id, enrollment_id (FK→enrollments, cascade, **unique** — one certificate per
+enrollment), student_id (FK→users), course_id (FK→courses), cohort_id
+(FK→cohorts), tier text (completion/participation), serial_number text (unique, human
+facing e.g. CF-2026-8F3A21), verification_code text (unique, opaque public lookup token),
+attendance_rate numeric(5,2), assessments_passed bool, issued_by (FK→users),
+issued_at timestamptz, is_revoked bool, revoked_at?, revoked_by (FK→users, SetNull)?,
+revocation_reason text?, created_at, updated_at`. `student_id`/`course_id`/`cohort_id` are
+denormalized off the enrollment so a certificate stays a self-contained historical record
+even if the enrollment later changes; `attendance_rate`/`assessments_passed` **snapshot**
+the metrics at issue time so later attendance or grade edits never rewrite an issued
+certificate.
+
+**Issuance is admin-reviewed** (confirmed decision, not auto-issued): eligibility is
+computed live for the candidate roster (`CourseEligibilityEvaluator`, reusing the exact
+gradebook attendance + assessment-pass logic so a certificate can never disagree with the
+gradebook), but an admin explicitly issues each one. Certifiable enrollments are `active`
+or `expired` (term ended) — never `cancelled`/`refunded`. Revocation keeps the row for
+audit (`is_revoked = true`); a revoked certificate still verifies, but as invalid. The
+public verify-by-code endpoint returns only a minimal, privacy-conscious payload (student
+name, course title, tier, serial, issue date, valid/revoked) — no IDs or email.
+
+### Analytics (no new tables — all computed)
+The Phase 4 admin business/academic dashboards and the instructor dashboard are pure
+read-side aggregations over existing tables (enrollments, enrollment_requests, quizzes,
+quiz_attempts, assignments, certificates, leads, cohorts). Pass-rate math lives in the
+pure `AnalyticsCalculator`. One gotcha found in verification: grouping approved
+enrollment requests by a **joined** `Course.Title` does not translate on Npgsql — group by
+the scalar `course_id` and attach titles in a second query (see
+`GetAdminBusinessDashboardQueryHandler`).
+
 ## 8. Migrations
 
 History: `20260629194500_InitialCreate` (Phase 0, regenerated with proper
@@ -391,8 +433,11 @@ schema, including the guarded `chk_quiz_pass_score` add), followed by
 `20260722085233_AddAssessmentOrdering` (quiz/assignment `order_index`, discovered
 missing after building the Assessments module) and
 `20260722095447_AddQuizOptionOrdering` (discovered missing during end-to-end
-verification, when option order proved non-deterministic across queries). Generate
-further migrations with:
+verification, when option order proved non-deterministic across queries). Then the
+Phase 4 migration `20260722130455_AddCertificates` (§7b — the new `certificates` table,
+the `courses.completion_attendance_threshold` column, and its
+`chk_course_attendance_threshold` constraint; applied cleanly, no pending model changes).
+Generate further migrations with:
 
 ```
 dotnet ef migrations add <Name> --project src/CodeForge.Infrastructure --startup-project src/CodeForge.Api

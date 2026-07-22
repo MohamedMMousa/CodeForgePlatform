@@ -100,9 +100,9 @@ Vertical slices under `src/CodeForge.Application/<Feature>/`:
 | Assessments | ✅ built (Phase 3) | Quizzes + exams share one type-discriminated table (`Quiz`, `Type` = quiz/exam), mirroring how Phase 2 merged session types. Question/option authoring, timed attempts, auto-graded MCQ scoring. |
 | Assignments | ✅ built (Phase 3) | Code assignments with instructor-defined test cases; student code submission; auto-grader integration via `ICodeExecutionService` (currently deferred to manual grading — see §7); instructor manual score/feedback override. |
 | Gradebook | ✅ built (Phase 3) | Per-student attendance rate + best assessment score/pass + assignment final score, for both the instructor's course roster and a student's own course view. Admin cross-course analytics stays out of scope, reserved for Phase 4. |
-| Certificates | ⏳ Phase 4 | Two-tier completion logic. |
+| Certificates | ✅ built (Phase 4) | Two-tier (completion/participation), admin-reviewed issuance with a stored serial + opaque verification code; eligibility reuses the gradebook's attendance + assessment-pass logic (`CourseEligibilityEvaluator`); per-course attendance threshold (null = platform default 75). Public verify-by-code endpoint. |
+| Analytics | ✅ built (Phase 4) | Admin business dashboard (enrollments/revenue/leads/cohorts), admin academic dashboard (assessments/pass-rate/certificates per course), instructor dashboard scoped to assigned courses. All computed read-side — no new tables. |
 | Notifications | ⏳ Phase 5 | Channel-agnostic dispatch; email now (Phase 0), WhatsApp later. |
-| Reports/Analytics | ⏳ Phase 4 | Admin + instructor dashboards. |
 
 Legend: ✅ done · 🚧 in progress this phase · ⏳ not started.
 
