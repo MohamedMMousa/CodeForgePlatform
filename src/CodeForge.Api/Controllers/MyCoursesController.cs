@@ -1,4 +1,5 @@
 using CodeForge.Application.MyCourses.GetMyCourseContent;
+using CodeForge.Application.MyCourses.GetMyCourseGrades;
 using CodeForge.Application.MyCourses.GetUpcomingItems;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -30,6 +31,13 @@ namespace CodeForge.Api.Controllers
         public async Task<IActionResult> GetContent(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyCourseContentQuery(courseId), cancellationToken);
+            return Ok(response);
+        }
+
+        [HttpGet("{courseId:guid}/grades")]
+        public async Task<IActionResult> GetGrades(Guid courseId, CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(new GetMyCourseGradesQuery(courseId), cancellationToken);
             return Ok(response);
         }
     }
