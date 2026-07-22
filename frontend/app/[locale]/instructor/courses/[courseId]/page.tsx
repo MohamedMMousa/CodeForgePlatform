@@ -6,11 +6,13 @@ import { useAuth } from "@/lib/auth";
 import {
   AnnouncementItem,
   ApiRequestError,
+  CourseGradebook,
   ModuleItem,
   createAnnouncement,
   createModule,
   deleteModule,
   getAnnouncements,
+  getCourseGradebook,
   getCourseModules
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
@@ -36,6 +38,9 @@ export default function InstructorCoursePage({
   const [newAnnTitle, setNewAnnTitle] = useState("");
   const [newAnnBody, setNewAnnBody] = useState("");
   const [postingAnn, setPostingAnn] = useState(false);
+
+  const [gradebook, setGradebook] = useState<CourseGradebook | null>(null);
+  const [showGradebook, setShowGradebook] = useState(false);
 
   function reload() {
     if (!session) return;
@@ -84,6 +89,14 @@ export default function InstructorCoursePage({
       onError(err);
     } finally {
       setPostingAnn(false);
+    }
+  }
+
+  async function toggleGradebook() {
+    if (!session) return;
+    setShowGradebook(!showGradebook);
+    if (!showGradebook && !gradebook) {
+      await getCourseGradebook(courseId, session.accessToken).then(setGradebook).catch(onError);
     }
   }
 
@@ -140,6 +153,48 @@ export default function InstructorCoursePage({
           </button>
         </form>
       </div>
+
+      <h1 style={{ marginTop: "2.5rem" }}>{t.gradebook}</h1>
+      <button className="btn secondary" onClick={toggleGradebook}>
+        {showGradebook ? t.cancel : t.gradebook}
+      </button>
+      {showGradebook && gradebook && (
+        <div style={{ overflowX: "auto", marginTop: "0.75rem" }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t.moduleTitle}</th>
+                <th>{t.attendanceRate}</th>
+                {gradebook.students[0]?.assessments.map((a) => (
+                  <th key={a.assessmentId}>{a.title}</th>
+                ))}
+                {gradebook.students[0]?.assignments.map((a) => (
+                  <th key={a.assignmentId}>{a.title}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {gradebook.students.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="muted">{t.noRoster}</td>
+                </tr>
+              )}
+              {gradebook.students.map((row) => (
+                <tr key={row.studentId}>
+                  <td>{row.studentName}</td>
+                  <td>{row.attendanceRate}%</td>
+                  {row.assessments.map((a) => (
+                    <td key={a.assessmentId}>{a.bestScore ?? "—"}</td>
+                  ))}
+                  {row.assignments.map((a) => (
+                    <td key={a.assignmentId}>{a.finalScore ?? "—"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <h1 style={{ marginTop: "2.5rem" }}>{t.announcements}</h1>
       {announcements !== null && announcements.length === 0 && (

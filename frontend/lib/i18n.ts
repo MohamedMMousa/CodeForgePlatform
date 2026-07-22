@@ -205,6 +205,9 @@ export interface Dictionary {
     attendanceRate: string;
     bestScore: string;
     finalScore: string;
+    attempt: string;
+    late: string;
+    autoScore: string;
   };
   student: {
     dashboard: string;
@@ -452,7 +455,10 @@ const dictionaries: Record<Locale, Dictionary> = {
       gradebook: "Gradebook",
       attendanceRate: "Attendance",
       bestScore: "Best score",
-      finalScore: "Final score"
+      finalScore: "Final score",
+      attempt: "Attempt",
+      late: "late",
+      autoScore: "Auto-score"
     },
     student: {
       dashboard: "Dashboard",
@@ -697,7 +703,10 @@ const dictionaries: Record<Locale, Dictionary> = {
       gradebook: "سجل الدرجات",
       attendanceRate: "الحضور",
       bestScore: "أفضل درجة",
-      finalScore: "الدرجة النهائية"
+      finalScore: "الدرجة النهائية",
+      attempt: "محاولة",
+      late: "متأخر",
+      autoScore: "الدرجة التلقائية"
     },
     student: {
       dashboard: "لوحة التحكم",
