@@ -542,6 +542,7 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.ModuleId).HasColumnName("module_id").IsRequired();
                 entity.Property(e => e.Type).HasColumnName("type").HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
+                entity.Property(e => e.OrderIndex).HasColumnName("order_index").IsRequired();
                 entity.Property(e => e.TimeLimitMinutes).HasColumnName("time_limit_minutes");
                 entity.Property(e => e.PassScore).HasColumnName("pass_score");
                 entity.Property(e => e.IsPractice).HasColumnName("is_practice").HasDefaultValue(false);
@@ -695,6 +696,7 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.ModuleId).HasColumnName("module_id").IsRequired();
                 entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
                 entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text").IsRequired();
+                entity.Property(e => e.OrderIndex).HasColumnName("order_index").IsRequired();
                 entity.Property(e => e.IsPractice).HasColumnName("is_practice").HasDefaultValue(false);
                 entity.Property(e => e.MaxAttempts).HasColumnName("max_attempts");
                 entity.Property(e => e.DueAt).HasColumnName("due_at").HasColumnType("timestamp with time zone");

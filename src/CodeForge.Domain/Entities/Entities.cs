@@ -351,6 +351,7 @@ namespace CodeForge.Domain.Entities
         public Guid ModuleId { get; set; }
         public string Type { get; set; } = null!; // quiz, exam
         public string Title { get; set; } = null!;
+        public int OrderIndex { get; set; }
         public int? TimeLimitMinutes { get; set; }
         public int? PassScore { get; set; } // percentage 0-100, enforced by chk_quiz_pass_score
         public bool IsPractice { get; set; } = false;
@@ -453,6 +454,7 @@ namespace CodeForge.Domain.Entities
         public Guid ModuleId { get; set; }
         public string Title { get; set; } = null!;
         public string Description { get; set; } = null!; // instructions
+        public int OrderIndex { get; set; }
         public bool IsPractice { get; set; } = false;
         public int? MaxAttempts { get; set; } // null = unlimited
         public DateTime? DueAt { get; set; } // soft deadline — late allowed, never blocked

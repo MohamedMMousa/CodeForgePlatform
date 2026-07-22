@@ -4,6 +4,7 @@ using System.Text.Json;
 using CodeForge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CodeForge.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(CodeForgeDbContext))]
-    partial class CodeForgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722085233_AddAssessmentOrdering")]
+    partial class AddAssessmentOrdering
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
