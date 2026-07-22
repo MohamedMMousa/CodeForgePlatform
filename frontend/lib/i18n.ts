@@ -139,6 +139,7 @@ export interface Dictionary {
     materialFileType: string;
     upload: string;
     noMaterials: string;
+    downloadFile: string;
     announcements: string;
     addAnnouncement: string;
     announcementTitle: string;
@@ -224,6 +225,7 @@ export interface Dictionary {
     watchVideo: string;
     materials: string;
     noMaterials: string;
+    downloadFile: string;
     live: string;
     inPerson: string;
     recordedLesson: string;
@@ -477,6 +479,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       materialFileType: "File type",
       upload: "Upload",
       noMaterials: "No materials yet.",
+      downloadFile: "Download",
       announcements: "Announcements",
       addAnnouncement: "Post announcement",
       announcementTitle: "Title",
@@ -562,6 +565,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       watchVideo: "Watch",
       materials: "Materials",
       noMaterials: "No materials.",
+      downloadFile: "Download",
       live: "Live",
       inPerson: "In-person",
       recordedLesson: "Recorded lesson",
@@ -812,6 +816,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       materialFileType: "نوع الملف",
       upload: "رفع",
       noMaterials: "لا توجد مواد بعد.",
+      downloadFile: "تنزيل",
       announcements: "الإعلانات",
       addAnnouncement: "نشر إعلان",
       announcementTitle: "العنوان",
@@ -897,6 +902,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       watchVideo: "مشاهدة",
       materials: "المواد",
       noMaterials: "لا توجد مواد.",
+      downloadFile: "تنزيل",
       live: "مباشرة",
       inPerson: "حضورية",
       recordedLesson: "درس مسجل",

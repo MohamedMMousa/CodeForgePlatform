@@ -190,7 +190,11 @@ app.UseRequestLocalization(
     app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>().Value);
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+// No app.UseStaticFiles() — uploaded files (payment proofs, course materials) are
+// private and served exclusively through authenticated endpoints backed by
+// IFileStorageService, which stores them outside wwwroot entirely. See
+// docs/ARCHITECTURE.md §1 and §3.
 
 app.UseCors();
 

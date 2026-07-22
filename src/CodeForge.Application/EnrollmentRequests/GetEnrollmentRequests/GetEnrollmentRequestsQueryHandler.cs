@@ -41,19 +41,22 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
                 query = query.Where(x => x.TrackId == request.TrackId.Value);
             }
 
-            return await query
+            var requests = await query
                 .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            return requests
                 .Select(x => new EnrollmentRequestDto(
                     x.Id,
                     x.ApplicantName,
                     x.ApplicantEmail,
                     x.ApplicantPhone,
                     x.CourseId,
-                    x.Course != null ? x.Course.Title : null,
+                    x.Course?.Title,
                     x.TrackId,
-                    x.Track != null ? x.Track.Title : null,
+                    x.Track?.Title,
                     x.PaymentMethod,
-                    x.PaymentProofUrl,
+                    $"/enrollment-requests/{x.Id}/payment-proof",
                     x.OriginalPrice,
                     x.CouponCode,
                     x.DiscountAmount,
@@ -61,7 +64,7 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
                     x.Status,
                     x.CreatedAt,
                     x.UpdatedAt))
-                .ToListAsync(cancellationToken);
+                .ToList();
         }
     }
 }

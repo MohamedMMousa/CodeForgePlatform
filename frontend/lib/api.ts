@@ -53,6 +53,22 @@ export async function apiFetch<T>(
   return handleResponse<T>(response);
 }
 
+/** Fetches a private file (materials, payment proofs) with the Authorization header
+ * and opens it in a new tab via a blob URL. These endpoints are never plain <a href>
+ * links — the server requires a Bearer token, which only fetch (not navigation) can send. */
+export async function downloadAuthenticatedFile(path: string, token: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    throw new ApiRequestError({ status: response.status, detail: "Could not download the file." });
+  }
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+}
+
 /** For multipart/form-data submissions (file uploads) — no Content-Type override,
  * the browser sets the correct multipart boundary itself. */
 export async function apiFetchForm<T>(
@@ -258,7 +274,8 @@ export interface EnrollmentRequestResult {
   trackId: string | null;
   trackTitle: string | null;
   paymentMethod: string;
-  paymentProofUrl: string;
+  /** Authenticated (admin-only) API path — fetch with downloadAuthenticatedFile, not a plain link. */
+  paymentProofDownloadUrl: string;
   originalPrice: number;
   couponCode: string | null;
   discountAmount: number;
@@ -463,7 +480,8 @@ export interface MaterialItem {
   title: string;
   orderIndex: number;
   body: string | null;
-  fileUrl: string | null;
+  /** Authenticated API path — fetch with downloadAuthenticatedFile, not a plain link. */
+  fileDownloadUrl: string | null;
   fileType: string | null;
   fileSizeKb: number | null;
   linkUrl: string | null;

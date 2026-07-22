@@ -36,6 +36,7 @@ import {
   deleteQuestion,
   deleteSession,
   deleteTestCase,
+  downloadAuthenticatedFile,
   getAssessmentById,
   getAssessmentResults,
   getAssignmentById,
@@ -366,6 +367,7 @@ function MaterialsPanel({
     file?: File;
   }) => Promise<void>;
 }) {
+  const { session } = useAuth();
   const [type, setType] = useState<MaterialType>("text");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -373,6 +375,11 @@ function MaterialsPanel({
   const [fileType, setFileType] = useState("pdf");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function onDownload(fileDownloadUrl: string) {
+    if (!session) return;
+    downloadAuthenticatedFile(fileDownloadUrl, session.accessToken).catch(() => {});
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -407,9 +414,11 @@ function MaterialsPanel({
               <a href={m.linkUrl ?? "#"} target="_blank" rel="noreferrer">{m.linkUrl}</a>
             </p>
           )}
-          {m.type === "file" && (
+          {m.type === "file" && m.fileDownloadUrl && (
             <p>
-              <a href={m.fileUrl ?? "#"} target="_blank" rel="noreferrer">{m.fileUrl}</a>
+              <button className="btn secondary" onClick={() => onDownload(m.fileDownloadUrl!)}>
+                {t.downloadFile}
+              </button>
             </p>
           )}
           <button className="btn secondary" onClick={() => onDelete(m.id)}>

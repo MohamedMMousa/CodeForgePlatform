@@ -8,7 +8,7 @@ namespace CodeForge.Application.Materials.Common
         string Title,
         int OrderIndex,
         string? Body,
-        string? FileUrl,
+        string? FileDownloadUrl,
         string? FileType,
         int? FileSizeKb,
         string? LinkUrl,

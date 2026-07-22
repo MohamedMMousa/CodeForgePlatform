@@ -37,5 +37,5 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Uploaded content (payment proofs etc.)
-src/CodeForge.Api/wwwroot/uploads/
+# Uploaded content (payment proofs, course materials) — private storage, outside wwwroot
+src/CodeForge.Api/PrivateStorage/

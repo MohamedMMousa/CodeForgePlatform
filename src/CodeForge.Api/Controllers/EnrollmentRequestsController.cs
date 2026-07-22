@@ -1,6 +1,7 @@
 using CodeForge.Application.EnrollmentRequests.ApproveEnrollmentRequest;
 using CodeForge.Application.EnrollmentRequests.GetEnrollmentRequestById;
 using CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests;
+using CodeForge.Application.EnrollmentRequests.GetPaymentProofFile;
 using CodeForge.Application.EnrollmentRequests.RejectEnrollmentRequest;
 using CodeForge.Application.EnrollmentRequests.SubmitEnrollmentRequest;
 using CodeForge.Api.RateLimiting;
@@ -96,6 +97,21 @@ namespace CodeForge.Api.Controllers
             return await SendEnrollmentRequest(
                 new GetEnrollmentRequestByIdQuery(id),
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// Download the payment proof file for an enrollment request. Admin only.
+        /// </summary>
+        [Authorize(Policy = "AdminOnly")]
+        [HttpGet("{id:guid}/payment-proof")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetPaymentProof(Guid id, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetPaymentProofFileQuery(id), cancellationToken);
+            return File(result.Stream, result.ContentType, result.FileName);
         }
 
         /// <summary>

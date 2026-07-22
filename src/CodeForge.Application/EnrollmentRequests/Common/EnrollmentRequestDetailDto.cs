@@ -16,7 +16,7 @@ namespace CodeForge.Application.EnrollmentRequests.Common
         Guid? TrackId,
         string? TrackTitle,
         string PaymentMethod,
-        string PaymentProofUrl,
+        string PaymentProofDownloadUrl,
         decimal OriginalPrice,
         string? CouponCode,
         decimal DiscountAmount,

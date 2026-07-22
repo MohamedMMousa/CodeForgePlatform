@@ -1,5 +1,6 @@
 using CodeForge.Application.Materials.CreateMaterial;
 using CodeForge.Application.Materials.DeleteMaterial;
+using CodeForge.Application.Materials.GetMaterialFile;
 using CodeForge.Application.Materials.GetModuleMaterials;
 using CodeForge.Application.Materials.GetSessionMaterials;
 using MediatR;
@@ -69,6 +70,17 @@ namespace CodeForge.Api.Controllers
         {
             var response = await _sender.Send(new DeleteMaterialCommand(id), cancellationToken);
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Download a material's file. Enrollment-gated — same rule as viewing the
+        /// material's metadata (admin, assigned instructor, or actively enrolled student).
+        /// </summary>
+        [HttpGet("materials/{id:guid}/file")]
+        public async Task<IActionResult> GetFile(Guid id, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetMaterialFileQuery(id), cancellationToken);
+            return File(result.Stream, result.ContentType, result.FileName);
         }
 
         [HttpGet("modules/{moduleId:guid}/materials")]

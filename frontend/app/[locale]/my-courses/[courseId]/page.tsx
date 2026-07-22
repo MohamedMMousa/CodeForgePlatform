@@ -8,6 +8,7 @@ import {
   MaterialItem,
   MyCourseContent,
   MyCourseGrades,
+  downloadAuthenticatedFile,
   getMyCourseContent,
   getMyCourseGrades,
   getSessionMaterials
@@ -149,11 +150,16 @@ export default function MyCoursePage({
                                   </a>
                                 </p>
                               )}
-                              {mat.type === "file" && (
+                              {mat.type === "file" && mat.fileDownloadUrl && (
                                 <p>
-                                  <a href={mat.fileUrl ?? "#"} target="_blank" rel="noreferrer">
-                                    {mat.fileUrl}
-                                  </a>
+                                  <button
+                                    className="btn secondary"
+                                    onClick={() =>
+                                      session && downloadAuthenticatedFile(mat.fileDownloadUrl!, session.accessToken).catch(() => {})
+                                    }
+                                  >
+                                    {t.downloadFile}
+                                  </button>
                                 </p>
                               )}
                             </div>

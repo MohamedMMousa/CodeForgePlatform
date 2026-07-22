@@ -154,7 +154,7 @@ namespace CodeForge.Application.EnrollmentRequests.SubmitEnrollmentRequest
                 track?.Id,
                 track?.Title,
                 enrollmentRequest.PaymentMethod,
-                enrollmentRequest.PaymentProofUrl,
+                $"/enrollment-requests/{enrollmentRequest.Id}/payment-proof",
                 enrollmentRequest.OriginalPrice,
                 enrollmentRequest.CouponCode,
                 enrollmentRequest.DiscountAmount,

@@ -43,7 +43,7 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequestById
                 enrollmentRequest.TrackId,
                 enrollmentRequest.Track?.Title,
                 enrollmentRequest.PaymentMethod,
-                enrollmentRequest.PaymentProofUrl,
+                $"/enrollment-requests/{enrollmentRequest.Id}/payment-proof",
                 enrollmentRequest.OriginalPrice,
                 enrollmentRequest.CouponCode,
                 enrollmentRequest.DiscountAmount,
