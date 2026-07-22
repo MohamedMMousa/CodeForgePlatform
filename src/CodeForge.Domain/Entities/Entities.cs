@@ -386,6 +386,7 @@ namespace CodeForge.Domain.Entities
         public Guid QuestionId { get; set; }
         public string OptionText { get; set; } = null!;
         public bool IsCorrect { get; set; } = false;
+        public int OrderIndex { get; set; }
 
         // Navigation properties
         public virtual QuizQuestion Question { get; set; } = null!;

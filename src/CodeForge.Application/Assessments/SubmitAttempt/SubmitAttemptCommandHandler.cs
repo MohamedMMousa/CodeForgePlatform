@@ -49,6 +49,7 @@ namespace CodeForge.Application.Assessments.SubmitAttempt
             }
 
             var correctCount = 0;
+            var newAnswers = new List<QuizAnswer>();
             foreach (var answerInput in request.Answers)
             {
                 var question = attempt.Quiz.Questions.First(q => q.Id == answerInput.QuestionId);
@@ -60,12 +61,18 @@ namespace CodeForge.Application.Assessments.SubmitAttempt
                     correctCount++;
                 }
 
-                attempt.Answers.Add(new QuizAnswer
+                newAnswers.Add(new QuizAnswer
                 {
                     AttemptId = attempt.Id,
                     QuestionId = answerInput.QuestionId,
                     SelectedOptionId = answerInput.SelectedOptionId,
                 });
+            }
+
+            _context.QuizAnswers.AddRange(newAnswers);
+            foreach (var answer in newAnswers)
+            {
+                attempt.Answers.Add(answer);
             }
 
             var grading = QuizGradingCalculator.Calculate(attempt.Quiz.Questions.Count, correctCount, attempt.Quiz.PassScore);

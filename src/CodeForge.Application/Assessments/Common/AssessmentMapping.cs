@@ -43,7 +43,7 @@ namespace CodeForge.Application.Assessments.Common
                         q.Id,
                         q.QuestionText,
                         q.OrderIndex,
-                        q.Options.Select(o => new OptionDto(o.Id, o.OptionText, o.IsCorrect)).ToList()))
+                        q.Options.OrderBy(o => o.OrderIndex).Select(o => new OptionDto(o.Id, o.OptionText, o.IsCorrect)).ToList()))
                     .ToList());
         }
     }

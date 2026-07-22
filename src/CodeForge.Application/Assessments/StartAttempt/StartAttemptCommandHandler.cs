@@ -46,12 +46,24 @@ namespace CodeForge.Application.Assessments.StartAttempt
                 throw new InvalidOperationException("Maximum attempts reached for this assessment.");
             }
 
-            var hasInProgressAttempt = await _context.QuizAttempts
-                .AnyAsync(a => a.QuizId == quiz.Id && a.StudentId == currentUserId && a.SubmittedAt == null, cancellationToken);
+            var inProgressAttempt = await _context.QuizAttempts
+                .Where(a => a.QuizId == quiz.Id && a.StudentId == currentUserId && a.SubmittedAt == null)
+                .OrderByDescending(a => a.StartedAt)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (hasInProgressAttempt)
+            if (inProgressAttempt is not null)
             {
-                throw new InvalidOperationException("An attempt is already in progress for this assessment.");
+                // An untimed quiz has no basis to judge an open attempt as stale, so it
+                // still blocks a new start; a timed one auto-clears once its time limit
+                // has elapsed, so an abandoned attempt (browser closed, etc.) never
+                // permanently locks the student out.
+                var expired = quiz.TimeLimitMinutes.HasValue
+                    && DateTime.UtcNow > inProgressAttempt.StartedAt.AddMinutes(quiz.TimeLimitMinutes.Value);
+
+                if (!expired)
+                {
+                    throw new InvalidOperationException("An attempt is already in progress for this assessment.");
+                }
             }
 
             var attempt = new QuizAttempt

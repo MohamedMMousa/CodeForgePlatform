@@ -77,13 +77,14 @@ namespace CodeForge.Application.Assignments.SubmitAssignment
                         request.Code, "python", testCaseInputs, cancellationToken);
 
                     var outcomes = new List<AssignmentGradingCalculator.TestCaseOutcome>();
+                    var testResults = new List<AssignmentTestResult>();
                     foreach (var testCase in assignment.TestCases)
                     {
                         var result = executionResults.FirstOrDefault(r => r.TestCaseId == testCase.Id);
                         var passed = result?.Passed ?? false;
                         outcomes.Add(new AssignmentGradingCalculator.TestCaseOutcome(testCase.Points, passed));
 
-                        submission.TestResults.Add(new AssignmentTestResult
+                        testResults.Add(new AssignmentTestResult
                         {
                             TestCaseId = testCase.Id,
                             TestCase = testCase,
@@ -92,6 +93,12 @@ namespace CodeForge.Application.Assignments.SubmitAssignment
                             ErrorMessage = result?.ErrorMessage,
                             ExecutionTimeMs = result?.ExecutionTimeMs,
                         });
+                    }
+
+                    _context.AssignmentTestResults.AddRange(testResults);
+                    foreach (var testResult in testResults)
+                    {
+                        submission.TestResults.Add(testResult);
                     }
 
                     submission.AutoScore = AssignmentGradingCalculator.CalculateAutoScore(outcomes);

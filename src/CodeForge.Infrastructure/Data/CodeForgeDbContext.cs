@@ -588,6 +588,7 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.QuestionId).HasColumnName("question_id").IsRequired();
                 entity.Property(e => e.OptionText).HasColumnName("option_text").HasMaxLength(500).IsRequired();
                 entity.Property(e => e.IsCorrect).HasColumnName("is_correct").HasDefaultValue(false);
+                entity.Property(e => e.OrderIndex).HasColumnName("order_index").IsRequired();
 
                 entity.HasIndex(e => e.QuestionId);
 

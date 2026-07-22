@@ -814,14 +814,15 @@ function AssessmentDetailPanel({
               type="radio"
               name="correct"
               checked={opt.isCorrect}
-              onChange={() => setOptions(options.map((o, j) => ({ ...o, isCorrect: j === i })))}
+              onChange={() => setOptions((prev) => prev.map((o, j) => ({ ...o, isCorrect: j === i })))}
             />
             <input
               placeholder={`${t.option} ${i + 1}`}
               value={opt.optionText}
-              onChange={(e) =>
-                setOptions(options.map((o, j) => (j === i ? { ...o, optionText: e.target.value } : o)))
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setOptions((prev) => prev.map((o, j) => (j === i ? { ...o, optionText: value } : o)));
+              }}
               required
               style={{ flex: 1 }}
             />
@@ -829,7 +830,7 @@ function AssessmentDetailPanel({
               <button
                 type="button"
                 className="btn secondary"
-                onClick={() => setOptions(options.filter((_, j) => j !== i))}
+                onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}
               >
                 {t.removeOption}
               </button>
@@ -840,7 +841,7 @@ function AssessmentDetailPanel({
           <button
             type="button"
             className="btn secondary"
-            onClick={() => setOptions([...options, { optionText: "", isCorrect: false }])}
+            onClick={() => setOptions((prev) => [...prev, { optionText: "", isCorrect: false }])}
           >
             {t.addOption}
           </button>

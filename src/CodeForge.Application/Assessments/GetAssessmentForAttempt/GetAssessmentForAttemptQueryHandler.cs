@@ -49,7 +49,7 @@ namespace CodeForge.Application.Assessments.GetAssessmentForAttempt
 
             var questionDtos = questions.Select(q =>
             {
-                IEnumerable<Domain.Entities.QuizOption> options = q.Options;
+                IEnumerable<Domain.Entities.QuizOption> options = q.Options.OrderBy(o => o.OrderIndex);
                 if (quiz.RandomizeQuestions)
                 {
                     options = options.OrderBy(_ => Guid.NewGuid());

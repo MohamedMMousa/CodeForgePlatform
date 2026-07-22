@@ -46,13 +46,22 @@ namespace CodeForge.Application.Assessments.UpdateQuestion
                 _context.QuizOptions.Remove(existingOption);
             }
 
-            foreach (var optionInput in request.Options)
+            var newOptions = new List<QuizOption>();
+            for (var i = 0; i < request.Options.Count; i++)
             {
-                question.Options.Add(new QuizOption
+                newOptions.Add(new QuizOption
                 {
-                    OptionText = optionInput.OptionText.Trim(),
-                    IsCorrect = optionInput.IsCorrect,
+                    QuestionId = question.Id,
+                    OptionText = request.Options[i].OptionText.Trim(),
+                    IsCorrect = request.Options[i].IsCorrect,
+                    OrderIndex = i,
                 });
+            }
+
+            _context.QuizOptions.AddRange(newOptions);
+            foreach (var option in newOptions)
+            {
+                question.Options.Add(option);
             }
 
             _context.ActivityLogs.Add(ActivityLogFactory.Create(

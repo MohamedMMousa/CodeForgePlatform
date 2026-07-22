@@ -60,10 +60,14 @@ namespace CodeForge.Infrastructure
             services.AddSingleton<ITemporaryPasswordGenerator, TemporaryPasswordGenerator>();
             services.AddScoped<IEnrollmentNotificationService, LoggingEnrollmentNotificationService>();
 
-            // Auto-grader: Piston (emkc.org), a free hosted sandboxed code-execution
-            // API — no Docker required locally. Swap for a self-hosted engine once
-            // hosting is decided (Phase 5).
-            services.AddHttpClient<ICodeExecutionService, PistonCodeExecutionService>(client =>
+            // Auto-grader: Piston's public API (emkc.org) went whitelist-only on
+            // 2026-02-15 (confirmed via a direct 401 response) — no engine is
+            // reachable from this environment. Deferred to manual grading for now;
+            // PistonCodeExecutionService is kept intact below and ready to swap back
+            // in once whitelisted, or replaced with a self-hosted engine once hosting
+            // is decided (Phase 5).
+            services.AddSingleton<ICodeExecutionService, DeferredCodeExecutionService>();
+            services.AddHttpClient<PistonCodeExecutionService>(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(20);
             });

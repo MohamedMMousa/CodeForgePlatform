@@ -42,16 +42,18 @@ namespace CodeForge.Application.Assessments.CreateQuestion
                 OrderIndex = maxOrder + 1,
             };
 
-            foreach (var optionInput in request.Options)
+            for (var i = 0; i < request.Options.Count; i++)
             {
                 question.Options.Add(new QuizOption
                 {
-                    OptionText = optionInput.OptionText.Trim(),
-                    IsCorrect = optionInput.IsCorrect,
+                    OptionText = request.Options[i].OptionText.Trim(),
+                    IsCorrect = request.Options[i].IsCorrect,
+                    OrderIndex = i,
                 });
             }
 
             _context.QuizQuestions.Add(question);
+            _context.QuizOptions.AddRange(question.Options);
             _context.ActivityLogs.Add(ActivityLogFactory.Create(
                 currentUserId, "question.created", nameof(QuizQuestion), question.Id, new { quizId = quiz.Id }));
 

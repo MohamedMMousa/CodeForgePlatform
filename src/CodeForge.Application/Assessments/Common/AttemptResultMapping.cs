@@ -9,7 +9,7 @@ namespace CodeForge.Application.Assessments.Common
             var answers = attempt.Quiz.Questions.OrderBy(q => q.OrderIndex).Select(question =>
             {
                 var answer = attempt.Answers.FirstOrDefault(a => a.QuestionId == question.Id);
-                var options = question.Options.Select(o => new OptionDto(o.Id, o.OptionText, o.IsCorrect)).ToList();
+                var options = question.Options.OrderBy(o => o.OrderIndex).Select(o => new OptionDto(o.Id, o.OptionText, o.IsCorrect)).ToList();
                 bool? isCorrectSelection = answer?.SelectedOptionId is null
                     ? null
                     : question.Options.Any(o => o.Id == answer.SelectedOptionId && o.IsCorrect);
