@@ -326,6 +326,75 @@ recordings yet, unlike payment proofs/materials — nothing to protect), load te
 and the hosting/deployment decision (both need a target environment that hasn't been
 chosen), bilingual/accessibility audit beyond what's already spot-checked per phase.
 
+## Phase 6 — Admin Console — ✅ COMPLETE
+
+Not on the original roadmap (which stopped at Phase 5). Added at the user's request
+after Phase 5: admin-facing CRUD endpoints for courses/tracks/cohorts/coupons/
+enrollment-requests had existed since Phase 0/1, but with no frontend at all — admins
+could only reach them through Swagger. Scoped via `AskUserQuestion` at kickoff: build
+the missing Users backend (no way existed to create an instructor account through the
+product, despite `SRS.md` requiring admin-created-only instructor accounts) and
+organize the new pages under a single `/admin` layout with a sub-nav rather than one
+flat top-bar link per page.
+
+### Backend
+
+| Module | Endpoints | Notes |
+|---|---|---|
+| **Users** (new) | `GET /users`, `POST /users/instructors`, `PUT /users/{id}/deactivate`, `PUT /users/{id}/reactivate` | All `AdminOnly`. `CreateInstructorCommand` generates a temp password (`MustChangePassword = true`) and dispatches a new `InstructorAccountCreated` notification event through the Phase 5 catalog. Self-deactivation is explicitly guarded (`InvalidOperationException` → 400) so an admin can't lock themselves out. |
+
+Every other endpoint used this phase (Courses/Tracks/Cohorts/Coupons/EnrollmentRequests/
+Enrollments admin actions) already existed — see `ARCHITECTURE.md` §4 for the updated
+per-module notes.
+
+### Frontend
+
+- `frontend/app/[locale]/admin/layout.tsx` — new. Role-gates once (instead of every
+  page re-implementing the guard) and renders a tab-strip linking every admin page.
+  `RoleNav.tsx` now shows one "Admin" link instead of growing per page.
+- `admin/courses` — list (status filter) + create + publish/archive/delete. Cohort
+  and instructor-assignment management were deliberately **not** built as a separate
+  page — both are course-scoped, and the existing `instructor/courses/[courseId]`
+  page already had one admin-only block (the completion-attendance-threshold editor).
+  Two more admin-only panels (Instructors, Cohorts) were added there instead of
+  duplicating course-content management in a second page.
+- `admin/tracks` (list + create) and `admin/tracks/[trackId]` (edit + course
+  membership add/remove).
+- `admin/coupons` — list/create/edit/deactivate, single page (no nesting needed).
+- `admin/enrollment-requests` (list, status filter) and
+  `admin/enrollment-requests/[id]` (detail, approve/reject, payment-proof download
+  via the Phase 5 `downloadAuthenticatedFile` helper, cancel any resulting
+  enrollment — the only place `PUT /enrollments/{id}/cancel` is exposed; there is no
+  standalone enrollment browser).
+- `admin/users` — list (role/active filter) + create-instructor form +
+  deactivate/reactivate.
+- Every new page follows the codebase's established per-page pattern: plain
+  `useState`/`useEffect` (no React Query), hand-rolled `<table className="table">`,
+  `confirm()` before deletes — no new shared table/modal component was introduced.
+- i18n: one new `admin` dictionary section (`frontend/lib/i18n.ts`), ~140 keys,
+  en + ar.
+- Fixed a pre-existing dead-code bug while wiring the Instructors panel:
+  `CourseInstructorEntry`'s field names (`instructorName`/`instructorEmail`) never
+  matched the backend's actual camelCase JSON (`fullName`/`email`) — harmless before
+  since nothing rendered `course.instructors`, now corrected since it's the data
+  source for instructor assignment.
+
+### Verified (end-to-end, via API + live browser)
+
+Created a course, an instructor account, and a cohort through the UI; assigned the
+new instructor to the course; opened the cohort (draft → open, Complete became
+available); added/removed a course on a track; created and edited a coupon;
+submitted a fresh enrollment request via the public API and approved it through the
+admin UI (downloaded its payment proof first, then cancelled the resulting
+enrollment); deactivated and reactivated a user; confirmed the self-deactivation
+guard surfaces its error correctly in the UI. Confirmed role gating both at the
+frontend (`/admin/*` shows the sign-in-required notice for a student session) and
+independently at the API (`AdminOnly` policy returns 403 for a student token on
+`GET /users` and `POST /courses`). No console or server errors throughout.
+69/69 unit tests pass (7 new — `CreateInstructorCommandValidatorTests` +
+one `EmailNotificationTemplatesTests` case for `InstructorAccountCreated`).
+Frontend typechecks clean throughout.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

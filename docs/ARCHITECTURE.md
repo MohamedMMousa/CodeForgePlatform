@@ -109,12 +109,13 @@ Vertical slices under `src/CodeForge.Application/<Feature>/`:
 | Module | Status | Notes |
 |---|---|---|
 | Authentication | ✅ built (Phase 0 hardened) | Login, RefreshToken, ForgotPassword, ResetPassword, ChangePassword, GetCurrentUser. |
-| Courses | ✅ built | Admin CRUD, publish/archive, instructor assignment; public catalog via `CatalogController`. |
-| EnrollmentRequests | ✅ built (Phase 1) | Submit/list/approve/reject, cohort-based, coupon + capacity aware. |
-| Tracks | ✅ built (Phase 1) | Course bundles; admin CRUD; track-level enrollment. |
-| Cohorts | ✅ built (Phase 1) | Batch scheduling, capacity, cutoff, lifecycle, "await next batch". |
-| Coupons | ✅ built (Phase 1) | Admin CRUD; percent/fixed; validation at enrollment. |
-| Enrollments | ✅ built (Phase 1) | Admin cancel/refund action. |
+| Users | ✅ built (Phase 6) | `UsersController` — admin-only. CreateInstructor (temp password + notification), GetUsers (role/active/search filters), Deactivate/Reactivate (self-deactivation guarded). No self-signup for any role but student. |
+| Courses | ✅ built | Admin CRUD, publish/archive, instructor assignment; public catalog via `CatalogController`. Admin frontend landed Phase 6 (`admin/courses`); instructor-assignment + cohort panels live on the existing course-detail page (admin-only). |
+| EnrollmentRequests | ✅ built (Phase 1) | Submit/list/approve/reject, cohort-based, coupon + capacity aware. Admin review frontend (list/detail/approve/reject/payment-proof download/cancel resulting enrollments) landed Phase 6 (`admin/enrollment-requests`) — previously API-only. |
+| Tracks | ✅ built (Phase 1) | Course bundles; admin CRUD; track-level enrollment. Admin frontend landed Phase 6 (`admin/tracks`). |
+| Cohorts | ✅ built (Phase 1) | Batch scheduling, capacity, cutoff, lifecycle, "await next batch". Admin frontend landed Phase 6 as course-scoped panels on the course-detail page. |
+| Coupons | ✅ built (Phase 1) | Admin CRUD; percent/fixed; validation at enrollment. Admin frontend landed Phase 6 (`admin/coupons`). |
+| Enrollments | ✅ built (Phase 1) | Admin cancel/refund action. Frontend exposed Phase 6 on the enrollment-request detail page (per resulting enrollment) — no standalone enrollment browser exists. |
 | Leads | ✅ built (Phase 1) | Public contact form + "notify me" (reuses lead capture). |
 | Modules & Sessions | ✅ built (Phase 2) | Renamed/merged from Sections+Lectures+LiveSessions — see `DATABASE.md` §6. Live/in-person/pre-recorded sessions, admin+instructor authoring. |
 | Materials | ✅ built (Phase 2) | Renamed from Resources; files/text/links attached to a module or session. |
@@ -127,6 +128,7 @@ Vertical slices under `src/CodeForge.Application/<Feature>/`:
 | Certificates | ✅ built (Phase 4) | Two-tier (completion/participation), admin-reviewed issuance with a stored serial + opaque verification code; eligibility reuses the gradebook's attendance + assessment-pass logic (`CourseEligibilityEvaluator`); per-course attendance threshold (null = platform default 75). Public verify-by-code endpoint. |
 | Analytics | ✅ built (Phase 4) | Admin business dashboard (enrollments/revenue/leads/cohorts), admin academic dashboard (assessments/pass-rate/certificates per course), instructor dashboard scoped to assigned courses. All computed read-side — no new tables. |
 | Notifications | ✅ built (Phase 5) | Event catalog + channel-agnostic dispatch (`INotificationDispatcher`/`INotificationChannel`). Email fully wired for 4 events (enrollment approved/rejected, certificate issued, assignment graded); WhatsApp channel registered but inactive pending real Business API credentials. |
+| Admin Console (frontend) | ✅ built (Phase 6) | `frontend/app/[locale]/admin/layout.tsx` — a single "Admin" nav entry (`RoleNav.tsx`) opens a tab-strip sub-nav to Courses/Tracks/Coupons/Enrollment Requests/Users/Analytics, instead of one flat top-bar link per admin page. Ties together the CRUD listed in the rows above; every page follows the existing per-page `useState`/`useEffect` + plain-`<table>` convention (see `CODING_STANDARDS.md`) — no shared table/modal component was introduced. |
 
 Legend: ✅ done · 🚧 in progress this phase · ⏳ not started.
 
