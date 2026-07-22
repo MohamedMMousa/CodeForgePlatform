@@ -15,12 +15,18 @@
 - **CQRS via MediatR**, organized as vertical slices by feature (not by technical
   layer). Every use case is a `Command`/`Query` + `Validator` + `Handler` triplet. See
   `CODING_STANDARDS.md` for the exact pattern.
-- **Isolate volatile/external concerns behind interfaces**: notifications (email now,
-  WhatsApp later), file storage (local disk now, object storage + signed URLs later),
-  code execution (`ICodeExecutionService` — Piston was the Phase 3 choice, but its
-  public API went whitelist-only mid-phase; `DeferredCodeExecutionService` is the
-  active implementation for now, `PistonCodeExecutionService` stays registered and
-  ready — see §4 and `DATABASE.md` §7), video (external links only, never embedded).
+- **Isolate volatile/external concerns behind interfaces**: notifications
+  (`INotificationDispatcher` fans a `NotificationEvent` out to every registered
+  `INotificationChannel` — `EmailNotificationChannel` is fully wired,
+  `WhatsAppNotificationChannel` is registered but gated by `WhatsAppSettings:Enabled`
+  since WhatsApp Business Cloud API needs credentials this environment doesn't have,
+  same blocker class as Piston — see §4 and Phase 5's handoff), file storage
+  (`IFileStorageService` — private local disk storage outside `wwwroot`, served only
+  through authenticated endpoints; see §3), code execution (`ICodeExecutionService` —
+  Piston was the Phase 3 choice, but its public API went whitelist-only mid-phase;
+  `DeferredCodeExecutionService` is the active implementation for now,
+  `PistonCodeExecutionService` stays registered and ready — see §4 and `DATABASE.md`
+  §7), video (external links only, never embedded).
 - **Bilingual and public-facing from day one** — culture resolution and CORS are
   foundation concerns, not afterthoughts.
 
@@ -58,6 +64,24 @@
   is true and a host is configured, otherwise `LoggingEmailSender` (dev fallback that
   logs instead of sending). Forgot-password sends a reset link by email; the API never
   returns the token.
+- **Notifications** (Phase 5) — `INotificationDispatcher` fans a `NotificationEvent`
+  (`NotificationEventType`: `EnrollmentApproved`/`Rejected`, `CertificateIssued`,
+  `AssignmentGraded`) out to every registered `INotificationChannel`, isolating
+  callers from delivery failures (logs and continues, never throws — a notification
+  failure must never fail the business operation that triggered it).
+  `EmailNotificationChannel` renders real templates (`EmailNotificationTemplates`,
+  kept pure/testable) via `IEmailSender`. `WhatsAppNotificationChannel` is registered
+  but no-ops while `WhatsAppSettings:Enabled` is false (the default — WhatsApp
+  Business Cloud API needs a Meta-verified business, dedicated number, and
+  pre-approved templates that don't exist here).
+- **Private file storage** (Phase 5) — `IFileStorageService` stores payment proofs and
+  course materials under `PrivateStorage/` outside `wwwroot`; there is **no**
+  `app.UseStaticFiles()` in `Program.cs`. Files are served exclusively through
+  authenticated endpoints (`GET /materials/{id}/file` — enrollment-gated via
+  `CourseContentAuthorization.EnsureCanView`; `GET /enrollment-requests/{id}/payment-proof`
+  — admin only) that stream the content back after checking authorization, never via
+  a public link. (Prior to Phase 5, these were served as plain static files with no
+  auth at all — found and fixed while scoping the phase.)
 - **Admin bootstrap** — `DatabaseSeeder.SeedAsync` runs at startup, idempotently
   seeding one super-admin from `AdminSeed:Email`/`Password`/`FullName` config. No-op if
   those aren't configured; never overwrites an existing account.
@@ -102,7 +126,7 @@ Vertical slices under `src/CodeForge.Application/<Feature>/`:
 | Gradebook | ✅ built (Phase 3) | Per-student attendance rate + best assessment score/pass + assignment final score, for both the instructor's course roster and a student's own course view. Admin cross-course analytics stays out of scope, reserved for Phase 4. |
 | Certificates | ✅ built (Phase 4) | Two-tier (completion/participation), admin-reviewed issuance with a stored serial + opaque verification code; eligibility reuses the gradebook's attendance + assessment-pass logic (`CourseEligibilityEvaluator`); per-course attendance threshold (null = platform default 75). Public verify-by-code endpoint. |
 | Analytics | ✅ built (Phase 4) | Admin business dashboard (enrollments/revenue/leads/cohorts), admin academic dashboard (assessments/pass-rate/certificates per course), instructor dashboard scoped to assigned courses. All computed read-side — no new tables. |
-| Notifications | ⏳ Phase 5 | Channel-agnostic dispatch; email now (Phase 0), WhatsApp later. |
+| Notifications | ✅ built (Phase 5) | Event catalog + channel-agnostic dispatch (`INotificationDispatcher`/`INotificationChannel`). Email fully wired for 4 events (enrollment approved/rejected, certificate issued, assignment graded); WhatsApp channel registered but inactive pending real Business API credentials. |
 
 Legend: ✅ done · 🚧 in progress this phase · ⏳ not started.
 
@@ -144,6 +168,16 @@ file uploads, rate limiting, versioning stance).
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.
-- **Hosting/deployment target** — not yet chosen; decide before Phase 5.
+- **Hosting/deployment target** — not yet chosen. Blocks two other deferred items:
+  a working Python auto-grader (self-hosted Judge0/Piston needs Docker) and load
+  testing (no target environment to test against yet).
 - **Recording storage upgrade** (external links → private storage + signed URLs) —
-  planned but not scheduled to a specific phase yet.
+  still deferred; unlike payment proofs/materials (hardened in Phase 5), there is no
+  upload flow for recordings today — they're external Zoom/YouTube/etc. links, so
+  there's no local file to protect yet. Revisit once private video hosting is decided.
+- **WhatsApp Business Cloud API** — the notification event catalog and channel
+  abstraction are built (Phase 5) and email works for every event; WhatsApp itself
+  needs a Meta-verified business, a dedicated number, and pre-approved message
+  templates, none of which exist in this environment. `WhatsAppNotificationChannel`
+  is registered and gated by `WhatsAppSettings:Enabled` (false) — flip it on and
+  implement the actual Cloud API call once credentials exist.

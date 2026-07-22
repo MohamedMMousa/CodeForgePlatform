@@ -273,12 +273,58 @@ server-rendered PDF is a later polish), a per-course numeric "minimum average sc
 franchise/multi-tenant analytics scoping, and any working Python auto-grader (still blocked
 on the Phase 3 Piston/hosting decision).
 
-## Phase 5 — Notifications & Polish
+## Phase 5 — Notifications & Polish — 🚧 PARTIAL
 
-WhatsApp Business Cloud API integration (channel-agnostic layer already exists from
-Phase 0 — email is the current default); notification event catalog; recording
-storage upgrade (external links → private storage + signed URLs); bilingual/
-accessibility polish; load testing; hosting/deployment decision.
+**Scoped down at kickoff** (see `handoff_phase5_notifications_polish.md`): WhatsApp
+integration is blocked on real Meta Business credentials (same class of blocker as
+Piston in Phase 3), and load testing / the hosting decision aren't buildable without
+a hosting target. What actually shipped this session: a real notification event
+catalog behind a channel-agnostic abstraction (WhatsApp wired as a ready-but-inactive
+channel), and a security fix found while scoping the phase — uploaded files were
+served as fully public static content with no auth.
+
+### Fixed: private file storage (found during scoping, not on the original roadmap)
+
+`wwwroot/uploads` (payment proofs + course materials) was served via plain
+`app.UseStaticFiles()` — no auth, no expiry. Anyone with a guessed/leaked URL could
+view another applicant's payment proof. Fixed: `LocalFileStorageService` now stores
+files under `PrivateStorage/` outside `wwwroot`; `app.UseStaticFiles()` is removed
+entirely. Access goes through `GET /materials/{id}/file` (enrollment-gated, same rule
+as viewing the material) and `GET /enrollment-requests/{id}/payment-proof`
+(admin-only). See `docs/ARCHITECTURE.md` §3.
+
+### Backend
+
+| Module | Endpoints | Notes |
+|---|---|---|
+| **Notifications** | (no new HTTP endpoints — internal dispatch triggered by existing actions) | `INotificationDispatcher.DispatchAsync` fans a `NotificationEvent` out to every `INotificationChannel`; never throws to the caller. `EmailNotificationChannel` fully works; `WhatsAppNotificationChannel` no-ops while `WhatsAppSettings:Enabled` is false. Wired into 4 triggers: `ApproveEnrollmentRequest`, `RejectEnrollmentRequest` (both pre-existing, previously only logged via the retired `IEnrollmentNotificationService`), `IssueCertificate` and `GradeSubmission` (new — these didn't notify anyone before). |
+| **File downloads** | `GET /materials/{id}/file`, `GET /enrollment-requests/{id}/payment-proof` | See the security fix above. |
+
+### Frontend
+
+- `downloadAuthenticatedFile` helper in `frontend/lib/api.ts` — fetches with the
+  Bearer token and opens a blob URL, since plain `<a href>` links can't carry
+  authentication. Instructor module page and student course-content page both use it
+  for material downloads instead of direct static links.
+
+### Verified (end-to-end, via API + live browser)
+
+Confirmed the old public static path now 404s and the new endpoints require auth
+(401 anonymous, 200 for admin/enrolled student); uploaded a real file and downloaded
+it byte-for-byte correct through both curl and the actual instructor UI (Download
+button → blob opens, no console errors). Triggered all 4 notification events for
+real (two fresh enrollment requests approved/rejected, a certificate issued, an
+assignment graded) and confirmed each rendered the correct subject/body in
+`LoggingEmailSender`'s dev output, with `WhatsAppNotificationChannel` logging a
+graceful skip every time rather than failing the request.
+
+### Out of scope for Phase 5 (deferred further)
+
+WhatsApp Business Cloud API itself (blocked on real credentials — see
+`ARCHITECTURE.md` §7), recording storage upgrade (no upload flow exists for
+recordings yet, unlike payment proofs/materials — nothing to protect), load testing
+and the hosting/deployment decision (both need a target environment that hasn't been
+chosen), bilingual/accessibility audit beyond what's already spot-checked per phase.
 
 ## Session Start Checklist
 
