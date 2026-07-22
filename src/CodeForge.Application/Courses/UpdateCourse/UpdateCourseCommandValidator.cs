@@ -34,6 +34,11 @@ namespace CodeForge.Application.Courses.UpdateCourse
             RuleFor(x => x.Currency)
                 .NotEmpty()
                 .MaximumLength(10);
+
+            RuleFor(x => x.CompletionAttendanceThreshold)
+                .InclusiveBetween(0, 100)
+                .When(x => x.CompletionAttendanceThreshold.HasValue)
+                .WithMessage("Completion attendance threshold must be between 0 and 100.");
         }
     }
 }

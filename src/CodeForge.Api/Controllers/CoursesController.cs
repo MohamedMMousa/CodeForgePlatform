@@ -72,7 +72,8 @@ namespace CodeForge.Api.Controllers
                     request.ThumbnailUrl,
                     request.Category,
                     request.Price,
-                    request.Currency),
+                    request.Currency,
+                    request.CompletionAttendanceThreshold),
                 cancellationToken);
         }
 
@@ -219,6 +220,7 @@ namespace CodeForge.Api.Controllers
             string? ThumbnailUrl,
             string? Category,
             decimal Price,
-            string Currency);
+            string Currency,
+            decimal? CompletionAttendanceThreshold);
     }
 }

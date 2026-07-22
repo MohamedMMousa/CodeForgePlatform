@@ -11,5 +11,6 @@ namespace CodeForge.Application.Courses.UpdateCourse
         string? ThumbnailUrl,
         string? Category,
         decimal Price,
-        string Currency) : IRequest<CourseDetailDto>;
+        string Currency,
+        decimal? CompletionAttendanceThreshold) : IRequest<CourseDetailDto>;
 }

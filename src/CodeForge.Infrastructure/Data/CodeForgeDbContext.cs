@@ -41,6 +41,7 @@ namespace CodeForge.Infrastructure.Data
         public DbSet<AssignmentTestResult> AssignmentTestResults => Set<AssignmentTestResult>();
         public DbSet<Announcement> Announcements => Set<Announcement>();
         public DbSet<Lead> Leads => Set<Lead>();
+        public DbSet<Certificate> Certificates => Set<Certificate>();
         public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -61,7 +62,8 @@ namespace CodeForge.Infrastructure.Data
                     entry.Entity is Cohort ||
                     entry.Entity is Coupon ||
                     entry.Entity is AttendanceRecord ||
-                    entry.Entity is Assignment)
+                    entry.Entity is Assignment ||
+                    entry.Entity is Certificate)
                 {
                     if (entry.State == EntityState.Modified)
                     {
@@ -143,10 +145,15 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.Price).HasColumnName("price").HasColumnType("numeric(10,2)").HasDefaultValue(0.00m);
                 entity.Property(e => e.Currency).HasColumnName("currency").HasMaxLength(10).HasDefaultValue("EGP");
                 entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("draft");
+                entity.Property(e => e.CompletionAttendanceThreshold).HasColumnName("completion_attendance_threshold").HasColumnType("numeric(5,2)");
                 entity.Property(e => e.CreatedById).HasColumnName("created_by").IsRequired();
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
                 entity.Property(e => e.DeletedAt).HasColumnName("deleted_at").HasColumnType("timestamp with time zone");
+
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "chk_course_attendance_threshold",
+                    "completion_attendance_threshold IS NULL OR (completion_attendance_threshold BETWEEN 0 AND 100)"));
 
                 // Indexes
                 entity.HasIndex(e => e.Slug).IsUnique().HasFilter("deleted_at IS NULL");
@@ -845,6 +852,71 @@ namespace CodeForge.Infrastructure.Data
                 entity.HasOne(d => d.Course)
                     .WithMany()
                     .HasForeignKey(d => d.CourseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ============================================================================
+            // 5b. CERTIFICATION DOMAIN (Phase 4)
+            // ============================================================================
+
+            modelBuilder.Entity<Certificate>(entity =>
+            {
+                entity.ToTable("certificates");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+                entity.Property(e => e.EnrollmentId).HasColumnName("enrollment_id").IsRequired();
+                entity.Property(e => e.StudentId).HasColumnName("student_id").IsRequired();
+                entity.Property(e => e.CourseId).HasColumnName("course_id").IsRequired();
+                entity.Property(e => e.CohortId).HasColumnName("cohort_id").IsRequired();
+                entity.Property(e => e.Tier).HasColumnName("tier").HasMaxLength(20).IsRequired();
+                entity.Property(e => e.SerialNumber).HasColumnName("serial_number").HasMaxLength(40).IsRequired();
+                entity.Property(e => e.VerificationCode).HasColumnName("verification_code").HasMaxLength(64).IsRequired();
+                entity.Property(e => e.AttendanceRate).HasColumnName("attendance_rate").HasColumnType("numeric(5,2)");
+                entity.Property(e => e.AssessmentsPassed).HasColumnName("assessments_passed").IsRequired();
+                entity.Property(e => e.IssuedById).HasColumnName("issued_by").IsRequired();
+                entity.Property(e => e.IssuedAt).HasColumnName("issued_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.IsRevoked).HasColumnName("is_revoked").HasDefaultValue(false);
+                entity.Property(e => e.RevokedAt).HasColumnName("revoked_at").HasColumnType("timestamp with time zone");
+                entity.Property(e => e.RevokedById).HasColumnName("revoked_by");
+                entity.Property(e => e.RevocationReason).HasColumnName("revocation_reason").HasColumnType("text");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+
+                // One certificate per enrollment; serial + verification code are globally unique.
+                entity.HasIndex(e => e.EnrollmentId).IsUnique();
+                entity.HasIndex(e => e.SerialNumber).IsUnique();
+                entity.HasIndex(e => e.VerificationCode).IsUnique();
+                entity.HasIndex(e => e.StudentId);
+                entity.HasIndex(e => e.CourseId);
+
+                entity.HasOne(d => d.Enrollment)
+                    .WithOne(p => p.Certificate)
+                    .HasForeignKey<Certificate>(d => d.EnrollmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.Student)
+                    .WithMany(p => p.Certificates)
+                    .HasForeignKey(d => d.StudentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.Course)
+                    .WithMany(p => p.Certificates)
+                    .HasForeignKey(d => d.CourseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.Cohort)
+                    .WithMany()
+                    .HasForeignKey(d => d.CohortId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.IssuedBy)
+                    .WithMany(p => p.IssuedCertificates)
+                    .HasForeignKey(d => d.IssuedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.RevokedBy)
+                    .WithMany()
+                    .HasForeignKey(d => d.RevokedById)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

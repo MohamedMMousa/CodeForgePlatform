@@ -34,6 +34,7 @@ namespace CodeForge.Application.Common.Interfaces
         DbSet<AssignmentTestResult> AssignmentTestResults { get; }
         DbSet<Announcement> Announcements { get; }
         DbSet<Lead> Leads { get; }
+        DbSet<Certificate> Certificates { get; }
         DbSet<ActivityLog> ActivityLogs { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

@@ -42,6 +42,8 @@ namespace CodeForge.Domain.Entities
         public virtual ICollection<AttendanceRecord> MarkedAttendanceRecords { get; set; } = new List<AttendanceRecord>();
         public virtual ICollection<AssignmentSubmission> AssignmentSubmissions { get; set; } = new List<AssignmentSubmission>();
         public virtual ICollection<AssignmentSubmission> GradedAssignmentSubmissions { get; set; } = new List<AssignmentSubmission>();
+        public virtual ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
+        public virtual ICollection<Certificate> IssuedCertificates { get; set; } = new List<Certificate>();
     }
 
     public class PasswordResetToken
@@ -72,6 +74,10 @@ namespace CodeForge.Domain.Entities
         public decimal Price { get; set; } = 0.00m;
         public string Currency { get; set; } = "EGP";
         public string Status { get; set; } = "draft"; // draft, published, archived
+        // Completion-certificate attendance bar (%). Null = use platform default
+        // (CertificateDefaults.AttendanceThreshold). The assessment bar is fixed logic —
+        // every non-practice assessment must be passed using its own pass_score.
+        public decimal? CompletionAttendanceThreshold { get; set; }
         public Guid CreatedById { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -86,6 +92,7 @@ namespace CodeForge.Domain.Entities
         public virtual ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
         public virtual ICollection<TrackCourse> TrackCourses { get; set; } = new List<TrackCourse>();
         public virtual ICollection<Cohort> Cohorts { get; set; } = new List<Cohort>();
+        public virtual ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
     }
 
     // ============================================================================
@@ -320,6 +327,7 @@ namespace CodeForge.Domain.Entities
         public virtual Cohort Cohort { get; set; } = null!;
         public virtual EnrollmentRequest? SourceRequest { get; set; }
         public virtual User? CancelledBy { get; set; }
+        public virtual Certificate? Certificate { get; set; }
     }
 
     // ============================================================================
@@ -555,6 +563,44 @@ namespace CodeForge.Domain.Entities
 
         // Navigation properties
         public virtual Course? Course { get; set; }
+    }
+
+    // ============================================================================
+    // 5b. CERTIFICATION DOMAIN (Phase 4)
+    // ============================================================================
+
+    // A credential issued (admin-reviewed) for one enrollment. Tier + the metrics that
+    // justified it are snapshotted at issue time so later attendance/grade changes never
+    // rewrite an already-issued certificate. See docs/DATABASE.md §8.
+    public class Certificate
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid EnrollmentId { get; set; }
+        public Guid StudentId { get; set; }
+        public Guid CourseId { get; set; }
+        public Guid CohortId { get; set; }
+        public string Tier { get; set; } = null!; // completion, participation
+        public string SerialNumber { get; set; } = null!; // human-facing, unique (e.g. CF-2026-8F3A21)
+        public string VerificationCode { get; set; } = null!; // opaque public lookup token
+        // Snapshot of the metrics at issue time
+        public decimal AttendanceRate { get; set; }
+        public bool AssessmentsPassed { get; set; }
+        public Guid IssuedById { get; set; }
+        public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
+        public bool IsRevoked { get; set; } = false;
+        public DateTime? RevokedAt { get; set; }
+        public Guid? RevokedById { get; set; }
+        public string? RevocationReason { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
+        public virtual Enrollment Enrollment { get; set; } = null!;
+        public virtual User Student { get; set; } = null!;
+        public virtual Course Course { get; set; } = null!;
+        public virtual Cohort Cohort { get; set; } = null!;
+        public virtual User IssuedBy { get; set; } = null!;
+        public virtual User? RevokedBy { get; set; }
     }
 
     // ============================================================================

@@ -49,6 +49,7 @@ namespace CodeForge.Application.Courses.UpdateCourse
             course.Category = string.IsNullOrWhiteSpace(request.Category) ? null : request.Category.Trim();
             course.Price = request.Price;
             course.Currency = request.Currency.Trim().ToUpper();
+            course.CompletionAttendanceThreshold = request.CompletionAttendanceThreshold;
 
             _context.ActivityLogs.Add(ActivityLogFactory.Create(
                 adminId,

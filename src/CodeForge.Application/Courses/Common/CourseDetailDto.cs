@@ -10,6 +10,7 @@ namespace CodeForge.Application.Courses.Common
         decimal Price,
         string Currency,
         string Status,
+        decimal? CompletionAttendanceThreshold,
         Guid CreatedById,
         string CreatedByName,
         DateTime CreatedAt,

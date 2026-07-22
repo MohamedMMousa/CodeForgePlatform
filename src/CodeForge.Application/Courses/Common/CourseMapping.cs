@@ -32,6 +32,7 @@ namespace CodeForge.Application.Courses.Common
                 course.Price,
                 course.Currency,
                 course.Status,
+                course.CompletionAttendanceThreshold,
                 course.CreatedById,
                 course.CreatedBy.FullName,
                 course.CreatedAt,
