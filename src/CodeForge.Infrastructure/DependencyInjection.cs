@@ -9,6 +9,7 @@ using CodeForge.Infrastructure.Authentication;
 using CodeForge.Infrastructure.Data;
 using CodeForge.Infrastructure.Email;
 using CodeForge.Infrastructure.EnrollmentRequests;
+using CodeForge.Infrastructure.Notifications;
 
 namespace CodeForge.Infrastructure
 {
@@ -51,6 +52,18 @@ namespace CodeForge.Infrastructure
                 services.AddScoped<IEmailSender, LoggingEmailSender>();
             }
 
+            // WhatsApp Business Cloud API — see WhatsAppSettings.cs. Not usable without a
+            // Meta-verified business/dedicated number/approved templates, so it stays
+            // registered but disabled by default (WhatsAppNotificationChannel no-ops).
+            services.Configure<WhatsAppSettings>(configuration.GetSection(WhatsAppSettings.SectionName));
+
+            // Notification event catalog — channel-agnostic dispatch (see
+            // Application/Common/Notifications). Email is fully wired; WhatsApp is a
+            // registered-but-inactive channel until real credentials exist.
+            services.AddScoped<INotificationChannel, EmailNotificationChannel>();
+            services.AddScoped<INotificationChannel, WhatsAppNotificationChannel>();
+            services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+
             // Authentication Services Registration
             services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
@@ -58,7 +71,6 @@ namespace CodeForge.Infrastructure
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();
             services.AddSingleton<ITemporaryPasswordGenerator, TemporaryPasswordGenerator>();
-            services.AddScoped<IEnrollmentNotificationService, LoggingEnrollmentNotificationService>();
 
             // Auto-grader: Piston's public API (emkc.org) went whitelist-only on
             // 2026-02-15 (confirmed via a direct 401 response) — no engine is

@@ -1,6 +1,7 @@
 using CodeForge.Application.Assignments.Common;
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Notifications;
 using CodeForge.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,16 @@ namespace CodeForge.Application.Assignments.GradeSubmission
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationDispatcher _notificationDispatcher;
 
-        public GradeSubmissionCommandHandler(ICodeForgeDbContext context, ICurrentUserService currentUserService)
+        public GradeSubmissionCommandHandler(
+            ICodeForgeDbContext context,
+            ICurrentUserService currentUserService,
+            INotificationDispatcher notificationDispatcher)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<SubmissionResultDto> Handle(GradeSubmissionCommand request, CancellationToken cancellationToken)
@@ -23,6 +29,7 @@ namespace CodeForge.Application.Assignments.GradeSubmission
             var currentUserId = GetCurrentUserId();
             var submission = await _context.AssignmentSubmissions
                 .Include(s => s.Assignment).ThenInclude(a => a.Module).ThenInclude(m => m.Course).ThenInclude(c => c.Instructors)
+                .Include(s => s.Student)
                 .Include(s => s.TestResults).ThenInclude(r => r.TestCase)
                 .FirstOrDefaultAsync(s => s.Id == request.SubmissionId, cancellationToken);
 
@@ -44,6 +51,21 @@ namespace CodeForge.Application.Assignments.GradeSubmission
                 new { submissionId = submission.Id, manualScore = request.ManualScore }));
 
             await _context.SaveChangesAsync(cancellationToken);
+
+            await _notificationDispatcher.DispatchAsync(
+                new NotificationEvent(
+                    NotificationEventType.AssignmentGraded,
+                    submission.Student.Email,
+                    submission.Student.FullName,
+                    submission.Student.Phone,
+                    new Dictionary<string, string>
+                    {
+                        ["assignmentTitle"] = submission.Assignment.Title,
+                        ["courseTitle"] = submission.Assignment.Module.Course.Title,
+                        ["score"] = submission.FinalScore?.ToString() ?? "",
+                        ["feedback"] = submission.ManualFeedback ?? ""
+                    }),
+                cancellationToken);
 
             return SubmissionResultMapping.ToDto(submission);
         }

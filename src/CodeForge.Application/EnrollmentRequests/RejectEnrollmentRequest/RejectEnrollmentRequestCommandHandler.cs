@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Notifications;
 using CodeForge.Application.EnrollmentRequests.Common;
 using CodeForge.Domain.Entities;
 using MediatR;
@@ -13,16 +14,16 @@ namespace CodeForge.Application.EnrollmentRequests.RejectEnrollmentRequest
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IEnrollmentNotificationService _notificationService;
+        private readonly INotificationDispatcher _notificationDispatcher;
 
         public RejectEnrollmentRequestCommandHandler(
             ICodeForgeDbContext context,
             ICurrentUserService currentUserService,
-            IEnrollmentNotificationService notificationService)
+            INotificationDispatcher notificationDispatcher)
         {
             _context = context;
             _currentUserService = currentUserService;
-            _notificationService = notificationService;
+            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<EnrollmentRequestMessageDto> Handle(
@@ -81,11 +82,18 @@ namespace CodeForge.Application.EnrollmentRequests.RejectEnrollmentRequest
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            await _notificationService.NotifyEnrollmentRejectedAsync(
-                enrollmentRequest.ApplicantEmail,
-                enrollmentRequest.ApplicantName,
-                enrollmentRequest.Course?.Title ?? enrollmentRequest.Track?.Title ?? "your enrollment",
-                enrollmentRequest.RejectionReason,
+            var courseTitle = enrollmentRequest.Course?.Title ?? enrollmentRequest.Track?.Title ?? "your enrollment";
+            await _notificationDispatcher.DispatchAsync(
+                new NotificationEvent(
+                    NotificationEventType.EnrollmentRejected,
+                    enrollmentRequest.ApplicantEmail,
+                    enrollmentRequest.ApplicantName,
+                    enrollmentRequest.ApplicantPhone,
+                    new Dictionary<string, string>
+                    {
+                        ["courseTitle"] = courseTitle,
+                        ["rejectionReason"] = enrollmentRequest.RejectionReason ?? ""
+                    }),
                 cancellationToken);
 
             return new EnrollmentRequestMessageDto(

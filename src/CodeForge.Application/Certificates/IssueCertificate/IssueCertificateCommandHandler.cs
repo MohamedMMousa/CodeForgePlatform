@@ -2,6 +2,7 @@ using CodeForge.Application.Certificates.Common;
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Notifications;
 using CodeForge.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,11 +13,16 @@ namespace CodeForge.Application.Certificates.IssueCertificate
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationDispatcher _notificationDispatcher;
 
-        public IssueCertificateCommandHandler(ICodeForgeDbContext context, ICurrentUserService currentUserService)
+        public IssueCertificateCommandHandler(
+            ICodeForgeDbContext context,
+            ICurrentUserService currentUserService,
+            INotificationDispatcher notificationDispatcher)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<CertificateDto> Handle(IssueCertificateCommand request, CancellationToken cancellationToken)
@@ -75,18 +81,28 @@ namespace CodeForge.Application.Certificates.IssueCertificate
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return await LoadDtoAsync(certificate.Id, cancellationToken);
-        }
-
-        private async Task<CertificateDto> LoadDtoAsync(Guid id, CancellationToken cancellationToken)
-        {
             var saved = await _context.Certificates
                 .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Course)
                 .Include(c => c.Cohort)
                 .Include(c => c.IssuedBy)
-                .FirstAsync(c => c.Id == id, cancellationToken);
+                .FirstAsync(c => c.Id == certificate.Id, cancellationToken);
+
+            await _notificationDispatcher.DispatchAsync(
+                new NotificationEvent(
+                    NotificationEventType.CertificateIssued,
+                    saved.Student.Email,
+                    saved.Student.FullName,
+                    saved.Student.Phone,
+                    new Dictionary<string, string>
+                    {
+                        ["courseTitle"] = saved.Course.Title,
+                        ["tier"] = saved.Tier,
+                        ["serialNumber"] = saved.SerialNumber
+                    }),
+                cancellationToken);
+
             return CertificateMapping.ToDto(saved);
         }
 

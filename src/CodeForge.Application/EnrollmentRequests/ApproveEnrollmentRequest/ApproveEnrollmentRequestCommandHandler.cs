@@ -2,6 +2,7 @@ using System.Text.Json;
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Notifications;
 using CodeForge.Application.EnrollmentRequests.Common;
 using CodeForge.Domain.Entities;
 using MediatR;
@@ -14,20 +15,20 @@ namespace CodeForge.Application.EnrollmentRequests.ApproveEnrollmentRequest
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IEnrollmentNotificationService _notificationService;
+        private readonly INotificationDispatcher _notificationDispatcher;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ITemporaryPasswordGenerator _temporaryPasswordGenerator;
 
         public ApproveEnrollmentRequestCommandHandler(
             ICodeForgeDbContext context,
             ICurrentUserService currentUserService,
-            IEnrollmentNotificationService notificationService,
+            INotificationDispatcher notificationDispatcher,
             IPasswordHasher passwordHasher,
             ITemporaryPasswordGenerator temporaryPasswordGenerator)
         {
             _context = context;
             _currentUserService = currentUserService;
-            _notificationService = notificationService;
+            _notificationDispatcher = notificationDispatcher;
             _passwordHasher = passwordHasher;
             _temporaryPasswordGenerator = temporaryPasswordGenerator;
         }
@@ -148,12 +149,18 @@ namespace CodeForge.Application.EnrollmentRequests.ApproveEnrollmentRequest
 
             foreach (var (_, courseTitle, accessExpiresAt) in createdEnrollments)
             {
-                await _notificationService.NotifyEnrollmentApprovedAsync(
-                    student.Email,
-                    student.FullName,
-                    courseTitle,
-                    temporaryPassword,
-                    accessExpiresAt,
+                await _notificationDispatcher.DispatchAsync(
+                    new NotificationEvent(
+                        NotificationEventType.EnrollmentApproved,
+                        student.Email,
+                        student.FullName,
+                        student.Phone,
+                        new Dictionary<string, string>
+                        {
+                            ["courseTitle"] = courseTitle,
+                            ["temporaryPassword"] = temporaryPassword ?? "",
+                            ["accessExpiresAt"] = accessExpiresAt.ToString("d")
+                        }),
                     cancellationToken);
             }
 
