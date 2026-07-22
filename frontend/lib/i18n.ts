@@ -147,6 +147,64 @@ export interface Dictionary {
     noAnnouncements: string;
     loadError: string;
     confirmDelete: string;
+    attendance: string;
+    markAttendance: string;
+    saveAttendance: string;
+    attendanceSaved: string;
+    statusPresent: string;
+    statusAbsent: string;
+    statusLate: string;
+    statusExcused: string;
+    attendanceReport: string;
+    noRoster: string;
+    assessments: string;
+    addAssessment: string;
+    assessmentType: string;
+    typeQuiz: string;
+    typeExam: string;
+    assessmentTitle: string;
+    timeLimitMinutes: string;
+    passScore: string;
+    maxAttempts: string;
+    unlimitedAttempts: string;
+    practiceMode: string;
+    randomizeQuestions: string;
+    disableCopyPaste: string;
+    noAssessments: string;
+    questions: string;
+    addQuestion: string;
+    questionText: string;
+    option: string;
+    addOption: string;
+    removeOption: string;
+    correctAnswer: string;
+    noQuestions: string;
+    viewResults: string;
+    assignments: string;
+    addAssignment: string;
+    assignmentTitle: string;
+    instructions: string;
+    dueDate: string;
+    testCases: string;
+    addTestCase: string;
+    testInput: string;
+    expectedOutput: string;
+    hidden: string;
+    points: string;
+    noAssignments: string;
+    noTestCases: string;
+    submissions: string;
+    noSubmissions: string;
+    grade: string;
+    manualScore: string;
+    manualFeedback: string;
+    saveGrade: string;
+    graded: string;
+    ungraded: string;
+    gradebook: string;
+    attendanceRate: string;
+    bestScore: string;
+    finalScore: string;
   };
   student: {
     dashboard: string;
@@ -167,6 +225,37 @@ export interface Dictionary {
     inPerson: string;
     recordedLesson: string;
     loadError: string;
+    attendance: string;
+    myAttendance: string;
+    sessionsHeld: string;
+    sessionsPresent: string;
+    quiz: string;
+    exam: string;
+    attempt: string;
+    startAttempt: string;
+    submitAttempt: string;
+    timeLimit: string;
+    attemptsUsed: string;
+    of: string;
+    noAttemptsLeft: string;
+    score: string;
+    passed: string;
+    failed: string;
+    yourResults: string;
+    assignment: string;
+    instructions: string;
+    yourCode: string;
+    submitAssignment: string;
+    submitting: string;
+    dueDate: string;
+    late: string;
+    autoScore: string;
+    grading: string;
+    gradingFailed: string;
+    testResults: string;
+    hiddenTest: string;
+    grades: string;
+    noGrades: string;
   };
 }
 
@@ -305,7 +394,65 @@ const dictionaries: Record<Locale, Dictionary> = {
       post: "Post",
       noAnnouncements: "No announcements yet.",
       loadError: "Could not load this course's content.",
-      confirmDelete: "Delete this? This cannot be undone."
+      confirmDelete: "Delete this? This cannot be undone.",
+      attendance: "Attendance",
+      markAttendance: "Mark attendance",
+      saveAttendance: "Save attendance",
+      attendanceSaved: "Attendance saved.",
+      statusPresent: "Present",
+      statusAbsent: "Absent",
+      statusLate: "Late",
+      statusExcused: "Excused",
+      attendanceReport: "Attendance report",
+      noRoster: "No enrolled students yet.",
+      assessments: "Assessments",
+      addAssessment: "Add assessment",
+      assessmentType: "Type",
+      typeQuiz: "Quiz",
+      typeExam: "Exam",
+      assessmentTitle: "Title",
+      timeLimitMinutes: "Time limit (minutes)",
+      passScore: "Pass score (%)",
+      maxAttempts: "Max attempts",
+      unlimitedAttempts: "unlimited",
+      practiceMode: "Practice (not graded)",
+      randomizeQuestions: "Randomize question order",
+      disableCopyPaste: "Disable copy/paste",
+      noAssessments: "No assessments yet.",
+      questions: "Questions",
+      addQuestion: "Add question",
+      questionText: "Question",
+      option: "Option",
+      addOption: "Add option",
+      removeOption: "Remove",
+      correctAnswer: "Correct",
+      noQuestions: "No questions yet.",
+      viewResults: "View results",
+      assignments: "Assignments",
+      addAssignment: "Add assignment",
+      assignmentTitle: "Title",
+      instructions: "Instructions",
+      dueDate: "Due date",
+      testCases: "Test cases",
+      addTestCase: "Add test case",
+      testInput: "Input",
+      expectedOutput: "Expected output",
+      hidden: "Hidden",
+      points: "Points",
+      noAssignments: "No assignments yet.",
+      noTestCases: "No test cases yet.",
+      submissions: "Submissions",
+      noSubmissions: "No submissions yet.",
+      grade: "Grade",
+      manualScore: "Score (0-100)",
+      manualFeedback: "Feedback",
+      saveGrade: "Save grade",
+      graded: "Graded",
+      ungraded: "Ungraded",
+      gradebook: "Gradebook",
+      attendanceRate: "Attendance",
+      bestScore: "Best score",
+      finalScore: "Final score"
     },
     student: {
       dashboard: "Dashboard",
@@ -325,7 +472,38 @@ const dictionaries: Record<Locale, Dictionary> = {
       live: "Live",
       inPerson: "In-person",
       recordedLesson: "Recorded lesson",
-      loadError: "Could not load your course content."
+      loadError: "Could not load your course content.",
+      attendance: "Attendance",
+      myAttendance: "My attendance",
+      sessionsHeld: "Sessions held",
+      sessionsPresent: "Sessions attended",
+      quiz: "Quiz",
+      exam: "Exam",
+      attempt: "Attempt",
+      startAttempt: "Start",
+      submitAttempt: "Submit",
+      timeLimit: "Time limit",
+      attemptsUsed: "Attempts used",
+      of: "of",
+      noAttemptsLeft: "No attempts left.",
+      score: "Score",
+      passed: "Passed",
+      failed: "Not passed",
+      yourResults: "Your results",
+      assignment: "Assignment",
+      instructions: "Instructions",
+      yourCode: "Your code",
+      submitAssignment: "Submit",
+      submitting: "Submitting…",
+      dueDate: "Due date",
+      late: "Late",
+      autoScore: "Auto-graded score",
+      grading: "Grading…",
+      gradingFailed: "Auto-grading failed — your instructor will grade this manually.",
+      testResults: "Test results",
+      hiddenTest: "Hidden test",
+      grades: "My grades",
+      noGrades: "No grades yet."
     }
   },
   ar: {
@@ -461,7 +639,65 @@ const dictionaries: Record<Locale, Dictionary> = {
       post: "نشر",
       noAnnouncements: "لا توجد إعلانات بعد.",
       loadError: "تعذّر تحميل محتوى هذه الدورة.",
-      confirmDelete: "هل تريد حذف هذا العنصر؟ لا يمكن التراجع عن هذا."
+      confirmDelete: "هل تريد حذف هذا العنصر؟ لا يمكن التراجع عن هذا.",
+      attendance: "الحضور",
+      markAttendance: "تسجيل الحضور",
+      saveAttendance: "حفظ الحضور",
+      attendanceSaved: "تم حفظ الحضور.",
+      statusPresent: "حاضر",
+      statusAbsent: "غائب",
+      statusLate: "متأخر",
+      statusExcused: "معذور",
+      attendanceReport: "تقرير الحضور",
+      noRoster: "لا يوجد طلاب مسجلون بعد.",
+      assessments: "التقييمات",
+      addAssessment: "إضافة تقييم",
+      assessmentType: "النوع",
+      typeQuiz: "اختبار قصير",
+      typeExam: "امتحان",
+      assessmentTitle: "العنوان",
+      timeLimitMinutes: "الوقت المحدد (دقائق)",
+      passScore: "درجة النجاح (%)",
+      maxAttempts: "الحد الأقصى للمحاولات",
+      unlimitedAttempts: "غير محدود",
+      practiceMode: "تدريب (غير مقيَّم)",
+      randomizeQuestions: "ترتيب عشوائي للأسئلة",
+      disableCopyPaste: "تعطيل النسخ واللصق",
+      noAssessments: "لا توجد تقييمات بعد.",
+      questions: "الأسئلة",
+      addQuestion: "إضافة سؤال",
+      questionText: "السؤال",
+      option: "خيار",
+      addOption: "إضافة خيار",
+      removeOption: "إزالة",
+      correctAnswer: "صحيح",
+      noQuestions: "لا توجد أسئلة بعد.",
+      viewResults: "عرض النتائج",
+      assignments: "الواجبات",
+      addAssignment: "إضافة واجب",
+      assignmentTitle: "العنوان",
+      instructions: "التعليمات",
+      dueDate: "تاريخ التسليم",
+      testCases: "حالات الاختبار",
+      addTestCase: "إضافة حالة اختبار",
+      testInput: "المدخل",
+      expectedOutput: "المخرج المتوقع",
+      hidden: "مخفية",
+      points: "النقاط",
+      noAssignments: "لا توجد واجبات بعد.",
+      noTestCases: "لا توجد حالات اختبار بعد.",
+      submissions: "التسليمات",
+      noSubmissions: "لا توجد تسليمات بعد.",
+      grade: "تقييم",
+      manualScore: "الدرجة (0-100)",
+      manualFeedback: "الملاحظات",
+      saveGrade: "حفظ التقييم",
+      graded: "تم التقييم",
+      ungraded: "لم يُقيَّم",
+      gradebook: "سجل الدرجات",
+      attendanceRate: "الحضور",
+      bestScore: "أفضل درجة",
+      finalScore: "الدرجة النهائية"
     },
     student: {
       dashboard: "لوحة التحكم",
@@ -481,7 +717,38 @@ const dictionaries: Record<Locale, Dictionary> = {
       live: "مباشرة",
       inPerson: "حضورية",
       recordedLesson: "درس مسجل",
-      loadError: "تعذّر تحميل محتوى دوراتك."
+      loadError: "تعذّر تحميل محتوى دوراتك.",
+      attendance: "الحضور",
+      myAttendance: "حضوري",
+      sessionsHeld: "الجلسات المنعقدة",
+      sessionsPresent: "الجلسات التي حضرتها",
+      quiz: "اختبار قصير",
+      exam: "امتحان",
+      attempt: "محاولة",
+      startAttempt: "بدء",
+      submitAttempt: "إرسال",
+      timeLimit: "الوقت المحدد",
+      attemptsUsed: "المحاولات المستخدمة",
+      of: "من",
+      noAttemptsLeft: "لا توجد محاولات متبقية.",
+      score: "الدرجة",
+      passed: "ناجح",
+      failed: "غير ناجح",
+      yourResults: "نتائجك",
+      assignment: "الواجب",
+      instructions: "التعليمات",
+      yourCode: "الكود الخاص بك",
+      submitAssignment: "إرسال",
+      submitting: "جارٍ الإرسال…",
+      dueDate: "تاريخ التسليم",
+      late: "متأخر",
+      autoScore: "الدرجة التلقائية",
+      grading: "جارٍ التصحيح…",
+      gradingFailed: "فشل التصحيح التلقائي — سيقوم المدرّس بتصحيح هذا يدويًا.",
+      testResults: "نتائج الاختبار",
+      hiddenTest: "اختبار مخفي",
+      grades: "درجاتي",
+      noGrades: "لا توجد درجات بعد."
     }
   }
 };

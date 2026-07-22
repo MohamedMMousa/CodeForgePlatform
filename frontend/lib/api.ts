@@ -597,3 +597,554 @@ export interface UpcomingItems {
 export function getUpcomingItems(token: string): Promise<UpcomingItems> {
   return apiFetch<UpcomingItems>("/my-courses/upcoming-items", { token });
 }
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
+
+export interface AttendanceEntry {
+  studentId: string;
+  status: AttendanceStatus;
+  notes?: string;
+}
+
+export function markAttendance(
+  sessionId: string,
+  entries: AttendanceEntry[],
+  token: string
+): Promise<{ sessionId: string; message: string }> {
+  return apiFetch(`/sessions/${sessionId}/attendance`, {
+    method: "PUT",
+    body: JSON.stringify({ entries }),
+    token
+  });
+}
+
+export interface RosterEntry {
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatus | null;
+  notes: string | null;
+}
+
+export interface SessionRoster {
+  sessionId: string;
+  sessionTitle: string;
+  students: RosterEntry[];
+}
+
+export function getSessionRoster(sessionId: string, token: string): Promise<SessionRoster> {
+  return apiFetch<SessionRoster>(`/sessions/${sessionId}/attendance`, { token });
+}
+
+export interface StudentAttendanceSummary {
+  studentId: string;
+  studentName: string;
+  cohortId: string;
+  cohortName: string;
+  sessionsHeld: number;
+  sessionsPresent: number;
+  attendanceRate: number;
+}
+
+export interface CourseAttendanceReport {
+  courseId: string;
+  courseTitle: string;
+  students: StudentAttendanceSummary[];
+}
+
+export function getCourseAttendanceReport(courseId: string, token: string): Promise<CourseAttendanceReport> {
+  return apiFetch<CourseAttendanceReport>(`/courses/${courseId}/attendance-report`, { token });
+}
+
+export interface MyAttendanceSession {
+  sessionId: string;
+  sessionTitle: string;
+  scheduledAt: string;
+  status: AttendanceStatus | null;
+}
+
+export interface MyAttendance {
+  courseId: string;
+  courseTitle: string;
+  sessionsHeld: number;
+  sessionsPresent: number;
+  attendanceRate: number;
+  sessions: MyAttendanceSession[];
+}
+
+export function getMyAttendance(courseId: string, token: string): Promise<MyAttendance> {
+  return apiFetch<MyAttendance>(`/my-courses/${courseId}/attendance`, { token });
+}
+
+// ---------------------------------------------------------------------------
+// Assessments (quizzes + exams)
+// ---------------------------------------------------------------------------
+
+export type AssessmentType = "quiz" | "exam";
+
+export interface AssessmentItem {
+  id: string;
+  moduleId: string;
+  type: AssessmentType;
+  title: string;
+  orderIndex: number;
+  timeLimitMinutes: number | null;
+  passScore: number | null;
+  isPractice: boolean;
+  maxAttempts: number | null;
+  randomizeQuestions: boolean;
+  disableCopyPaste: boolean;
+  questionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssessmentInput {
+  type: AssessmentType;
+  title: string;
+  timeLimitMinutes?: number;
+  passScore?: number;
+  isPractice: boolean;
+  maxAttempts?: number;
+  randomizeQuestions: boolean;
+  disableCopyPaste: boolean;
+}
+
+function assessmentInputBody(input: AssessmentInput) {
+  return {
+    type: input.type,
+    title: input.title,
+    timeLimitMinutes: input.timeLimitMinutes ?? null,
+    passScore: input.passScore ?? null,
+    isPractice: input.isPractice,
+    maxAttempts: input.maxAttempts ?? null,
+    randomizeQuestions: input.randomizeQuestions,
+    disableCopyPaste: input.disableCopyPaste
+  };
+}
+
+export function getModuleAssessments(moduleId: string, token: string): Promise<AssessmentItem[]> {
+  return apiFetch<AssessmentItem[]>(`/modules/${moduleId}/assessments`, { token });
+}
+
+export function createAssessment(
+  moduleId: string,
+  input: AssessmentInput,
+  token: string
+): Promise<{ assessmentId: string; message: string }> {
+  return apiFetch(`/modules/${moduleId}/assessments`, {
+    method: "POST",
+    body: JSON.stringify(assessmentInputBody(input)),
+    token
+  });
+}
+
+export function deleteAssessment(id: string, token: string): Promise<{ assessmentId: string; message: string }> {
+  return apiFetch(`/assessments/${id}`, { method: "DELETE", token });
+}
+
+export interface OptionInput {
+  optionText: string;
+  isCorrect: boolean;
+}
+
+export interface OptionDto {
+  id: string;
+  optionText: string;
+  isCorrect: boolean;
+}
+
+export interface QuestionDto {
+  id: string;
+  questionText: string;
+  orderIndex: number;
+  options: OptionDto[];
+}
+
+export interface AssessmentDetail extends AssessmentItem {
+  questions: QuestionDto[];
+}
+
+export function getAssessmentById(id: string, token: string): Promise<AssessmentDetail> {
+  return apiFetch<AssessmentDetail>(`/assessments/${id}`, { token });
+}
+
+export function createQuestion(
+  assessmentId: string,
+  questionText: string,
+  options: OptionInput[],
+  token: string
+): Promise<{ questionId: string; message: string }> {
+  return apiFetch(`/assessments/${assessmentId}/questions`, {
+    method: "POST",
+    body: JSON.stringify({ questionText, options }),
+    token
+  });
+}
+
+export function deleteQuestion(id: string, token: string): Promise<{ questionId: string; message: string }> {
+  return apiFetch(`/questions/${id}`, { method: "DELETE", token });
+}
+
+export interface AttemptOption {
+  id: string;
+  optionText: string;
+}
+
+export interface AttemptQuestion {
+  id: string;
+  questionText: string;
+  options: AttemptOption[];
+}
+
+export interface AttemptAssessment {
+  id: string;
+  type: AssessmentType;
+  title: string;
+  timeLimitMinutes: number | null;
+  maxAttempts: number | null;
+  attemptsUsed: number;
+  disableCopyPaste: boolean;
+  questions: AttemptQuestion[];
+}
+
+export function getAssessmentForAttempt(id: string, token: string): Promise<AttemptAssessment> {
+  return apiFetch<AttemptAssessment>(`/assessments/${id}/attempt`, { token });
+}
+
+export function startAttempt(id: string, token: string): Promise<{ attemptId: string; startedAt: string }> {
+  return apiFetch(`/assessments/${id}/attempts`, { method: "POST", token });
+}
+
+export interface AnswerInput {
+  questionId: string;
+  selectedOptionId: string | null;
+}
+
+export interface AnswerResult {
+  questionId: string;
+  questionText: string;
+  selectedOptionId: string | null;
+  isCorrectSelection: boolean | null;
+  options: OptionDto[];
+}
+
+export interface AttemptResult {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  attemptNumber: number;
+  score: number | null;
+  passed: boolean | null;
+  startedAt: string;
+  submittedAt: string | null;
+  answers: AnswerResult[];
+}
+
+export function submitAttempt(
+  attemptId: string,
+  answers: AnswerInput[],
+  token: string
+): Promise<AttemptResult> {
+  return apiFetch<AttemptResult>(`/attempts/${attemptId}/submit`, {
+    method: "PUT",
+    body: JSON.stringify({ answers }),
+    token
+  });
+}
+
+export interface AttemptSummary {
+  attemptId: string;
+  attemptNumber: number;
+  score: number | null;
+  passed: boolean | null;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
+export function getMyAttempts(assessmentId: string, token: string): Promise<AttemptSummary[]> {
+  return apiFetch<AttemptSummary[]>(`/assessments/${assessmentId}/my-attempts`, { token });
+}
+
+export function getAttemptResult(attemptId: string, token: string): Promise<AttemptResult> {
+  return apiFetch<AttemptResult>(`/attempts/${attemptId}`, { token });
+}
+
+export interface StudentAttempt {
+  attemptId: string;
+  studentId: string;
+  studentName: string;
+  attemptNumber: number;
+  score: number | null;
+  passed: boolean | null;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
+export interface AssessmentResults {
+  assessmentId: string;
+  assessmentTitle: string;
+  attempts: StudentAttempt[];
+}
+
+export function getAssessmentResults(id: string, token: string): Promise<AssessmentResults> {
+  return apiFetch<AssessmentResults>(`/assessments/${id}/results`, { token });
+}
+
+// ---------------------------------------------------------------------------
+// Assignments (code, Python auto-grader)
+// ---------------------------------------------------------------------------
+
+export interface TestCaseInput {
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+  points: number;
+}
+
+export interface TestCaseDto {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+  points: number;
+  orderIndex: number;
+}
+
+export interface AssignmentItem {
+  id: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  orderIndex: number;
+  isPractice: boolean;
+  maxAttempts: number | null;
+  dueAt: string | null;
+  passScore: number | null;
+  testCaseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssignmentInput {
+  title: string;
+  description: string;
+  isPractice: boolean;
+  maxAttempts?: number;
+  dueAt?: string;
+  passScore?: number;
+}
+
+function assignmentInputBody(input: AssignmentInput) {
+  return {
+    title: input.title,
+    description: input.description,
+    isPractice: input.isPractice,
+    maxAttempts: input.maxAttempts ?? null,
+    dueAt: input.dueAt ?? null,
+    passScore: input.passScore ?? null
+  };
+}
+
+export function getModuleAssignments(moduleId: string, token: string): Promise<AssignmentItem[]> {
+  return apiFetch<AssignmentItem[]>(`/modules/${moduleId}/assignments`, { token });
+}
+
+export function createAssignment(
+  moduleId: string,
+  input: AssignmentInput,
+  token: string
+): Promise<{ assignmentId: string; message: string }> {
+  return apiFetch(`/modules/${moduleId}/assignments`, {
+    method: "POST",
+    body: JSON.stringify(assignmentInputBody(input)),
+    token
+  });
+}
+
+export function deleteAssignment(id: string, token: string): Promise<{ assignmentId: string; message: string }> {
+  return apiFetch(`/assignments/${id}`, { method: "DELETE", token });
+}
+
+export interface AssignmentDetail extends AssignmentItem {
+  testCases: TestCaseDto[];
+}
+
+export function getAssignmentById(id: string, token: string): Promise<AssignmentDetail> {
+  return apiFetch<AssignmentDetail>(`/assignments/${id}`, { token });
+}
+
+export function addTestCase(
+  assignmentId: string,
+  input: TestCaseInput,
+  token: string
+): Promise<{ testCaseId: string; message: string }> {
+  return apiFetch(`/assignments/${assignmentId}/test-cases`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    token
+  });
+}
+
+export function deleteTestCase(id: string, token: string): Promise<{ testCaseId: string; message: string }> {
+  return apiFetch(`/test-cases/${id}`, { method: "DELETE", token });
+}
+
+export interface SubmissionTestCase {
+  id: string;
+  input: string;
+  expectedOutput: string;
+}
+
+export interface AssignmentForSubmission {
+  id: string;
+  title: string;
+  description: string;
+  dueAt: string | null;
+  maxAttempts: number | null;
+  attemptsUsed: number;
+  sampleTestCases: SubmissionTestCase[];
+}
+
+export function getAssignmentForSubmission(id: string, token: string): Promise<AssignmentForSubmission> {
+  return apiFetch<AssignmentForSubmission>(`/assignments/${id}/submission`, { token });
+}
+
+export interface TestResult {
+  testCaseId: string;
+  isHidden: boolean;
+  passed: boolean;
+  actualOutput: string | null;
+  errorMessage: string | null;
+  executionTimeMs: number | null;
+}
+
+export interface SubmissionResult {
+  submissionId: string;
+  attemptNumber: number;
+  submittedAt: string;
+  isLate: boolean;
+  autoScore: number | null;
+  autoGradingStatus: string;
+  manualScore: number | null;
+  manualFeedback: string | null;
+  finalScore: number | null;
+  testResults: TestResult[];
+}
+
+export function submitAssignment(id: string, code: string, token: string): Promise<SubmissionResult> {
+  return apiFetch<SubmissionResult>(`/assignments/${id}/submissions`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+    token
+  });
+}
+
+export function gradeSubmission(
+  submissionId: string,
+  manualScore: number,
+  manualFeedback: string | undefined,
+  token: string
+): Promise<SubmissionResult> {
+  return apiFetch<SubmissionResult>(`/submissions/${submissionId}/grade`, {
+    method: "PUT",
+    body: JSON.stringify({ manualScore, manualFeedback: manualFeedback ?? null }),
+    token
+  });
+}
+
+export interface SubmissionSummary {
+  submissionId: string;
+  attemptNumber: number;
+  submittedAt: string;
+  isLate: boolean;
+  autoScore: number | null;
+  autoGradingStatus: string;
+  manualScore: number | null;
+  finalScore: number | null;
+}
+
+export function getMySubmissions(assignmentId: string, token: string): Promise<SubmissionSummary[]> {
+  return apiFetch<SubmissionSummary[]>(`/assignments/${assignmentId}/my-submissions`, { token });
+}
+
+export function getSubmissionResult(submissionId: string, token: string): Promise<SubmissionResult> {
+  return apiFetch<SubmissionResult>(`/submissions/${submissionId}`, { token });
+}
+
+export interface StudentSubmission {
+  submissionId: string;
+  studentId: string;
+  studentName: string;
+  attemptNumber: number;
+  submittedAt: string;
+  isLate: boolean;
+  autoScore: number | null;
+  autoGradingStatus: string;
+  manualScore: number | null;
+  finalScore: number | null;
+}
+
+export interface AssignmentSubmissions {
+  assignmentId: string;
+  assignmentTitle: string;
+  submissions: StudentSubmission[];
+}
+
+export function getSubmissionsForGrading(assignmentId: string, token: string): Promise<AssignmentSubmissions> {
+  return apiFetch<AssignmentSubmissions>(`/assignments/${assignmentId}/submissions`, { token });
+}
+
+// ---------------------------------------------------------------------------
+// Gradebook
+// ---------------------------------------------------------------------------
+
+export interface AssessmentGrade {
+  assessmentId: string;
+  title: string;
+  type: AssessmentType;
+  bestScore: number | null;
+  passed: boolean | null;
+  attemptsUsed: number;
+}
+
+export interface AssignmentGrade {
+  assignmentId: string;
+  title: string;
+  finalScore: number | null;
+  autoGradingStatus: string;
+  manuallyGraded: boolean;
+}
+
+export interface MyCourseGrades {
+  courseId: string;
+  courseTitle: string;
+  attendanceRate: number;
+  assessments: AssessmentGrade[];
+  assignments: AssignmentGrade[];
+}
+
+export function getMyCourseGrades(courseId: string, token: string): Promise<MyCourseGrades> {
+  return apiFetch<MyCourseGrades>(`/my-courses/${courseId}/grades`, { token });
+}
+
+export interface StudentGradebookRow {
+  studentId: string;
+  studentName: string;
+  attendanceRate: number;
+  assessments: AssessmentGrade[];
+  assignments: AssignmentGrade[];
+}
+
+export interface CourseGradebook {
+  courseId: string;
+  courseTitle: string;
+  students: StudentGradebookRow[];
+}
+
+export function getCourseGradebook(courseId: string, token: string): Promise<CourseGradebook> {
+  return apiFetch<CourseGradebook>(`/courses/${courseId}/gradebook`, { token });
+}
