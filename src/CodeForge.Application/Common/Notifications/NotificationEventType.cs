@@ -11,5 +11,6 @@ namespace CodeForge.Application.Common.Notifications
         public const string EnrollmentRejected = "enrollment.rejected";
         public const string CertificateIssued = "certificate.issued";
         public const string AssignmentGraded = "assignment.graded";
+        public const string InstructorAccountCreated = "instructor.account_created";
     }
 }

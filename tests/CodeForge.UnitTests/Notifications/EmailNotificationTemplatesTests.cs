@@ -104,6 +104,17 @@ namespace CodeForge.UnitTests.Notifications
         }
 
         [Fact]
+        public void Render_InstructorAccountCreated_IncludesTemporaryPassword()
+        {
+            var (subject, body) = EmailNotificationTemplates.Render(
+                Event(NotificationEventType.InstructorAccountCreated, new() { ["temporaryPassword"] = "Sw0rdfish!" }));
+
+            subject.Should().Contain("instructor account");
+            body.Should().Contain("Ada Lovelace");
+            body.Should().Contain("Sw0rdfish!");
+        }
+
+        [Fact]
         public void Render_UnknownEventType_Throws()
         {
             var act = () => EmailNotificationTemplates.Render(Event("something.unregistered"));

@@ -17,6 +17,7 @@ namespace CodeForge.Infrastructure.Notifications
                 NotificationEventType.EnrollmentRejected => RenderEnrollmentRejected(notificationEvent),
                 NotificationEventType.CertificateIssued => RenderCertificateIssued(notificationEvent),
                 NotificationEventType.AssignmentGraded => RenderAssignmentGraded(notificationEvent),
+                NotificationEventType.InstructorAccountCreated => RenderInstructorAccountCreated(notificationEvent),
                 _ => throw new InvalidOperationException(
                     $"No email template registered for event type '{notificationEvent.EventType}'.")
             };
@@ -99,6 +100,19 @@ namespace CodeForge.Infrastructure.Notifications
                 feedbackParagraph;
 
             return ($"{assignmentTitle} has been graded", body);
+        }
+
+        private static (string, string) RenderInstructorAccountCreated(NotificationEvent evt)
+        {
+            var temporaryPassword = evt.Data.GetValueOrDefault("temporaryPassword", "");
+
+            var body =
+                $"<p>Hello {evt.RecipientName},</p>" +
+                "<p>An instructor account has been created for you on CodeForge Academy.</p>" +
+                $"<p>Your temporary password is <strong>{temporaryPassword}</strong> — you'll be asked to change it on first login.</p>" +
+                "<p>Sign in whenever you're ready to get started.</p>";
+
+            return ("Your CodeForge Academy instructor account is ready", body);
         }
     }
 }
