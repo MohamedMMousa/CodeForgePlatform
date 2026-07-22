@@ -559,12 +559,32 @@ export function deleteAnnouncement(id: string, token: string): Promise<Announcem
 // My courses (student view)
 // ---------------------------------------------------------------------------
 
+export interface MyCourseAssessment {
+  id: string;
+  type: AssessmentType;
+  title: string;
+  timeLimitMinutes: number | null;
+  passScore: number | null;
+  maxAttempts: number | null;
+  isPractice: boolean;
+}
+
+export interface MyCourseAssignment {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  maxAttempts: number | null;
+  isPractice: boolean;
+}
+
 export interface MyCourseModule {
   id: string;
   title: string;
   description: string | null;
   orderIndex: number;
   sessions: SessionItem[];
+  assessments: MyCourseAssessment[];
+  assignments: MyCourseAssignment[];
 }
 
 export interface MyCourseContent {

@@ -40,6 +40,8 @@ namespace CodeForge.Application.MyCourses.GetMyCourseContent
                 .AsNoTracking()
                 .Include(m => m.Sessions).ThenInclude(s => s.Instructor)
                 .Include(m => m.Sessions).ThenInclude(s => s.Materials)
+                .Include(m => m.Quizzes)
+                .Include(m => m.Assignments)
                 .Where(m => m.CourseId == request.CourseId)
                 .OrderBy(m => m.OrderIndex)
                 .ToListAsync(cancellationToken);
@@ -49,7 +51,13 @@ namespace CodeForge.Application.MyCourses.GetMyCourseContent
                 m.Title,
                 m.Description,
                 m.OrderIndex,
-                m.Sessions.OrderBy(s => s.OrderIndex).Select(SessionMapping.ToDto).ToList()))
+                m.Sessions.OrderBy(s => s.OrderIndex).Select(SessionMapping.ToDto).ToList(),
+                m.Quizzes.OrderBy(q => q.OrderIndex)
+                    .Select(q => new MyCourseAssessmentDto(q.Id, q.Type, q.Title, q.TimeLimitMinutes, q.PassScore, q.MaxAttempts, q.IsPractice))
+                    .ToList(),
+                m.Assignments.OrderBy(a => a.OrderIndex)
+                    .Select(a => new MyCourseAssignmentDto(a.Id, a.Title, a.DueAt, a.MaxAttempts, a.IsPractice))
+                    .ToList()))
                 .ToList();
 
             return new MyCourseContentDto(course.Id, course.Title, moduleDtos);

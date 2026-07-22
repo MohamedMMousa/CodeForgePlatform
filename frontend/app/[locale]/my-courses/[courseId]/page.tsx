@@ -7,7 +7,9 @@ import {
   ApiRequestError,
   MaterialItem,
   MyCourseContent,
+  MyCourseGrades,
   getMyCourseContent,
+  getMyCourseGrades,
   getSessionMaterials
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
@@ -26,6 +28,8 @@ export default function MyCoursePage({
   const [error, setError] = useState<string | null>(null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [sessionMaterials, setSessionMaterials] = useState<Record<string, MaterialItem[]>>({});
+  const [grades, setGrades] = useState<MyCourseGrades | null>(null);
+  const [showGrades, setShowGrades] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -51,6 +55,14 @@ export default function MyCoursePage({
     return t.recordedLesson;
   }
 
+  async function toggleGrades() {
+    if (!session) return;
+    setShowGrades(!showGrades);
+    if (!showGrades && !grades) {
+      await getMyCourseGrades(courseId, session.accessToken).then(setGrades).catch(() => undefined);
+    }
+  }
+
   if (!session) {
     return (
       <main className="container">
@@ -70,7 +82,27 @@ export default function MyCoursePage({
       {content && (
         <>
           <h1>{content.courseTitle}</h1>
-          <h2>{t.courseContent}</h2>
+          <button className="btn secondary" onClick={toggleGrades}>
+            {showGrades ? t.back : t.grades}
+          </button>
+          {showGrades && grades && (
+            <div className="card" style={{ marginTop: "0.75rem" }}>
+              <p>{t.attendance}: {grades.attendanceRate}%</p>
+              {grades.assessments.length === 0 && grades.assignments.length === 0 && (
+                <p className="muted">{t.noGrades}</p>
+              )}
+              {grades.assessments.map((a) => (
+                <p key={a.assessmentId}>
+                  {a.title}: {a.bestScore ?? "—"} {a.passed === true ? `(${t.passed})` : a.passed === false ? `(${t.failed})` : ""}
+                </p>
+              ))}
+              {grades.assignments.map((a) => (
+                <p key={a.assignmentId}>{a.title}: {a.finalScore ?? "—"}</p>
+              ))}
+            </div>
+          )}
+
+          <h2 style={{ marginTop: "1.5rem" }}>{t.courseContent}</h2>
           {content.modules.length === 0 && <p className="muted">{t.noModules}</p>}
 
           {content.modules.map((m) => (
@@ -131,6 +163,32 @@ export default function MyCoursePage({
                     </div>
                   )}
                 </div>
+              ))}
+
+              {m.assessments.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/${locale}/my-courses/${courseId}/assessments/${a.id}`}
+                  className="card"
+                  style={{ display: "block", marginBottom: "0.75rem", textDecoration: "none" }}
+                >
+                  <span className="badge">{a.type === "quiz" ? t.quiz : t.exam}</span>
+                  <h4>{a.title}</h4>
+                  {a.timeLimitMinutes && <p className="muted">{t.timeLimit}: {a.timeLimitMinutes} min</p>}
+                </Link>
+              ))}
+
+              {m.assignments.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/${locale}/my-courses/${courseId}/assignments/${a.id}`}
+                  className="card"
+                  style={{ display: "block", marginBottom: "0.75rem", textDecoration: "none" }}
+                >
+                  <span className="badge">{t.assignment}</span>
+                  <h4>{a.title}</h4>
+                  {a.dueAt && <p className="muted">{t.dueDate}: {new Date(a.dueAt).toLocaleString(locale)}</p>}
+                </Link>
               ))}
             </div>
           ))}
