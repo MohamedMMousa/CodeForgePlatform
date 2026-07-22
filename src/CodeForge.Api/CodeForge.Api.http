@@ -1,0 +1,272 @@
+@CodeForge.Api_HostAddress = http://localhost:5205
+
+POST {{CodeForge.Api_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "admin@example.com"
+}
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "token": "{{reset_token}}",
+  "newPassword": "newPassword123"
+}
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "password123",
+  "newPassword": "newPassword123"
+}
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/auth/me
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/enrollment-requests
+Content-Type: multipart/form-data; boundary=EnrollmentBoundary
+
+--EnrollmentBoundary
+Content-Disposition: form-data; name="fullName"
+
+Student One
+--EnrollmentBoundary
+Content-Disposition: form-data; name="email"
+
+student@example.com
+--EnrollmentBoundary
+Content-Disposition: form-data; name="phoneNumber"
+
++201000000000
+--EnrollmentBoundary
+Content-Disposition: form-data; name="courseId"
+
+{{course_id}}
+--EnrollmentBoundary
+Content-Disposition: form-data; name="paymentMethod"
+
+bank_transfer
+--EnrollmentBoundary
+Content-Disposition: form-data; name="paymentProof"; filename="proof.pdf"
+Content-Type: application/pdf
+
+< ./sample-proof.pdf
+--EnrollmentBoundary--
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/enrollment-requests?status=pending
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/enrollment-requests/{{enrollment_request_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/enrollment-requests/{{enrollment_request_id}}/approve
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "accessExpiresAt": "2027-06-29T00:00:00Z"
+}
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/enrollment-requests/{{enrollment_request_id}}/reject
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "rejectionReason": "Payment proof could not be verified."
+}
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/courses
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "title": "Python Fundamentals",
+  "slug": "python-fundamentals",
+  "description": "Beginner-friendly Python course.",
+  "thumbnailUrl": "https://example.com/python.png",
+  "category": "Programming",
+  "price": 1500,
+  "currency": "EGP"
+}
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/courses/{{course_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "title": "Python Fundamentals",
+  "slug": "python-fundamentals",
+  "description": "Updated Python course overview.",
+  "thumbnailUrl": "https://example.com/python.png",
+  "category": "Programming",
+  "price": 1500,
+  "currency": "EGP"
+}
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/publish
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/archive
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+DELETE {{CodeForge.Api_HostAddress}}/courses/{{course_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/instructors/{{instructor_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+DELETE {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/instructors/{{instructor_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/courses?status=draft&category=Programming&search=python
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/courses/{{course_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/instructors
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/instructor/courses
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/catalog/courses?category=Programming&search=python
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/catalog/courses/python-fundamentals
+Accept: application/json
+
+###
+
+POST {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/sections
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "title": "Section 1: Introduction"
+}
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/sections/{{section_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "title": "Section 1: Getting Started"
+}
+
+###
+
+DELETE {{CodeForge.Api_HostAddress}}/sections/{{section_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+PUT {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/sections/reorder
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+[
+  {
+    "sectionId": "{{section_id_1}}",
+    "orderIndex": 1
+  },
+  {
+    "sectionId": "{{section_id_2}}",
+    "orderIndex": 2
+  }
+]
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/courses/{{course_id}}/sections
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###
+
+GET {{CodeForge.Api_HostAddress}}/sections/{{section_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+###

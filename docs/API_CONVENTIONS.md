@@ -1,0 +1,128 @@
+# CodeForge Academy — API Conventions
+
+Reference for anyone adding or consuming an endpoint. Keep new endpoints consistent
+with what's here; update this file if a convention changes.
+
+## 1. Base URL & Routing
+
+- Dev API base: `http://localhost:5205` (see `src/CodeForge.Api/Properties/launchSettings.json`).
+- Routes are lowercase, plural nouns, no trailing slash: `/courses`, `/enrollment-requests`, `/catalog/courses`.
+- Nested resources use the natural path: `/courses/{courseId}/sections`,
+  `/sections/{id}`.
+- No API version prefix yet (single version). Introduce `/v2/...` only if a breaking
+  change is unavoidable — prefer additive changes first.
+
+## 2. Controllers Are Thin
+
+Every controller method builds a MediatR `IRequest`, sends it, and returns the result.
+No business logic, no try/catch in controllers — see `CODING_STANDARDS.md` §2.
+
+```csharp
+[HttpPost("login")]
+[EnableRateLimiting(RateLimitPolicies.Auth)]
+public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
+    => await SendAuthRequest(new LoginCommand(request.Email, request.Password), ct);
+```
+
+## 3. Authentication & Authorization
+
+- **JWT Bearer** in the `Authorization: Bearer <token>` header. Access tokens are
+  short-lived (`JwtSettings:ExpiryMinutes`, default 15 min); refresh tokens rotate on
+  use (`JwtSettings:RefreshTokenExpiryDays`, default 7 days).
+- Named policies: `AdminOnly` (role `admin`), `InstructorOnly` (role `instructor`).
+  Apply with `[Authorize(Policy = "AdminOnly")]`.
+- Ad-hoc multi-role checks use `[Authorize(Roles = "admin,instructor")]` (see
+  `SectionsController`) when a policy doesn't already exist for the combination.
+- Public/anonymous endpoints are explicitly marked `[AllowAnonymous]` — don't rely on
+  the absence of `[Authorize]`; be explicit.
+- Role string constants live in `CodeForge.Application.Common.Constants.Roles` — never
+  hardcode `"admin"` / `"instructor"` / `"student"` string literals.
+
+## 4. Error Envelope
+
+All errors go through `ExceptionHandlingMiddleware` and come back as
+`application/problem+json`:
+
+```json
+// 400 — validation (FluentValidation)
+{ "title": "Validation Failed", "status": 400, "errors": { "Email": ["'Email' must not be empty."] } }
+
+// 401 — UnauthorizedAccessException
+{ "title": "Unauthorized", "status": 401, "detail": "Invalid email or password." }
+
+// 404 — KeyNotFoundException
+{ "title": "Not Found", "status": 404, "detail": "Course not found." }
+
+// 400 — InvalidOperationException (business rule violation, not a validation error)
+{ "title": "Bad Request", "status": 400, "detail": "Course is already published." }
+
+// 500 — anything unexpected; message is never leaked to the client
+{ "title": "Server Error", "status": 500, "detail": "An unexpected error occurred." }
+```
+
+**To signal an error from a handler, throw** — don't return a result object with an
+error flag. Use `KeyNotFoundException` for "doesn't exist", `InvalidOperationException`
+for "exists but the operation is invalid in this state", `UnauthorizedAccessException`
+for auth failures (maps to 401, not 403 — see `ARCHITECTURE.md` §3), and let
+FluentValidation's `ValidationException` handle input-shape errors.
+
+## 5. Validation
+
+Every `Command`/`Query` that takes user input has a matching `Validator : AbstractValidator<T>`.
+`ValidationBehavior<TRequest, TResponse>` (a MediatR pipeline behavior) runs validators
+automatically before the handler executes — handlers can assume their input is valid.
+Never validate manually inside a handler; add a validator instead.
+
+## 6. Pagination
+
+Not yet implemented on list endpoints (`GetCourses`, `GetEnrollmentRequests`, etc.
+currently return full result sets). The SRS default is **page size 20**. When adding
+pagination to an endpoint, use `?page=1&pageSize=20` query params and return:
+
+```json
+{ "items": [...], "page": 1, "pageSize": 20, "totalCount": 137 }
+```
+
+Apply this convention to every new list endpoint in Phase 1 (tracks, cohorts, coupons)
+even before older endpoints are retrofitted.
+
+## 7. File Uploads
+
+`multipart/form-data`, bound via `[FromForm]` to a plain request class with an
+`IFormFile` property. Mark the action `[Consumes("multipart/form-data")]` and set an
+explicit `[RequestSizeLimit(...)]` (10 MB for payment proofs). Validate content-type
+allow-lists in the command validator, not the controller. See
+`EnrollmentRequestsController.Submit` for the reference implementation.
+
+## 8. Rate Limiting
+
+Two named policies (`src/CodeForge.Api/RateLimiting/RateLimitPolicies.cs`) plus a
+global per-IP fallback:
+
+| Policy | Limit | Applied to |
+|---|---|---|
+| (global) | 100/min per IP | everything, as a floor |
+| `Auth` | 10/min per IP | `/auth/login`, `/refresh-token`, `/forgot-password`, `/reset-password` |
+| `PublicSubmit` | 5/min per IP | anonymous public submissions (enrollment request; add the lead form and any future public POST here) |
+
+Exceeded limits return **429 Too Many Requests**. New anonymous public-writing
+endpoints should get `PublicSubmit` by default unless there's a reason not to.
+
+## 9. Localization
+
+Send `Accept-Language: en` or `Accept-Language: ar` to influence server-resolved
+culture (currently used for request culture resolution; API-returned message
+translation is added incrementally — see `ARCHITECTURE.md` §3). The frontend's
+`apiFetch` wrapper passes the active locale automatically.
+
+## 10. CORS
+
+Allowed origins are config-driven (`Cors:AllowedOrigins`), not hardcoded. Add a new
+frontend origin (e.g. a staging domain) there, never in code.
+
+## 11. Response Shape for Success
+
+Success responses are the DTO directly (no envelope wrapper), `200 OK` for
+reads/mutations that return data, `204 No Content` for mutations with nothing to
+return (e.g. `ReorderSections`). Keep this consistent — don't introduce a `{ data: ... }`
+wrapper.

@@ -1,0 +1,198 @@
+/* CodeForge Academy brand palette — see docs/assets/brand-guide.png */
+:root {
+  --bg: #111827; /* dark background */
+  --card: #1f2937; /* card / surface */
+  --fg: #ffffff; /* primary text */
+  --muted: #d1d5db; /* secondary text */
+  --accent: #f97316; /* primary orange */
+  --accent-2: #fb923c; /* secondary orange */
+  --border: #2b3444;
+  --ok: #2f7d55;
+  --err: #dc5b7a;
+}
+
+/* The brand guide is dark-first; a light variant follows the same hues so the
+   app still respects the viewer's OS preference without breaking the identity. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --fg: #111827;
+    --muted: #4b5563;
+    --accent: #f97316;
+    --accent-2: #ea6b0f;
+    --border: #e5e7eb;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Segoe UI", system-ui, -apple-system, Tahoma, Arial, sans-serif;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 0.9rem 1.5rem;
+  background: var(--card);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.brand img {
+  height: 32px;
+  width: 32px;
+}
+
+.brand .accent {
+  color: var(--accent);
+}
+
+.tagline {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn.secondary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.badge.open {
+  color: #34d399;
+  border-color: #235c46;
+}
+
+.badge.full,
+.badge.awaiting {
+  color: var(--accent-2);
+  border-color: #6b3d16;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.price {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.notice {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+}
+
+.notice.ok {
+  border-color: var(--ok);
+}
+
+.notice.err {
+  border-color: var(--err);
+}
