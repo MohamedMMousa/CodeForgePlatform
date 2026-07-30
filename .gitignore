@@ -18,10 +18,16 @@ project.lock.json
 *.DotSettings.user
 
 # Secrets & local config (never commit real secrets)
+.claude/settings.local.json
 secrets.json
 appsettings.*.local.json
 *.pfx
 *.key
+
+# Third-party Claude Code skill bundles (installed per-machine, not vendored)
+.claude/skills/impeccable/
+.claude/skills/stop-slop/
+.claude/skills/llm-council/
 
 # Node / Next.js frontend
 node_modules/
