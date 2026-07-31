@@ -464,6 +464,75 @@ reverted and confirmed clean again. Browser-checked the catalog, course-detail, 
 admin course-detail pages (the last one after assigning a real instructor, to exercise
 `CourseInstructorDto` live) — correct rendering, no console errors.
 
+## Operational Readiness (post-Phase 6)
+
+Not a numbered phase — the platform was feature-complete through Phase 6 but had never
+left the developer's laptop: no health probe, no CI, no bound on list-endpoint response
+sizes, and a broken linter. Four items, landed as separate, independently-revertable
+commits.
+
+**Health checks.** `GET /health` (liveness) and `GET /health/ready` (readiness — checks
+Postgres via `AddNpgSql`) are terminal middleware registered immediately after
+`ExceptionHandlingMiddleware` and before HTTPS redirection, the rate limiter, and auth —
+so neither is rate-limited, redirected, or subject to `PasswordChangeRequiredFilter`,
+and neither needs `[AllowAnonymous]`. A host's restart probe should target `/health`
+only: the host's response to a failed probe is to restart the instance, and restarting
+cannot fix a database outage — wiring readiness to the restart trigger would turn a
+transient Postgres blip into a restart storm. `/health/ready` exists for
+`docker compose`'s `depends_on: condition: service_healthy` and for humans/monitoring.
+See `ARCHITECTURE.md` §3.
+
+**Pagination.** Applied to the 12 list endpoints whose result sets grow without bound
+(`/users`, `/courses`, `/tracks`, `/coupons`, `/leads`, `/enrollment-requests`,
+`/catalog/courses`, `/catalog/tracks`, `/announcements`, `/courses/{id}/cohorts`,
+`/my-certificates`, `/instructor/courses`), returning `{ items, page, pageSize,
+totalCount }` per `API_CONVENTIONS.md` §6. The 9 bounded, `OrderIndex`-ordered child
+collections a course-content page renders as a complete tree (module sessions/
+materials/assessments/assignments, course modules/instructors, `my-attempts`,
+`my-submissions`, `sessions/{id}/materials`) stay bare arrays — paging them would mean
+either N extra round-trips or a broken partial view, for a size that's bounded by
+course design rather than by user growth. Every handler with a non-unique sort key
+(`CreatedAt`, `StartDate`, `FullName`) got an `Id` tiebreaker so `Skip`/`Take` can't
+duplicate or drop rows across pages. Frontend: 12 `lib/api.ts` wrappers now return
+`PagedResult<T>`; a new `components/Pagination.tsx` (the first shared UI primitive in
+this codebase) renders Showing X-Y of Z / Previous / Page N of M / Next, wired into
+every affected page with the page reset to 1 on filter change; new `pagination` i18n
+namespace in both `en` and `ar`.
+
+**ESLint.** `next lint` was broken (no ESLint installed, no config — dropped into an
+interactive setup prompt and hung). Replaced with ESLint 9's flat config, bridged to
+`eslint-config-next@15.1.6` (which predates Next's native flat-config export) via
+`FlatCompat`. `npm run lint` now runs `eslint .`; added as a step in
+`scripts/verify.mjs` ahead of `tsc --noEmit`, so the pre-commit hook, CI, and a human
+all run the identical gate. All 8 initial findings fixed (two props left unused by the
+pagination change, six pre-existing `useEffect(load, [...])` sites needing the
+established `eslint-disable` convention for a closure-refreshed-every-render
+dependency, one `<img>` swapped for `next/image`).
+
+**CI** (`.github/workflows/ci.yml`, two jobs — see `ARCHITECTURE.md` §3 for the
+job-by-job description). `verify` runs `node scripts/verify.mjs` directly rather than
+restating its steps, so CI can't drift from what a human/the hook actually run.
+`drift-check` makes the API boot in CI for the first time: a `postgres:16` service
+container, `dotnet ef database update`, then the API starts with a throwaway
+`JwtSettings:Secret` and `AdminSeed` left unset (`DatabaseSeeder.SeedAsync` no-ops
+without it), polls `/health`, regenerates `openapi.json`/`api-schema.d.ts`, and fails
+on `git diff` — catching a backend DTO change merged without regenerating the frontend
+types. The `impeccable` design-critique detector stays local-only (see `ARCHITECTURE.md`
+§7 for why a gitignored bundle at a different version than its npm package would make a
+poor CI gate).
+
+**Verified:** `node scripts/verify.mjs` green throughout (`dotnet build`/`test`,
+`eslint`, `tsc --noEmit`, `next build`). Pagination proved live, not just against the
+thin dev dataset: 25 admin-created test coupons produced real two-page navigation with
+correct `Showing`/`Page N of M` text and edge-correct `Next` disabling on the last
+page, checked in both English and Arabic-RTL. `drift-check` proved directly on a
+throwaway branch: renamed `CouponDto.Code` → `CouponCode` without regenerating, pushed,
+watched the job fail with the exact diff in its log; regenerated and fixed the two
+frontend call sites `tsc` flagged, pushed again, watched both jobs go green; closed the
+branch without merging. `dotnet ef database update` and the API boot-with-unset-seed
+path were also dry-run locally against a throwaway Postgres database before ever
+trusting them in CI.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,
