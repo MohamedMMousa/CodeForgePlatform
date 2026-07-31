@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: verify (build + test + lint + typecheck + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # Single source of truth for "is this change green?" — CI runs the exact
+      # same script a human/the pre-commit hook runs. See scripts/verify.mjs.
+      - name: Run verify
+        run: node scripts/verify.mjs
+
+  drift-check:
+    name: drift-check (frontend types match the live API)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: codeforge
+          POSTGRES_PASSWORD: codeforge_ci
+          POSTGRES_DB: codeforge_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U codeforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=codeforge_db;Username=codeforge;Password=codeforge_ci"
+      # Throwaway signing key for a container destroyed at the end of this job —
+      # never sees real data, so it doesn't need to live in repo secrets.
+      JwtSettings__Secret: "ci-only-throwaway-signing-key-not-used-anywhere-else-0123456789"
+      # AdminSeed intentionally left unset: DatabaseSeeder.SeedAsync no-ops without
+      # it, so the seeder never touches the database in this job.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install dotnet-ef
+        run: dotnet tool install -g dotnet-ef
+
+      - name: Apply migrations
+        run: >-
+          dotnet ef database update
+          --project src/CodeForge.Infrastructure
+          --startup-project src/CodeForge.Api
+
+      - name: Start API
+        run: |
+          nohup dotnet run --project src/CodeForge.Api --urls http://localhost:5205 > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5205/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become healthy in time"
+          cat api.log
+          exit 1
+
+      - name: Regenerate frontend API types
+        run: node scripts/generate-api-types.mjs
+
+      - name: Fail if generated types are stale
+        run: |
+          if ! git diff --exit-code openapi.json frontend/lib/api-schema.d.ts; then
+            echo "::error::openapi.json / frontend/lib/api-schema.d.ts are out of date." \
+              "A backend DTO changed without regenerating the frontend types." \
+              "Run 'dotnet run --project src/CodeForge.Api' then 'node scripts/generate-api-types.mjs' and commit the result."
+            exit 1
+          fi

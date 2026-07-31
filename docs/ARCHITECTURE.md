@@ -128,6 +128,18 @@
   under the same migration id (no schema or data change). Do not hand-edit generated
   migration files except to add raw SQL EF cannot express (e.g. the GIN index on
   `activity_logs.metadata` — see `DATABASE.md`).
+- **CI** (`.github/workflows/ci.yml`, two jobs) — **`verify`** installs frontend deps
+  then runs `node scripts/verify.mjs` directly: CI does not restate build/test/lint/
+  typecheck steps, it invokes the same script the pre-commit hook and a human run, so
+  the three never drift apart. **`drift-check`** boots the API for real against a
+  `postgres:16` service container — `dotnet ef database update` applies migrations,
+  then the API starts with a throwaway `JwtSettings:Secret` and `AdminSeed` left
+  unset (so `DatabaseSeeder` no-ops and never touches the database), polls `/health`
+  until it's up, regenerates `openapi.json`/`api-schema.d.ts`
+  (`node scripts/generate-api-types.mjs`), and fails the job on `git diff` — catching
+  a backend DTO change merged without regenerating the frontend types. See §7 for why
+  a third job (the `impeccable` design-critique detector) is deliberately not part of
+  CI.
 
 ## 4. Backend Module Map
 
@@ -208,6 +220,15 @@ file uploads, rate limiting, versioning stance).
 
 ## 7. Deferred / Open Architectural Decisions
 
+- **`impeccable` design-critique detector as a CI job** — deferred, local pre-commit
+  tool only. The bundled `.claude/skills/impeccable/` detector is gitignored (not
+  vendored) and reports version `4.0.3`; the only installable-in-CI form is the npm
+  package `impeccable`, currently at `3.5.0`. A CI job would therefore enforce a
+  different ruleset than the one actually used locally — the worst failure mode for
+  a gate (silent rule drift, not just staleness). Its findings are also design
+  judgment, not correctness, and it would be the only CI job depending on a
+  non-vendored third-party bundle. Revisit once the npm package catches up to the
+  local bundle version, or if the detector is deliberately vendored into the repo.
 - **Python auto-grader engine** — Piston (`emkc.org`) was chosen in Phase 3 (free,
   no Docker needed in this dev environment), and `PistonCodeExecutionService` was
   built and verified working. Mid-phase, Piston's public API went whitelist-only
