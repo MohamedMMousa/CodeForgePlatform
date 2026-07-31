@@ -1,5 +1,7 @@
 using CodeForge.Application.Certificates.Common;
 using CodeForge.Application.Certificates.GetCertificateById;
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Certificates.GetCourseCertificateCandidates;
 using CodeForge.Application.Certificates.GetMyCertificates;
 using CodeForge.Application.Certificates.IssueCertificate;
@@ -58,10 +60,13 @@ namespace CodeForge.Api.Controllers
 
         /// <summary>The current student's own certificates.</summary>
         [HttpGet("my-certificates")]
-        [ProducesResponseType(typeof(IReadOnlyList<CertificateDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<CertificateDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMine(
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            var response = await _sender.Send(new GetMyCertificatesQuery(), cancellationToken);
+            var response = await _sender.Send(new GetMyCertificatesQuery(page, pageSize), cancellationToken);
             return Ok(response);
         }
 

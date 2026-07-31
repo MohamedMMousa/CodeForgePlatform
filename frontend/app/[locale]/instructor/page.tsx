@@ -12,6 +12,9 @@ import {
   getInstructorDashboard
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function InstructorCoursesPage({
   params
@@ -20,24 +23,30 @@ export default function InstructorCoursesPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).instructor;
-  const ta = getDictionary(locale).analytics;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.instructor;
+  const ta = dictionary.analytics;
 
   const { session } = useAuth();
   const [courses, setCourses] = useState<CourseListItem[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [dashboard, setDashboard] = useState<InstructorDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
     const load = session.role === "admin" ? getAllCourses : getAssignedCourses;
-    load(session.accessToken)
-      .then(setCourses)
+    load(session.accessToken, { page, pageSize: PAGE_SIZE })
+      .then((result) => {
+        setCourses(result.items);
+        setTotalCount(result.totalCount);
+      })
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
     if (session.role === "instructor") {
       getInstructorDashboard(session.accessToken).then(setDashboard).catch(() => {});
     }
-  }, [session, t.loadError]);
+  }, [session, page, t.loadError]);
 
   if (!session || (session.role !== "admin" && session.role !== "instructor")) {
     return (
@@ -111,6 +120,13 @@ export default function InstructorCoursesPage({
           </Link>
         ))}
       </div>
+      <Pagination
+        t={dictionary}
+        page={page}
+        pageSize={PAGE_SIZE}
+        totalCount={totalCount}
+        onPageChange={setPage}
+      />
     </main>
   );
 }

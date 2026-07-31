@@ -1,12 +1,13 @@
 using CodeForge.Application.Announcements.Common;
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeForge.Application.Announcements.GetAnnouncements
 {
-    public class GetAnnouncementsQueryHandler : IRequestHandler<GetAnnouncementsQuery, IReadOnlyList<AnnouncementDto>>
+    public class GetAnnouncementsQueryHandler : IRequestHandler<GetAnnouncementsQuery, PagedResult<AnnouncementDto>>
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
@@ -17,7 +18,7 @@ namespace CodeForge.Application.Announcements.GetAnnouncements
             _currentUserService = currentUserService;
         }
 
-        public async Task<IReadOnlyList<AnnouncementDto>> Handle(
+        public async Task<PagedResult<AnnouncementDto>> Handle(
             GetAnnouncementsQuery request,
             CancellationToken cancellationToken)
         {
@@ -49,11 +50,17 @@ namespace CodeForge.Application.Announcements.GetAnnouncements
                 query = query.Where(a => a.CourseId == null);
             }
 
+            var totalCount = await query.CountAsync(cancellationToken);
+
             var announcements = await query
-                .OrderByDescending(a => a.CreatedAt)
+                .OrderByDescending(a => a.CreatedAt).ThenBy(a => a.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
 
-            return announcements.Select(AnnouncementMapping.ToDto).ToList();
+            var items = announcements.Select(AnnouncementMapping.ToDto).ToList();
+
+            return new PagedResult<AnnouncementDto>(items, request.Page, request.PageSize, totalCount);
         }
 
         private Guid GetCurrentUserId()

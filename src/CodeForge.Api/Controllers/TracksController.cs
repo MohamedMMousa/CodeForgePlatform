@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Tracks.AddCourseToTrack;
 using CodeForge.Application.Tracks.ArchiveTrack;
 using CodeForge.Application.Tracks.Common;
@@ -88,11 +90,15 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<TrackListDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<TrackListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
-            [FromQuery] string? status, [FromQuery] string? search, CancellationToken cancellationToken)
+            [FromQuery] string? status,
+            [FromQuery] string? search,
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendTrackRequest(new GetTracksQuery(status, search), cancellationToken);
+            return await SendTrackRequest(new GetTracksQuery(status, search, page, pageSize), cancellationToken);
         }
 
         [HttpGet("{id:guid}")]

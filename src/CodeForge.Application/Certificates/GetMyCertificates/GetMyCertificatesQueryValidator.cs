@@ -1,14 +1,12 @@
 using CodeForge.Application.Common.Constants;
 using FluentValidation;
 
-namespace CodeForge.Application.Cohorts.GetCourseCohorts
+namespace CodeForge.Application.Certificates.GetMyCertificates
 {
-    public class GetCourseCohortsQueryValidator : AbstractValidator<GetCourseCohortsQuery>
+    public class GetMyCertificatesQueryValidator : AbstractValidator<GetMyCertificatesQuery>
     {
-        public GetCourseCohortsQueryValidator()
+        public GetMyCertificatesQueryValidator()
         {
-            RuleFor(x => x.CourseId).NotEmpty();
-
             RuleFor(x => x.Page)
                 .GreaterThanOrEqualTo(1);
 

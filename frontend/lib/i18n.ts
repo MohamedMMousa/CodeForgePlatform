@@ -499,6 +499,12 @@ export interface Dictionary {
     noData: string;
     loadError: string;
   };
+  pagination: {
+    previous: string;
+    next: string;
+    pageOf: string;
+    showingCount: string;
+  };
 }
 
 const dictionaries: Record<Locale, Dictionary> = {
@@ -988,6 +994,12 @@ const dictionaries: Record<Locale, Dictionary> = {
       status: "Status",
       noData: "No data yet.",
       loadError: "Could not load analytics. Please try again."
+    },
+    pagination: {
+      previous: "Previous",
+      next: "Next",
+      pageOf: "Page {page} of {totalPages}",
+      showingCount: "Showing {count} of {total}"
     }
   },
   ar: {
@@ -1475,6 +1487,12 @@ const dictionaries: Record<Locale, Dictionary> = {
       status: "الحالة",
       noData: "لا توجد بيانات بعد.",
       loadError: "تعذّر تحميل التحليلات. حاول مرة أخرى."
+    },
+    pagination: {
+      previous: "السابق",
+      next: "التالي",
+      pageOf: "صفحة {page} من {totalPages}",
+      showingCount: "عرض {count} من {total}"
     }
   }
 };

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { ApiRequestError, EnrollmentRequestResult, getEnrollmentRequests } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function AdminEnrollmentRequestsPage({
   params
@@ -13,10 +16,13 @@ export default function AdminEnrollmentRequestsPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).admin;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.admin;
 
   const { session } = useAuth();
   const [requests, setRequests] = useState<EnrollmentRequestResult[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("pending");
   const [error, setError] = useState<string | null>(null);
 
@@ -26,11 +32,16 @@ export default function AdminEnrollmentRequestsPage({
 
   useEffect(() => {
     if (!session) return;
-    getEnrollmentRequests({ status: statusFilter || undefined }, session.accessToken)
-      .then(setRequests)
+    getEnrollmentRequests({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+      .then((result) => {
+        setRequests(result.items);
+        setTotalCount(result.totalCount);
+      })
       .catch(onError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, statusFilter]);
+  }, [session, statusFilter, page]);
+
+  useEffect(() => setPage(1), [statusFilter]);
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
@@ -88,6 +99,13 @@ export default function AdminEnrollmentRequestsPage({
               ))}
             </tbody>
           </table>
+          <Pagination
+            t={dictionary}
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </>

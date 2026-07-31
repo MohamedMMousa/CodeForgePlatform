@@ -58,7 +58,9 @@ export default function AdminTrackDetailPage({
         setCurrency(tr.currency);
       })
       .catch(onError);
-    getAdminCourses({}, session.accessToken).then(setCourses).catch(() => {});
+    getAdminCourses({ pageSize: 100 }, session.accessToken)
+      .then((result) => setCourses(result.items))
+      .catch(() => {});
   }
 
   useEffect(load, [session, trackId]);

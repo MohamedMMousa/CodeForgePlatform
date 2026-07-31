@@ -3,6 +3,8 @@ using CodeForge.Application.Announcements.CreateAnnouncement;
 using CodeForge.Application.Announcements.DeleteAnnouncement;
 using CodeForge.Application.Announcements.GetAnnouncements;
 using CodeForge.Application.Announcements.UpdateAnnouncement;
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -49,10 +51,14 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<AnnouncementDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? courseId, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<AnnouncementDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] Guid? courseId,
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            var response = await _sender.Send(new GetAnnouncementsQuery(courseId), cancellationToken);
+            var response = await _sender.Send(new GetAnnouncementsQuery(courseId, page, pageSize), cancellationToken);
             return Ok(response);
         }
 

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { ApiRequestError, Certificate, getMyCertificates } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function MyCertificatesPage({
   params
@@ -13,18 +16,24 @@ export default function MyCertificatesPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const tc = getDictionary(locale).certificates;
+  const dictionary = getDictionary(locale);
+  const tc = dictionary.certificates;
 
   const { session } = useAuth();
   const [certificates, setCertificates] = useState<Certificate[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
-    getMyCertificates(session.accessToken)
-      .then(setCertificates)
+    getMyCertificates(session.accessToken, { page, pageSize: PAGE_SIZE })
+      .then((result) => {
+        setCertificates(result.items);
+        setTotalCount(result.totalCount);
+      })
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : tc.loadError));
-  }, [session, tc.loadError]);
+  }, [session, page, tc.loadError]);
 
   if (!session) {
     return (
@@ -82,6 +91,13 @@ export default function MyCertificatesPage({
           </div>
         </div>
       ))}
+      <Pagination
+        t={dictionary}
+        page={page}
+        pageSize={PAGE_SIZE}
+        totalCount={totalCount}
+        onPageChange={setPage}
+      />
     </main>
   );
 }

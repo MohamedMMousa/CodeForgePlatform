@@ -1,4 +1,5 @@
 using CodeForge.Application.EnrollmentRequests.Common;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using CodeForge.Application.Common.Interfaces;
@@ -6,7 +7,7 @@ using CodeForge.Application.Common.Interfaces;
 namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
 {
     public class GetEnrollmentRequestsQueryHandler
-        : IRequestHandler<GetEnrollmentRequestsQuery, IReadOnlyList<EnrollmentRequestDto>>
+        : IRequestHandler<GetEnrollmentRequestsQuery, PagedResult<EnrollmentRequestDto>>
     {
         private readonly ICodeForgeDbContext _context;
 
@@ -15,7 +16,7 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
             _context = context;
         }
 
-        public async Task<IReadOnlyList<EnrollmentRequestDto>> Handle(
+        public async Task<PagedResult<EnrollmentRequestDto>> Handle(
             GetEnrollmentRequestsQuery request,
             CancellationToken cancellationToken)
         {
@@ -41,11 +42,15 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
                 query = query.Where(x => x.TrackId == request.TrackId.Value);
             }
 
+            var totalCount = await query.CountAsync(cancellationToken);
+
             var requests = await query
-                .OrderByDescending(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
 
-            return requests
+            var items = requests
                 .Select(x => new EnrollmentRequestDto(
                     x.Id,
                     x.ApplicantName,
@@ -65,6 +70,8 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
                     x.CreatedAt,
                     x.UpdatedAt))
                 .ToList();
+
+            return new PagedResult<EnrollmentRequestDto>(items, request.Page, request.PageSize, totalCount);
         }
     }
 }

@@ -15,6 +15,18 @@ import type { components } from "./api-schema";
 
 type Schemas = components["schemas"];
 
+/** Envelope shape for the 12 paginated list endpoints — see API_CONVENTIONS.md §6.
+ * Hand-written like the union-type aliases above: the backend's generic PagedResult<T>
+ * always serializes to this shape regardless of T, so there's nothing tsc-checkable
+ * to gain from aliasing each closed-generic schema (e.g. Schemas["CourseListDtoPagedResult"])
+ * instead — T itself still comes from the generated schema. */
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5205";
 
@@ -167,23 +179,33 @@ export type PublicTrackDetail = Schemas["PublicTrackDetailDto"];
 export function getPublishedCourses(params: {
   category?: string;
   search?: string;
-} = {}): Promise<CourseListItem[]> {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<PagedResult<CourseListItem>> {
   const query = new URLSearchParams();
   if (params.category) query.set("category", params.category);
   if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<CourseListItem[]>(`/catalog/courses${qs ? `?${qs}` : ""}`);
+  return apiFetch<PagedResult<CourseListItem>>(`/catalog/courses${qs ? `?${qs}` : ""}`);
 }
 
 export function getPublishedCourseDetail(slug: string): Promise<PublicCourseDetail> {
   return apiFetch<PublicCourseDetail>(`/catalog/courses/${encodeURIComponent(slug)}`);
 }
 
-export function getPublishedTracks(params: { search?: string } = {}): Promise<TrackListItem[]> {
+export function getPublishedTracks(params: {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<PagedResult<TrackListItem>> {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<TrackListItem[]>(`/catalog/tracks${qs ? `?${qs}` : ""}`);
+  return apiFetch<PagedResult<TrackListItem>>(`/catalog/tracks${qs ? `?${qs}` : ""}`);
 }
 
 export function getPublishedTrackDetail(slug: string): Promise<PublicTrackDetail> {
@@ -273,12 +295,26 @@ export function submitLead(input: {
 // Instructor course access
 // ---------------------------------------------------------------------------
 
-export function getAssignedCourses(token: string): Promise<CourseListItem[]> {
-  return apiFetch<CourseListItem[]>("/instructor/courses", { token });
+export function getAssignedCourses(
+  token: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<CourseListItem>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<CourseListItem>>(`/instructor/courses${qs ? `?${qs}` : ""}`, { token });
 }
 
-export function getAllCourses(token: string): Promise<CourseListItem[]> {
-  return apiFetch<CourseListItem[]>("/courses", { token });
+export function getAllCourses(
+  token: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<CourseListItem>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`, { token });
 }
 
 // ---------------------------------------------------------------------------
@@ -423,9 +459,17 @@ export function deleteMaterial(id: string, token: string): Promise<MaterialItem>
 
 export type AnnouncementItem = Schemas["AnnouncementDto"];
 
-export function getAnnouncements(token: string, courseId?: string): Promise<AnnouncementItem[]> {
-  const qs = courseId ? `?courseId=${courseId}` : "";
-  return apiFetch<AnnouncementItem[]>(`/announcements${qs}`, { token });
+export function getAnnouncements(
+  token: string,
+  courseId?: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<AnnouncementItem>> {
+  const query = new URLSearchParams();
+  if (courseId) query.set("courseId", courseId);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<AnnouncementItem>>(`/announcements${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function createAnnouncement(
@@ -856,8 +900,15 @@ export function revokeCertificate(
   });
 }
 
-export function getMyCertificates(token: string): Promise<Certificate[]> {
-  return apiFetch<Certificate[]>("/my-certificates", { token });
+export function getMyCertificates(
+  token: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<Certificate>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<Certificate>>(`/my-certificates${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function getCertificateById(certificateId: string, token: string): Promise<Certificate> {
@@ -904,15 +955,17 @@ export function getInstructorDashboard(token: string): Promise<InstructorDashboa
 export type AdminUser = Schemas["UserDto"];
 
 export function getUsers(
-  params: { role?: string; isActive?: boolean; search?: string },
+  params: { role?: string; isActive?: boolean; search?: string; page?: number; pageSize?: number },
   token: string
-): Promise<AdminUser[]> {
+): Promise<PagedResult<AdminUser>> {
   const query = new URLSearchParams();
   if (params.role) query.set("role", params.role);
   if (params.isActive !== undefined) query.set("isActive", String(params.isActive));
   if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<AdminUser[]>(`/users${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<AdminUser>>(`/users${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function createInstructor(
@@ -937,15 +990,17 @@ export function reactivateUser(userId: string, token: string): Promise<AdminUser
 export type CourseMutationResult = Schemas["CourseMutationResultDto"];
 
 export function getAdminCourses(
-  params: { status?: string; category?: string; search?: string },
+  params: { status?: string; category?: string; search?: string; page?: number; pageSize?: number },
   token: string
-): Promise<CourseListItem[]> {
+): Promise<PagedResult<CourseListItem>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.category) query.set("category", params.category);
   if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<CourseListItem[]>(`/courses${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function createCourse(
@@ -1006,14 +1061,16 @@ export type TrackDetail = Schemas["TrackDetailDto"];
 export type TrackMutationResult = Schemas["TrackMutationResultDto"];
 
 export function getAdminTracks(
-  params: { status?: string; search?: string },
+  params: { status?: string; search?: string; page?: number; pageSize?: number },
   token: string
-): Promise<TrackListItem[]> {
+): Promise<PagedResult<TrackListItem>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<TrackListItem[]>(`/tracks${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<TrackListItem>>(`/tracks${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function getTrackById(trackId: string, token: string): Promise<TrackDetail> {
@@ -1088,8 +1145,16 @@ export function removeCourseFromTrack(
 
 export type CohortMutationResult = Schemas["CohortMutationResultDto"];
 
-export function getCourseCohortsAdmin(courseId: string, token: string): Promise<CohortInfo[]> {
-  return apiFetch<CohortInfo[]>(`/courses/${courseId}/cohorts`, { token });
+export function getCourseCohortsAdmin(
+  courseId: string,
+  token: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<CohortInfo>> {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<CohortInfo>>(`/courses/${courseId}/cohorts${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function createCohort(
@@ -1144,9 +1209,17 @@ export function completeCohort(cohortId: string, token: string): Promise<CohortM
 
 export type AdminCoupon = Schemas["CouponDto"];
 
-export function getCoupons(isActive: boolean | undefined, token: string): Promise<AdminCoupon[]> {
-  const qs = isActive !== undefined ? `?isActive=${isActive}` : "";
-  return apiFetch<AdminCoupon[]>(`/coupons${qs}`, { token });
+export function getCoupons(
+  isActive: boolean | undefined,
+  token: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PagedResult<AdminCoupon>> {
+  const query = new URLSearchParams();
+  if (isActive !== undefined) query.set("isActive", String(isActive));
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return apiFetch<PagedResult<AdminCoupon>>(`/coupons${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function createCoupon(
@@ -1183,15 +1256,17 @@ export type EnrollmentRequestTargetCohort = Schemas["EnrollmentRequestTargetCoho
 export type EnrollmentRequestDetail = Schemas["EnrollmentRequestDetailDto"];
 
 export function getEnrollmentRequests(
-  params: { status?: string; courseId?: string; trackId?: string },
+  params: { status?: string; courseId?: string; trackId?: string; page?: number; pageSize?: number },
   token: string
-): Promise<EnrollmentRequestResult[]> {
+): Promise<PagedResult<EnrollmentRequestResult>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.courseId) query.set("courseId", params.courseId);
   if (params.trackId) query.set("trackId", params.trackId);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<EnrollmentRequestResult[]>(`/enrollment-requests${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<EnrollmentRequestResult>>(`/enrollment-requests${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function getEnrollmentRequestById(id: string, token: string): Promise<EnrollmentRequestDetail> {

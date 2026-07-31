@@ -4,6 +4,9 @@ import { use, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AdminUser, ApiRequestError, createInstructor, deactivateUser, getUsers, reactivateUser } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function AdminUsersPage({
   params
@@ -12,10 +15,13 @@ export default function AdminUsersPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).admin;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.admin;
 
   const { session } = useAuth();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -32,10 +38,16 @@ export default function AdminUsersPage({
 
   function load() {
     if (!session) return;
-    getUsers({ role: roleFilter || undefined }, session.accessToken).then(setUsers).catch(onError);
+    getUsers({ role: roleFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+      .then((result) => {
+        setUsers(result.items);
+        setTotalCount(result.totalCount);
+      })
+      .catch(onError);
   }
 
-  useEffect(load, [session, roleFilter]);
+  useEffect(load, [session, roleFilter, page]);
+  useEffect(() => setPage(1), [roleFilter]);
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
@@ -143,6 +155,13 @@ export default function AdminUsersPage({
               ))}
             </tbody>
           </table>
+          <Pagination
+            t={dictionary}
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

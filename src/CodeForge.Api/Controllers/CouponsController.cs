@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Coupons.Common;
 using CodeForge.Application.Coupons.CreateCoupon;
 using CodeForge.Application.Coupons.DeactivateCoupon;
@@ -59,10 +61,14 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<CouponDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll([FromQuery] bool? isActive, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<CouponDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] bool? isActive,
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendCouponRequest(new GetCouponsQuery(isActive), cancellationToken);
+            return await SendCouponRequest(new GetCouponsQuery(isActive, page, pageSize), cancellationToken);
         }
 
         [Authorize(Policy = "AdminOnly")]

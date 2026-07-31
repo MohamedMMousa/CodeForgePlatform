@@ -1,11 +1,12 @@
 using CodeForge.Application.Courses.Common;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeForge.Application.Courses.GetCourses
 {
-    public class GetCoursesQueryHandler : IRequestHandler<GetCoursesQuery, IReadOnlyList<CourseListDto>>
+    public class GetCoursesQueryHandler : IRequestHandler<GetCoursesQuery, PagedResult<CourseListDto>>
     {
         private readonly ICodeForgeDbContext _context;
 
@@ -14,7 +15,7 @@ namespace CodeForge.Application.Courses.GetCourses
             _context = context;
         }
 
-        public async Task<IReadOnlyList<CourseListDto>> Handle(GetCoursesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<CourseListDto>> Handle(GetCoursesQuery request, CancellationToken cancellationToken)
         {
             var query = _context.Courses.AsNoTracking().AsQueryable();
 
@@ -38,10 +39,16 @@ namespace CodeForge.Application.Courses.GetCourses
                     x.Slug.ToLower().Contains(search));
             }
 
-            return await query
-                .OrderByDescending(x => x.CreatedAt)
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .Select(x => CourseMapping.ToListDto(x))
                 .ToListAsync(cancellationToken);
+
+            return new PagedResult<CourseListDto>(items, request.Page, request.PageSize, totalCount);
         }
     }
 }

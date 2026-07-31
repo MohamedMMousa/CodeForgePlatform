@@ -1,11 +1,12 @@
 using CodeForge.Application.Certificates.Common;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeForge.Application.Certificates.GetMyCertificates
 {
-    public class GetMyCertificatesQueryHandler : IRequestHandler<GetMyCertificatesQuery, IReadOnlyList<CertificateDto>>
+    public class GetMyCertificatesQueryHandler : IRequestHandler<GetMyCertificatesQuery, PagedResult<CertificateDto>>
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
@@ -16,21 +17,29 @@ namespace CodeForge.Application.Certificates.GetMyCertificates
             _currentUserService = currentUserService;
         }
 
-        public async Task<IReadOnlyList<CertificateDto>> Handle(GetMyCertificatesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<CertificateDto>> Handle(GetMyCertificatesQuery request, CancellationToken cancellationToken)
         {
             var currentUserId = GetCurrentUserId();
 
-            var certificates = await _context.Certificates
+            var query = _context.Certificates
                 .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Course)
                 .Include(c => c.Cohort)
                 .Include(c => c.IssuedBy)
-                .Where(c => c.StudentId == currentUserId)
-                .OrderByDescending(c => c.IssuedAt)
+                .Where(c => c.StudentId == currentUserId);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var certificates = await query
+                .OrderByDescending(c => c.IssuedAt).ThenBy(c => c.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
 
-            return certificates.Select(CertificateMapping.ToDto).ToList();
+            var items = certificates.Select(CertificateMapping.ToDto).ToList();
+
+            return new PagedResult<CertificateDto>(items, request.Page, request.PageSize, totalCount);
         }
 
         private Guid GetCurrentUserId()

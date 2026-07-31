@@ -20,6 +20,12 @@ namespace CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests
                     .Must(status => AllowedStatuses.Contains(status.ToLower()))
                     .WithMessage("Status must be pending, approved, or rejected.");
             });
+
+            RuleFor(x => x.Page)
+                .GreaterThanOrEqualTo(1);
+
+            RuleFor(x => x.PageSize)
+                .InclusiveBetween(1, PaginationDefaults.MaxPageSize);
         }
     }
 }

@@ -1,5 +1,6 @@
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Courses.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CodeForge.Application.Courses.GetPublishedCourses
 {
     public class GetPublishedCoursesQueryHandler
-        : IRequestHandler<GetPublishedCoursesQuery, IReadOnlyList<CourseListDto>>
+        : IRequestHandler<GetPublishedCoursesQuery, PagedResult<CourseListDto>>
     {
         private readonly ICodeForgeDbContext _context;
 
@@ -16,7 +17,7 @@ namespace CodeForge.Application.Courses.GetPublishedCourses
             _context = context;
         }
 
-        public async Task<IReadOnlyList<CourseListDto>> Handle(
+        public async Task<PagedResult<CourseListDto>> Handle(
             GetPublishedCoursesQuery request,
             CancellationToken cancellationToken)
         {
@@ -38,10 +39,16 @@ namespace CodeForge.Application.Courses.GetPublishedCourses
                     x.Slug.ToLower().Contains(search));
             }
 
-            return await query
-                .OrderByDescending(x => x.CreatedAt)
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .Select(x => CourseMapping.ToListDto(x))
                 .ToListAsync(cancellationToken);
+
+            return new PagedResult<CourseListDto>(items, request.Page, request.PageSize, totalCount);
         }
     }
 }

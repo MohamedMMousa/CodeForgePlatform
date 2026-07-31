@@ -120,6 +120,8 @@ export interface paths {
             parameters: {
                 query?: {
                     courseId?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -133,7 +135,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AnnouncementDto"][];
+                        "application/json": components["schemas"]["AnnouncementDtoPagedResult"];
                     };
                 };
             };
@@ -1759,6 +1761,8 @@ export interface paths {
                 query?: {
                     category?: string;
                     search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1772,7 +1776,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CourseListDto"][];
+                        "application/json": components["schemas"]["CourseListDtoPagedResult"];
                     };
                 };
             };
@@ -1851,6 +1855,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1864,7 +1870,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TrackListDto"][];
+                        "application/json": components["schemas"]["TrackListDtoPagedResult"];
                     };
                 };
             };
@@ -2062,7 +2068,10 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -2075,7 +2084,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CertificateDto"][];
+                        "application/json": components["schemas"]["CertificateDtoPagedResult"];
                     };
                 };
             };
@@ -2171,7 +2180,10 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                };
                 header?: never;
                 path: {
                     courseId: string;
@@ -2186,7 +2198,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CohortListDto"][];
+                        "application/json": components["schemas"]["CohortListDtoPagedResult"];
                     };
                 };
             };
@@ -2412,6 +2424,8 @@ export interface paths {
             parameters: {
                 query?: {
                     isActive?: boolean;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -2425,7 +2439,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CouponDto"][];
+                        "application/json": components["schemas"]["CouponDtoPagedResult"];
                     };
                 };
             };
@@ -2618,6 +2632,8 @@ export interface paths {
                     status?: string;
                     category?: string;
                     search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -2631,7 +2647,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CourseListDto"][];
+                        "application/json": components["schemas"]["CourseListDtoPagedResult"];
                     };
                 };
                 /** @description Unauthorized */
@@ -3217,6 +3233,8 @@ export interface paths {
                     status?: string;
                     courseId?: string;
                     trackId?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -3230,7 +3248,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["EnrollmentRequestDto"][];
+                        "application/json": components["schemas"]["EnrollmentRequestDtoPagedResult"];
                     };
                 };
                 /** @description Unauthorized */
@@ -3681,7 +3699,10 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -3694,7 +3715,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CourseListDto"][];
+                        "application/json": components["schemas"]["CourseListDtoPagedResult"];
                     };
                 };
                 /** @description Unauthorized */
@@ -3737,6 +3758,8 @@ export interface paths {
                 query?: {
                     isContacted?: boolean;
                     courseId?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -3750,7 +3773,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["LeadDto"][];
+                        "application/json": components["schemas"]["LeadDtoPagedResult"];
                     };
                 };
             };
@@ -4538,6 +4561,8 @@ export interface paths {
                 query?: {
                     status?: string;
                     search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -4551,7 +4576,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TrackListDto"][];
+                        "application/json": components["schemas"]["TrackListDtoPagedResult"];
                     };
                 };
             };
@@ -4827,6 +4852,8 @@ export interface paths {
                     role?: string;
                     isActive?: boolean;
                     search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -4840,7 +4867,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["UserDto"][];
+                        "application/json": components["schemas"]["UserDtoPagedResult"];
                     };
                 };
             };
@@ -5041,6 +5068,15 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        AnnouncementDtoPagedResult: {
+            items: components["schemas"]["AnnouncementDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
         };
         AnswerInputDto: {
             /** Format: uuid */
@@ -5344,6 +5380,15 @@ export interface components {
             revokedAt?: string | null;
             revocationReason?: string | null;
         };
+        CertificateDtoPagedResult: {
+            items: components["schemas"]["CertificateDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+        };
         CertificateVerificationDto: {
             found: boolean;
             isValid: boolean;
@@ -5387,6 +5432,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CohortListDtoPagedResult: {
+            items: components["schemas"]["CohortListDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+        };
         CohortMutationResultDto: {
             /** Format: uuid */
             cohortId: string;
@@ -5415,6 +5469,15 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CouponDtoPagedResult: {
+            items: components["schemas"]["CouponDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
         };
         CouponValidationResultDto: {
             valid: boolean;
@@ -5512,6 +5575,15 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CourseListDtoPagedResult: {
+            items: components["schemas"]["CourseListDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
         };
         CourseMutationResultDto: {
             /** Format: uuid */
@@ -5721,6 +5793,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        EnrollmentRequestDtoPagedResult: {
+            items: components["schemas"]["EnrollmentRequestDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+        };
         EnrollmentRequestMessageDto: {
             /** Format: uuid */
             requestId: string;
@@ -5785,6 +5866,15 @@ export interface components {
             isContacted: boolean;
             /** Format: date-time */
             createdAt: string;
+        };
+        LeadDtoPagedResult: {
+            items: components["schemas"]["LeadDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
         };
         LoginRequest: {
             email: string;
@@ -6275,6 +6365,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        TrackListDtoPagedResult: {
+            items: components["schemas"]["TrackListDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+        };
         TrackMutationResultDto: {
             /** Format: uuid */
             trackId: string;
@@ -6412,6 +6511,15 @@ export interface components {
             mustChangePassword: boolean;
             /** Format: date-time */
             createdAt: string;
+        };
+        UserDtoPagedResult: {
+            items: components["schemas"]["UserDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
         };
         ValidateCouponRequest: {
             code: string;

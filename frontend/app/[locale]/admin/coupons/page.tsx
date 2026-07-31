@@ -11,6 +11,9 @@ import {
   updateCoupon
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function AdminCouponsPage({
   params
@@ -19,10 +22,13 @@ export default function AdminCouponsPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).admin;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.admin;
 
   const { session } = useAuth();
   const [coupons, setCoupons] = useState<AdminCoupon[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -42,10 +48,15 @@ export default function AdminCouponsPage({
 
   function load() {
     if (!session) return;
-    getCoupons(undefined, session.accessToken).then(setCoupons).catch(onError);
+    getCoupons(undefined, session.accessToken, { page, pageSize: PAGE_SIZE })
+      .then((result) => {
+        setCoupons(result.items);
+        setTotalCount(result.totalCount);
+      })
+      .catch(onError);
   }
 
-  useEffect(load, [session]);
+  useEffect(load, [session, page]);
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
@@ -155,6 +166,13 @@ export default function AdminCouponsPage({
               ))}
             </tbody>
           </table>
+          <Pagination
+            t={dictionary}
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

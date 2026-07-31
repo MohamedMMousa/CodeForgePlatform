@@ -1,5 +1,6 @@
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Tracks.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CodeForge.Application.Tracks.GetPublishedTracks
 {
     public class GetPublishedTracksQueryHandler
-        : IRequestHandler<GetPublishedTracksQuery, IReadOnlyList<TrackListDto>>
+        : IRequestHandler<GetPublishedTracksQuery, PagedResult<TrackListDto>>
     {
         private readonly ICodeForgeDbContext _context;
 
@@ -16,7 +17,7 @@ namespace CodeForge.Application.Tracks.GetPublishedTracks
             _context = context;
         }
 
-        public async Task<IReadOnlyList<TrackListDto>> Handle(
+        public async Task<PagedResult<TrackListDto>> Handle(
             GetPublishedTracksQuery request,
             CancellationToken cancellationToken)
         {
@@ -33,9 +34,17 @@ namespace CodeForge.Application.Tracks.GetPublishedTracks
                     x.Slug.ToLower().Contains(search));
             }
 
-            var tracks = await query.OrderByDescending(x => x.CreatedAt).ToListAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
 
-            return tracks.Select(TrackMapping.ToListDto).ToList();
+            var tracks = await query
+                .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
+
+            var items = tracks.Select(TrackMapping.ToListDto).ToList();
+
+            return new PagedResult<TrackListDto>(items, request.Page, request.PageSize, totalCount);
         }
     }
 }

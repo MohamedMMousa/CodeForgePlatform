@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Leads.Common;
 using CodeForge.Application.Leads.GetLeads;
 using CodeForge.Application.Leads.MarkLeadContacted;
@@ -39,11 +41,15 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<LeadDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<LeadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
-            [FromQuery] bool? isContacted, [FromQuery] Guid? courseId, CancellationToken cancellationToken)
+            [FromQuery] bool? isContacted,
+            [FromQuery] Guid? courseId,
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            var response = await _sender.Send(new GetLeadsQuery(isContacted, courseId), cancellationToken);
+            var response = await _sender.Send(new GetLeadsQuery(isContacted, courseId, page, pageSize), cancellationToken);
             return Ok(response);
         }
 

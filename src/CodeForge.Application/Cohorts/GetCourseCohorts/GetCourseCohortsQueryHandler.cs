@@ -1,12 +1,13 @@
 using CodeForge.Application.Cohorts.Common;
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeForge.Application.Cohorts.GetCourseCohorts
 {
-    public class GetCourseCohortsQueryHandler : IRequestHandler<GetCourseCohortsQuery, IReadOnlyList<CohortListDto>>
+    public class GetCourseCohortsQueryHandler : IRequestHandler<GetCourseCohortsQuery, PagedResult<CohortListDto>>
     {
         private readonly ICodeForgeDbContext _context;
 
@@ -15,28 +16,34 @@ namespace CodeForge.Application.Cohorts.GetCourseCohorts
             _context = context;
         }
 
-        public async Task<IReadOnlyList<CohortListDto>> Handle(
+        public async Task<PagedResult<CohortListDto>> Handle(
             GetCourseCohortsQuery request,
             CancellationToken cancellationToken)
         {
-            var cohorts = await _context.Cohorts
+            var query = _context.Cohorts
                 .AsNoTracking()
                 .Include(x => x.Course)
-                .Where(x => x.CourseId == request.CourseId)
-                .OrderByDescending(x => x.StartDate)
+                .Where(x => x.CourseId == request.CourseId);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var cohorts = await query
+                .OrderByDescending(x => x.StartDate).ThenBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync(cancellationToken);
 
             var now = DateTime.UtcNow;
-            var result = new List<CohortListDto>();
+            var items = new List<CohortListDto>();
 
             foreach (var cohort in cohorts)
             {
                 var enrolledCount = await CohortAvailability.GetActiveEnrollmentCountAsync(
                     _context, cohort.Id, cancellationToken);
-                result.Add(CohortMapping.ToDto(cohort, enrolledCount, now));
+                items.Add(CohortMapping.ToDto(cohort, enrolledCount, now));
             }
 
-            return result;
+            return new PagedResult<CohortListDto>(items, request.Page, request.PageSize, totalCount);
         }
     }
 }

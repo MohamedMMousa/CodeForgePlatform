@@ -1,13 +1,14 @@
 using CodeForge.Application.Common.Constants;
 using FluentValidation;
 
-namespace CodeForge.Application.Cohorts.GetCourseCohorts
+namespace CodeForge.Application.Tracks.GetPublishedTracks
 {
-    public class GetCourseCohortsQueryValidator : AbstractValidator<GetCourseCohortsQuery>
+    public class GetPublishedTracksQueryValidator : AbstractValidator<GetPublishedTracksQuery>
     {
-        public GetCourseCohortsQueryValidator()
+        public GetPublishedTracksQueryValidator()
         {
-            RuleFor(x => x.CourseId).NotEmpty();
+            RuleFor(x => x.Search)
+                .MaximumLength(255);
 
             RuleFor(x => x.Page)
                 .GreaterThanOrEqualTo(1);

@@ -13,6 +13,9 @@ import {
   publishTrack
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function AdminTracksPage({
   params
@@ -21,10 +24,13 @@ export default function AdminTracksPage({
 }) {
   const { locale: rawLocale } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).admin;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.admin;
 
   const { session } = useAuth();
   const [tracks, setTracks] = useState<TrackListItem[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -43,12 +49,16 @@ export default function AdminTracksPage({
 
   function load() {
     if (!session) return;
-    getAdminTracks({ status: statusFilter || undefined }, session.accessToken)
-      .then(setTracks)
+    getAdminTracks({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+      .then((result) => {
+        setTracks(result.items);
+        setTotalCount(result.totalCount);
+      })
       .catch(onError);
   }
 
-  useEffect(load, [session, statusFilter]);
+  useEffect(load, [session, statusFilter, page]);
+  useEffect(() => setPage(1), [statusFilter]);
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
@@ -179,6 +189,13 @@ export default function AdminTracksPage({
               ))}
             </tbody>
           </table>
+          <Pagination
+            t={dictionary}
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

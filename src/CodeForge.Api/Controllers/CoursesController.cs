@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Courses.ArchiveCourse;
 using CodeForge.Application.Courses.AssignInstructorToCourse;
 using CodeForge.Application.Courses.Common;
@@ -158,16 +160,18 @@ namespace CodeForge.Api.Controllers
         /// List courses with optional filters. Admin only.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<CourseListDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<CourseListDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? status,
             [FromQuery] string? category,
             [FromQuery] string? search,
-            CancellationToken cancellationToken)
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendCourseRequest(new GetCoursesQuery(status, category, search), cancellationToken);
+            return await SendCourseRequest(new GetCoursesQuery(status, category, search, page, pageSize), cancellationToken);
         }
 
         /// <summary>

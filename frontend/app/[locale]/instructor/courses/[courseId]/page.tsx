@@ -35,6 +35,9 @@ import {
   updateCourse
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default function InstructorCoursePage({
   params
@@ -43,14 +46,17 @@ export default function InstructorCoursePage({
 }) {
   const { locale: rawLocale, courseId } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).instructor;
-  const tc = getDictionary(locale).certificates;
-  const ta = getDictionary(locale).admin;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.instructor;
+  const tc = dictionary.certificates;
+  const ta = dictionary.admin;
 
   const { session } = useAuth();
   const isAdmin = session?.role === "admin";
   const [modules, setModules] = useState<ModuleItem[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[] | null>(null);
+  const [announcementsTotal, setAnnouncementsTotal] = useState(0);
+  const [announcementsPage, setAnnouncementsPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
   const [newModuleTitle, setNewModuleTitle] = useState("");
@@ -76,6 +82,8 @@ export default function InstructorCoursePage({
   const [assigningInstructor, setAssigningInstructor] = useState(false);
 
   const [cohorts, setCohorts] = useState<CohortInfo[] | null>(null);
+  const [cohortsTotal, setCohortsTotal] = useState(0);
+  const [cohortsPage, setCohortsPage] = useState(1);
   const [editingCohortId, setEditingCohortId] = useState<string | null>(null);
   const [cohortName, setCohortName] = useState("");
   const [cohortStartDate, setCohortStartDate] = useState("");
@@ -89,7 +97,12 @@ export default function InstructorCoursePage({
   function reload() {
     if (!session) return;
     getCourseModules(courseId, session.accessToken).then(setModules).catch(onError);
-    getAnnouncements(session.accessToken, courseId).then(setAnnouncements).catch(onError);
+    getAnnouncements(session.accessToken, courseId, { page: announcementsPage, pageSize: PAGE_SIZE })
+      .then((result) => {
+        setAnnouncements(result.items);
+        setAnnouncementsTotal(result.totalCount);
+      })
+      .catch(onError);
     if (isAdmin) {
       getCourseById(courseId, session.accessToken)
         .then((c) => {
@@ -97,9 +110,14 @@ export default function InstructorCoursePage({
           setThresholdInput(c.completionAttendanceThreshold?.toString() ?? "");
         })
         .catch(onError);
-      getCourseCohortsAdmin(courseId, session.accessToken).then(setCohorts).catch(onError);
-      getUsers({ role: "instructor", isActive: true }, session.accessToken)
-        .then(setAvailableInstructors)
+      getCourseCohortsAdmin(courseId, session.accessToken, { page: cohortsPage, pageSize: PAGE_SIZE })
+        .then((result) => {
+          setCohorts(result.items);
+          setCohortsTotal(result.totalCount);
+        })
+        .catch(onError);
+      getUsers({ role: "instructor", isActive: true, pageSize: 100 }, session.accessToken)
+        .then((result) => setAvailableInstructors(result.items))
         .catch(() => {});
     }
   }
@@ -194,7 +212,7 @@ export default function InstructorCoursePage({
     setError(err instanceof ApiRequestError ? err.message : t.loadError);
   }
 
-  useEffect(reload, [session, courseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(reload, [session, courseId, announcementsPage, cohortsPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onAddModule(e: React.FormEvent) {
     e.preventDefault();
@@ -634,6 +652,13 @@ export default function InstructorCoursePage({
                   ))}
                 </tbody>
               </table>
+              <Pagination
+                t={dictionary}
+                page={cohortsPage}
+                pageSize={PAGE_SIZE}
+                totalCount={cohortsTotal}
+                onPageChange={setCohortsPage}
+              />
             </div>
           )}
 
@@ -691,6 +716,13 @@ export default function InstructorCoursePage({
           <span className="muted">{a.authorName} · {new Date(a.createdAt).toLocaleString(locale)}</span>
         </div>
       ))}
+      <Pagination
+        t={dictionary}
+        page={announcementsPage}
+        pageSize={PAGE_SIZE}
+        totalCount={announcementsTotal}
+        onPageChange={setAnnouncementsPage}
+      />
 
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3>{t.addAnnouncement}</h3>

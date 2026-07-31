@@ -1,14 +1,12 @@
 using CodeForge.Application.Common.Constants;
 using FluentValidation;
 
-namespace CodeForge.Application.Cohorts.GetCourseCohorts
+namespace CodeForge.Application.Announcements.GetAnnouncements
 {
-    public class GetCourseCohortsQueryValidator : AbstractValidator<GetCourseCohortsQuery>
+    public class GetAnnouncementsQueryValidator : AbstractValidator<GetAnnouncementsQuery>
     {
-        public GetCourseCohortsQueryValidator()
+        public GetAnnouncementsQueryValidator()
         {
-            RuleFor(x => x.CourseId).NotEmpty();
-
             RuleFor(x => x.Page)
                 .GreaterThanOrEqualTo(1);
 

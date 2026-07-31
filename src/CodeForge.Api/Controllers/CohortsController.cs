@@ -1,5 +1,7 @@
 using CodeForge.Application.Cohorts.CancelCohort;
 using CodeForge.Application.Cohorts.Common;
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Cohorts.CompleteCohort;
 using CodeForge.Application.Cohorts.CreateCohort;
 using CodeForge.Application.Cohorts.GetCohortById;
@@ -68,10 +70,14 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("courses/{courseId:guid}/cohorts")]
-        [ProducesResponseType(typeof(IReadOnlyList<CohortListDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetForCourse(Guid courseId, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<CohortListDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetForCourse(
+            Guid courseId,
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendCohortRequest(new GetCourseCohortsQuery(courseId), cancellationToken);
+            return await SendCohortRequest(new GetCourseCohortsQuery(courseId, page, pageSize), cancellationToken);
         }
 
         [HttpGet("cohorts/{id:guid}")]

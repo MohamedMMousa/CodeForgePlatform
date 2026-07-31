@@ -1,3 +1,4 @@
+using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Courses.Common;
 using FluentValidation;
 
@@ -19,6 +20,12 @@ namespace CodeForge.Application.Courses.GetCourses
 
             RuleFor(x => x.Search)
                 .MaximumLength(255);
+
+            RuleFor(x => x.Page)
+                .GreaterThanOrEqualTo(1);
+
+            RuleFor(x => x.PageSize)
+                .InclusiveBetween(1, PaginationDefaults.MaxPageSize);
         }
     }
 }

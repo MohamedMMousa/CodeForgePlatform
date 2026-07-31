@@ -107,16 +107,29 @@ Never validate manually inside a handler; add a validator instead.
 
 ## 6. Pagination
 
-Not yet implemented on list endpoints (`GetCourses`, `GetEnrollmentRequests`, etc.
-currently return full result sets). The SRS default is **page size 20**. When adding
-pagination to an endpoint, use `?page=1&pageSize=20` query params and return:
+Implemented on the 12 list endpoints whose result sets grow without bound:
+`GET /users`, `/courses`, `/tracks`, `/coupons`, `/leads`, `/enrollment-requests`,
+`/catalog/courses`, `/catalog/tracks`, `/announcements`, `/courses/{id}/cohorts`,
+`/my-certificates`, `/instructor/courses`. Query params are `?page=1&pageSize=20`
+(SRS default page size 20, max 100 — see `PaginationDefaults` in
+`Application/Common/Constants/`), returning:
 
 ```json
 { "items": [...], "page": 1, "pageSize": 20, "totalCount": 137 }
 ```
 
-Apply this convention to every new list endpoint in Phase 1 (tracks, cohorts, coupons)
-even before older endpoints are retrofitted.
+`PagedResult<T>` (`Application/Common/Models/PagedResult.cs`) is the shared envelope
+type. Handlers must add a tiebreaker (`.ThenBy(x => x.Id)`) after any non-unique
+`OrderBy`/`OrderByDescending` — otherwise `Skip`/`Take` can duplicate or drop rows
+across pages when the primary sort key ties.
+
+**Deliberately exempt** — bounded, `OrderIndex`-ordered child collections that the UI
+renders as a complete tree, where paging would mean either N extra round-trips or a
+broken partial view: a module's sessions/materials/assessments/assignments, a course's
+modules/instructors, `assessments/{id}/my-attempts`, `assignments/{id}/my-submissions`,
+`sessions/{id}/materials`. These stay bare arrays. Apply the pagination convention to
+any *new* unbounded list endpoint; only exempt genuinely bounded child collections
+following the same reasoning.
 
 ## 7. File Uploads
 

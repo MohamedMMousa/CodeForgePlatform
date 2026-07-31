@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Courses.Common;
 using CodeForge.Application.Courses.GetPublishedCourseDetail;
 using CodeForge.Application.Courses.GetPublishedCourses;
@@ -27,13 +29,15 @@ namespace CodeForge.Api.Controllers
         /// List published courses visible in the public catalog.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<CourseListDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<CourseListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPublishedCourses(
             [FromQuery] string? category,
             [FromQuery] string? search,
-            CancellationToken cancellationToken)
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendCatalogRequest(new GetPublishedCoursesQuery(category, search), cancellationToken);
+            return await SendCatalogRequest(new GetPublishedCoursesQuery(category, search, page, pageSize), cancellationToken);
         }
 
         /// <summary>
@@ -54,12 +58,14 @@ namespace CodeForge.Api.Controllers
         /// List published tracks (course bundles) visible in the public catalog.
         /// </summary>
         [HttpGet("/catalog/tracks")]
-        [ProducesResponseType(typeof(IReadOnlyList<TrackListDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<TrackListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPublishedTracks(
             [FromQuery] string? search,
-            CancellationToken cancellationToken)
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            return await SendCatalogRequest(new GetPublishedTracksQuery(search), cancellationToken);
+            return await SendCatalogRequest(new GetPublishedTracksQuery(search, page, pageSize), cancellationToken);
         }
 
         /// <summary>

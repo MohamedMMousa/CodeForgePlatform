@@ -1,3 +1,5 @@
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Models;
 using CodeForge.Application.Users.Common;
 using CodeForge.Application.Users.CreateInstructor;
 using CodeForge.Application.Users.DeactivateUser;
@@ -23,14 +25,16 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? role,
             [FromQuery] bool? isActive,
             [FromQuery] string? search,
-            CancellationToken cancellationToken)
+            [FromQuery] int page = PaginationDefaults.Page,
+            [FromQuery] int pageSize = PaginationDefaults.PageSize,
+            CancellationToken cancellationToken = default)
         {
-            var response = await _sender.Send(new GetUsersQuery(role, isActive, search), cancellationToken);
+            var response = await _sender.Send(new GetUsersQuery(role, isActive, search, page, pageSize), cancellationToken);
             return Ok(response);
         }
 
