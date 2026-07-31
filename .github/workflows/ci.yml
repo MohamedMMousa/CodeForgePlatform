@@ -73,6 +73,11 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      # dotnet ef doesn't restore packages itself — without this, "Apply migrations"
+      # fails with NETSDK1004 (missing obj/project.assets.json).
+      - name: Build .NET solution
+        run: dotnet build CodeForge.slnx
+
       - name: Install dotnet-ef
         run: dotnet tool install -g dotnet-ef
 
