@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "../globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { dir, getDictionary, isLocale, locales, defaultLocale } from "@/lib/i18n";
@@ -6,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { RoleNav } from "@/components/RoleNav";
 import { PasswordChangeGate } from "@/components/PasswordChangeGate";
+import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 
 export const metadata: Metadata = {
   title: "CodeForge Academy",
@@ -26,7 +28,6 @@ export default async function LocaleLayout({
   const { locale: rawLocale } = await params;
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
   const t = getDictionary(locale);
-  const other = locale === "en" ? "ar" : "en";
 
   return (
     <html lang={locale} dir={dir(locale)}>
@@ -51,7 +52,9 @@ export default async function LocaleLayout({
               <Link href={`/${locale}/catalog`}>{t.nav.catalog}</Link>
               <Link href={`/${locale}/contact`}>{t.nav.contact}</Link>
               <RoleNav locale={locale} t={t} />
-              <Link href={`/${other}`}>{t.nav.switchTo}</Link>
+              <Suspense fallback={null}>
+                <LocaleSwitcher locale={locale} label={t.nav.switchTo} />
+              </Suspense>
             </nav>
           </header>
           {children}
