@@ -5449,7 +5449,7 @@ export interface components {
         CouponDto: {
             /** Format: uuid */
             id: string;
-            code: string;
+            couponCode: string;
             type: string;
             /** Format: double */
             value: number;

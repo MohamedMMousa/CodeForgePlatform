@@ -75,7 +75,7 @@ export default function AdminCouponsPage({
 
   function onEdit(c: AdminCoupon) {
     setEditingId(c.id);
-    setCode(c.code);
+    setCode(c.couponCode);
     setType(c.type);
     setValue(String(c.value));
     setValidFrom(c.validFrom ? c.validFrom.slice(0, 10) : "");
@@ -147,7 +147,7 @@ export default function AdminCouponsPage({
             <tbody>
               {coupons.map((c) => (
                 <tr key={c.id}>
-                  <td>{c.code}</td>
+                  <td>{c.couponCode}</td>
                   <td>{c.type === "percent" ? t.typePercent : t.typeFixed}</td>
                   <td>{c.value}{c.type === "percent" ? "%" : ""}</td>
                   <td>{c.usedCount}{c.usageLimit !== null ? ` / ${c.usageLimit}` : ""}</td>

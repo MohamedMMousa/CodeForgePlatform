@@ -6887,7 +6887,7 @@
       },
       "CouponDto": {
         "required": [
-          "code",
+          "couponCode",
           "createdAt",
           "createdById",
           "createdByName",
@@ -6904,7 +6904,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "code": {
+          "couponCode": {
             "type": "string"
           },
           "type": {
