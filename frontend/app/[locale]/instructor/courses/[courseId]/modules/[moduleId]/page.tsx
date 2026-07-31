@@ -326,7 +326,6 @@ export default function InstructorModulePage({
         assessments={assessments ?? []}
         token={session.accessToken}
         t={t}
-        locale={locale}
         onError={onError}
         reload={reload}
       />
@@ -581,7 +580,6 @@ function AssessmentsPanel({
   assessments,
   token,
   t,
-  locale,
   onError,
   reload
 }: {
@@ -589,7 +587,6 @@ function AssessmentsPanel({
   assessments: AssessmentItem[];
   token: string;
   t: Dict;
-  locale: string;
   onError: (err: unknown) => void;
   reload: () => void;
 }) {
@@ -637,7 +634,7 @@ function AssessmentsPanel({
             </button>
           </div>
           {expanded === a.id && (
-            <AssessmentDetailPanel assessmentId={a.id} token={token} t={t} locale={locale} onError={onError} onChange={reload} />
+            <AssessmentDetailPanel assessmentId={a.id} token={token} t={t} onError={onError} onChange={reload} />
           )}
         </div>
       ))}
@@ -734,14 +731,12 @@ function AssessmentDetailPanel({
   assessmentId,
   token,
   t,
-  locale,
   onError,
   onChange
 }: {
   assessmentId: string;
   token: string;
   t: Dict;
-  locale: string;
   onError: (err: unknown) => void;
   onChange: () => void;
 }) {

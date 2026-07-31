@@ -46,7 +46,7 @@ export default function AdminUsersPage({
       .catch(onError);
   }
 
-  useEffect(load, [session, roleFilter, page]);
+  useEffect(load, [session, roleFilter, page]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [roleFilter]);
 
   if (!session || session.role !== "admin") {

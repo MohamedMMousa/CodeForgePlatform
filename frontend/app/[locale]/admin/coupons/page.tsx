@@ -56,7 +56,7 @@ export default function AdminCouponsPage({
       .catch(onError);
   }
 
-  useEffect(load, [session, page]);
+  useEffect(load, [session, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;

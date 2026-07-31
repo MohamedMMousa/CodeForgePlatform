@@ -12,13 +12,14 @@ const frontendDir = path.join(repoRoot, 'frontend');
 const STEPS = [
   { id: 'dotnet build', scope: 'backend', cwd: repoRoot, cmd: 'dotnet build CodeForge.slnx' },
   { id: 'dotnet test', scope: 'backend', cwd: repoRoot, cmd: 'dotnet test CodeForge.slnx --no-build' },
+  { id: 'eslint', scope: 'frontend', cwd: frontendDir, cmd: 'npx eslint .' },
   { id: 'tsc --noEmit', scope: 'frontend', cwd: frontendDir, cmd: 'npx tsc --noEmit' },
   { id: 'next build', scope: 'frontend', cwd: frontendDir, cmd: 'npm run build', slow: true },
 ];
 
 const HELP = `Usage: node scripts/verify.mjs [options]
 
-  (no options)  dotnet build + dotnet test + tsc --noEmit + next build
+  (no options)  dotnet build + dotnet test + eslint + tsc --noEmit + next build
   --quick       skip next build (the slow step) — for tight edit loops
   --backend     dotnet build + dotnet test only
   --frontend    tsc --noEmit + next build only

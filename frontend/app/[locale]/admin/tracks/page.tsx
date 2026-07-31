@@ -57,7 +57,7 @@ export default function AdminTracksPage({
       .catch(onError);
   }
 
-  useEffect(load, [session, statusFilter, page]);
+  useEffect(load, [session, statusFilter, page]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [statusFilter]);
 
   if (!session || session.role !== "admin") {

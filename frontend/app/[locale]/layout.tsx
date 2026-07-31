@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { dir, getDictionary, isLocale, locales, defaultLocale } from "@/lib/i18n";
+import Image from "next/image";
 import Link from "next/link";
 import { RoleNav } from "@/components/RoleNav";
 import { PasswordChangeGate } from "@/components/PasswordChangeGate";
@@ -34,7 +35,7 @@ export default async function LocaleLayout({
           <PasswordChangeGate locale={locale} />
           <header className="topbar">
             <Link className="brand" href={`/${locale}`}>
-              <img src="/logo.svg" alt="" />
+              <Image src="/logo.svg" alt="" width={32} height={32} />
               <span>
                 {locale === "en" ? (
                   <>

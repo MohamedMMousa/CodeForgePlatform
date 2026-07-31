@@ -41,7 +41,7 @@ export default function AdminEnrollmentRequestDetailPage({
     getEnrollmentRequestById(id, session.accessToken).then(setRequest).catch(onError);
   }
 
-  useEffect(load, [session, id]);
+  useEffect(load, [session, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;

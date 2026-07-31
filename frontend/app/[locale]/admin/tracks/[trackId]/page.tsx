@@ -63,7 +63,7 @@ export default function AdminTrackDetailPage({
       .catch(() => {});
   }
 
-  useEffect(load, [session, trackId]);
+  useEffect(load, [session, trackId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session || session.role !== "admin") {
     return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;

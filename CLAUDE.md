@@ -10,13 +10,14 @@ pass. Backend is .NET 8 / Clean Architecture + CQRS; frontend is Next.js 15 App 
 ## Commands
 
 ```bash
-node scripts/verify.mjs            # build + test + typecheck + next build (the `verify` skill)
+node scripts/verify.mjs            # build + test + lint + typecheck + next build (the `verify` skill)
 node scripts/verify.mjs --quick    # same, minus next build, for tight loops
 
 dotnet build CodeForge.slnx
 dotnet test CodeForge.slnx
 npx tsc --noEmit                   # from frontend/
 npm run build                      # from frontend/
+npm run lint                       # from frontend/ — eslint, flat config in eslint.config.mjs
 
 dotnet run --project src/CodeForge.Api      # :5205, Swagger at /swagger
 npm --prefix frontend run dev               # :3000
@@ -25,9 +26,6 @@ dotnet ef database update --project src/CodeForge.Infrastructure --startup-proje
 
 node scripts/generate-api-types.mjs         # regenerate frontend/lib/api-schema.d.ts; needs the API running
 ```
-
-Do **not** run `npm run lint` — it is `next lint` with no ESLint installed and no config, so it
-prompts interactively and hangs.
 
 Backend secrets come from .NET User Secrets, never `appsettings.json`. The API fails fast at
 startup if they're missing; see `README.md`.
