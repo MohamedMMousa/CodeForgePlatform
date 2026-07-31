@@ -1,4 +1,5 @@
 using CodeForge.Application.Assignments.AddTestCase;
+using CodeForge.Application.Assignments.Common;
 using CodeForge.Application.Assignments.CreateAssignment;
 using CodeForge.Application.Assignments.DeleteAssignment;
 using CodeForge.Application.Assignments.DeleteTestCase;
@@ -33,6 +34,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("modules/{moduleId:guid}/assignments")]
+        [ProducesResponseType(typeof(AssignmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(Guid moduleId, CreateAssignmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -44,6 +46,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("assignments/{id:guid}")]
+        [ProducesResponseType(typeof(AssignmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateAssignmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -55,6 +58,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("assignments/{id:guid}")]
+        [ProducesResponseType(typeof(AssignmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteAssignmentCommand(id), cancellationToken);
@@ -69,6 +73,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("modules/{moduleId:guid}/assignments")]
+        [ProducesResponseType(typeof(IReadOnlyList<AssignmentDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForModule(Guid moduleId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetModuleAssignmentsQuery(moduleId), cancellationToken);
@@ -76,6 +81,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assignments/{id:guid}")]
+        [ProducesResponseType(typeof(AssignmentDetailDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAssignmentByIdQuery(id), cancellationToken);
@@ -83,6 +89,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("assignments/{assignmentId:guid}/test-cases")]
+        [ProducesResponseType(typeof(TestCaseResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> AddTestCase(Guid assignmentId, AddTestCaseRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -92,6 +99,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("test-cases/{id:guid}")]
+        [ProducesResponseType(typeof(TestCaseResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> UpdateTestCase(Guid id, UpdateTestCaseRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -101,6 +109,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("test-cases/{id:guid}")]
+        [ProducesResponseType(typeof(TestCaseResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> DeleteTestCase(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteTestCaseCommand(id), cancellationToken);
@@ -115,6 +124,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assignments/{id:guid}/submission")]
+        [ProducesResponseType(typeof(AssignmentForSubmissionDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForSubmission(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAssignmentForSubmissionQuery(id), cancellationToken);
@@ -122,6 +132,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("assignments/{id:guid}/submissions")]
+        [ProducesResponseType(typeof(SubmissionResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Submit(Guid id, SubmitAssignmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new SubmitAssignmentCommand(id, request.Code), cancellationToken);
@@ -129,6 +140,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("submissions/{submissionId:guid}/grade")]
+        [ProducesResponseType(typeof(SubmissionResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Grade(Guid submissionId, GradeSubmissionRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -137,6 +149,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assignments/{id:guid}/my-submissions")]
+        [ProducesResponseType(typeof(IReadOnlyList<SubmissionSummaryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMySubmissions(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMySubmissionsQuery(id), cancellationToken);
@@ -144,6 +157,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("submissions/{submissionId:guid}")]
+        [ProducesResponseType(typeof(SubmissionResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSubmissionResult(Guid submissionId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetSubmissionResultQuery(submissionId), cancellationToken);
@@ -151,6 +165,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assignments/{id:guid}/submissions")]
+        [ProducesResponseType(typeof(AssignmentSubmissionsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSubmissionsForGrading(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetSubmissionsForGradingQuery(id), cancellationToken);

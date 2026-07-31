@@ -1,5 +1,7 @@
+using CodeForge.Application.Courses.Common;
 using CodeForge.Application.Courses.GetPublishedCourseDetail;
 using CodeForge.Application.Courses.GetPublishedCourses;
+using CodeForge.Application.Tracks.Common;
 using CodeForge.Application.Tracks.GetPublishedTrackDetail;
 using CodeForge.Application.Tracks.GetPublishedTracks;
 using MediatR;
@@ -25,7 +27,7 @@ namespace CodeForge.Api.Controllers
         /// List published courses visible in the public catalog.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IReadOnlyList<CourseListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPublishedCourses(
             [FromQuery] string? category,
             [FromQuery] string? search,
@@ -38,7 +40,7 @@ namespace CodeForge.Api.Controllers
         /// Get published course details by slug, including open-batch availability.
         /// </summary>
         [HttpGet("{slug}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PublicCourseDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPublishedCourseDetail(
@@ -52,7 +54,7 @@ namespace CodeForge.Api.Controllers
         /// List published tracks (course bundles) visible in the public catalog.
         /// </summary>
         [HttpGet("/catalog/tracks")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IReadOnlyList<TrackListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPublishedTracks(
             [FromQuery] string? search,
             CancellationToken cancellationToken)
@@ -64,7 +66,7 @@ namespace CodeForge.Api.Controllers
         /// Get published track details by slug, including bundle-enrollment availability.
         /// </summary>
         [HttpGet("/catalog/tracks/{slug}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PublicTrackDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetPublishedTrackDetail(

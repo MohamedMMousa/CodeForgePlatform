@@ -18,6 +18,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("courses/{courseId:guid}/gradebook")]
+        [ProducesResponseType(typeof(CourseGradebookDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCourseGradebook(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetCourseGradebookQuery(courseId), cancellationToken);

@@ -1,5 +1,19 @@
 // Thin fetch wrapper around the CodeForge ASP.NET API.
 // Centralizes the base URL and error shape so feature code stays uniform.
+//
+// DTO shapes below are aliased from ./api-schema (generated from the backend's own
+// OpenAPI document — see scripts/generate-api-types.mjs) rather than hand-mirrored, so
+// a backend field rename surfaces as a tsc error here instead of a silent runtime bug.
+// Two exceptions, kept hand-written: (1) the union type aliases below (SessionType,
+// MaterialType, AssessmentType, AttendanceStatus, CertificateTier) — the backend types
+// these fields as plain `string`, so the generated schema can't provide the narrower
+// union the UI switches on; these mirror Application/Common/Constants/*.cs, not DTO
+// shapes. (2) request-shape parameter objects on functions taking loose input — these
+// are inputs to JSON.stringify or FormData, not response DTOs.
+
+import type { components } from "./api-schema";
+
+type Schemas = components["schemas"];
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5205";
@@ -107,16 +121,7 @@ export async function apiFetchForm<T>(
 // Auth
 // ---------------------------------------------------------------------------
 
-export interface AuthResponse {
-  userId: string;
-  email: string;
-  fullName: string;
-  role: string;
-  accessToken: string;
-  refreshToken: string;
-  refreshTokenExpiresAt: string;
-  mustChangePassword: boolean;
-}
+export type AuthResponse = Schemas["AuthResponse"];
 
 export function login(
   email: string,
@@ -151,92 +156,13 @@ export function changePassword(
 // Public catalog
 // ---------------------------------------------------------------------------
 
-export interface CourseListItem {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  category: string | null;
-  price: number;
-  currency: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CohortInfo {
-  id: string;
-  courseId: string;
-  courseTitle: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  enrollmentCutoffDate: string;
-  capacity: number;
-  gracePeriodDays: number;
-  status: string;
-  enrolledCount: number;
-  seatsLeft: number;
-  isAcceptingEnrollment: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CourseInstructorInfo {
-  id: string;
-  instructorId: string;
-  instructorName: string;
-  instructorEmail: string;
-  assignedAt: string;
-}
-
-export interface PublicCourseDetail {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  category: string | null;
-  price: number;
-  currency: string;
-  instructors: CourseInstructorInfo[];
-  cohorts: CohortInfo[];
-}
-
-export interface TrackListItem {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  price: number;
-  currency: string;
-  status: string;
-  courseCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TrackCourseInfo {
-  courseId: string;
-  courseTitle: string;
-  courseSlug: string;
-  coursePrice: number;
-  sortOrder: number;
-}
-
-export interface PublicTrackDetail {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  price: number;
-  currency: string;
-  courses: TrackCourseInfo[];
-  isBundleEnrollable: boolean;
-}
+export type CourseListItem = Schemas["CourseListDto"];
+export type CohortInfo = Schemas["CohortListDto"];
+export type CourseInstructorInfo = Schemas["CourseInstructorDto"];
+export type PublicCourseDetail = Schemas["PublicCourseDetailDto"];
+export type TrackListItem = Schemas["TrackListDto"];
+export type TrackCourseInfo = Schemas["TrackCourseDto"];
+export type PublicTrackDetail = Schemas["PublicTrackDetailDto"];
 
 export function getPublishedCourses(params: {
   category?: string;
@@ -268,16 +194,7 @@ export function getPublishedTrackDetail(slug: string): Promise<PublicTrackDetail
 // Coupons
 // ---------------------------------------------------------------------------
 
-export interface CouponValidationResult {
-  valid: boolean;
-  code: string;
-  type: string | null;
-  value: number | null;
-  originalPrice: number;
-  discountAmount: number;
-  finalPrice: number;
-  message: string | null;
-}
+export type CouponValidationResult = Schemas["CouponValidationResultDto"];
 
 export function validateCoupon(
   code: string,
@@ -297,26 +214,7 @@ export function validateCoupon(
 // Enrollment requests
 // ---------------------------------------------------------------------------
 
-export interface EnrollmentRequestResult {
-  id: string;
-  applicantName: string;
-  applicantEmail: string;
-  applicantPhone: string | null;
-  courseId: string | null;
-  courseTitle: string | null;
-  trackId: string | null;
-  trackTitle: string | null;
-  paymentMethod: string;
-  /** Authenticated (admin-only) API path — fetch with downloadAuthenticatedFile, not a plain link. */
-  paymentProofDownloadUrl: string;
-  originalPrice: number;
-  couponCode: string | null;
-  discountAmount: number;
-  finalPrice: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type EnrollmentRequestResult = Schemas["EnrollmentRequestDto"];
 
 export function submitEnrollmentRequest(input: {
   fullName: string;
@@ -348,17 +246,7 @@ export function submitEnrollmentRequest(input: {
 // Leads
 // ---------------------------------------------------------------------------
 
-export interface LeadResult {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  message: string | null;
-  courseId: string | null;
-  courseTitle: string | null;
-  isContacted: boolean;
-  createdAt: string;
-}
+export type LeadResult = Schemas["LeadDto"];
 
 export function submitLead(input: {
   name: string;
@@ -397,16 +285,7 @@ export function getAllCourses(token: string): Promise<CourseListItem[]> {
 // Modules
 // ---------------------------------------------------------------------------
 
-export interface ModuleItem {
-  id: string;
-  courseId: string;
-  title: string;
-  description: string | null;
-  orderIndex: number;
-  sessionCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ModuleItem = Schemas["ModuleListDto"];
 
 export function getCourseModules(courseId: string, token: string): Promise<ModuleItem[]> {
   return apiFetch<ModuleItem[]>(`/courses/${courseId}/modules`, { token });
@@ -416,7 +295,7 @@ export function createModule(
   courseId: string,
   input: { title: string; description?: string },
   token: string
-): Promise<{ moduleId: string; message: string }> {
+): Promise<Schemas["ModuleResponseDto"]> {
   return apiFetch(`/courses/${courseId}/modules`, {
     method: "POST",
     body: JSON.stringify({ title: input.title, description: input.description ?? null }),
@@ -424,7 +303,7 @@ export function createModule(
   });
 }
 
-export function deleteModule(id: string, token: string): Promise<{ moduleId: string; message: string }> {
+export function deleteModule(id: string, token: string): Promise<Schemas["ModuleResponseDto"]> {
   return apiFetch(`/modules/${id}`, { method: "DELETE", token });
 }
 
@@ -434,24 +313,7 @@ export function deleteModule(id: string, token: string): Promise<{ moduleId: str
 
 export type SessionType = "live" | "in_person" | "recorded_lesson";
 
-export interface SessionItem {
-  id: string;
-  moduleId: string;
-  type: SessionType;
-  title: string;
-  description: string | null;
-  orderIndex: number;
-  scheduledAt: string | null;
-  durationMinutes: number | null;
-  joinLink: string | null;
-  location: string | null;
-  videoUrl: string | null;
-  instructorId: string | null;
-  instructorName: string | null;
-  materialCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type SessionItem = Schemas["SessionDto"];
 
 export interface SessionInput {
   type: SessionType;
@@ -487,7 +349,7 @@ export function createSession(
   moduleId: string,
   input: SessionInput,
   token: string
-): Promise<{ sessionId: string; message: string }> {
+): Promise<Schemas["SessionResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/sessions`, {
     method: "POST",
     body: JSON.stringify(sessionInputBody(input)),
@@ -495,7 +357,7 @@ export function createSession(
   });
 }
 
-export function deleteSession(id: string, token: string): Promise<{ sessionId: string; message: string }> {
+export function deleteSession(id: string, token: string): Promise<Schemas["SessionResponseDto"]> {
   return apiFetch(`/sessions/${id}`, { method: "DELETE", token });
 }
 
@@ -505,22 +367,7 @@ export function deleteSession(id: string, token: string): Promise<{ sessionId: s
 
 export type MaterialType = "file" | "text" | "link";
 
-export interface MaterialItem {
-  id: string;
-  moduleId: string | null;
-  sessionId: string | null;
-  type: MaterialType;
-  title: string;
-  orderIndex: number;
-  body: string | null;
-  /** Authenticated API path — fetch with downloadAuthenticatedFile, not a plain link. */
-  fileDownloadUrl: string | null;
-  fileType: string | null;
-  fileSizeKb: number | null;
-  linkUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type MaterialItem = Schemas["MaterialDto"];
 
 export function getModuleMaterials(moduleId: string, token: string): Promise<MaterialItem[]> {
   return apiFetch<MaterialItem[]>(`/modules/${moduleId}/materials`, { token });
@@ -574,17 +421,7 @@ export function deleteMaterial(id: string, token: string): Promise<MaterialItem>
 // Announcements
 // ---------------------------------------------------------------------------
 
-export interface AnnouncementItem {
-  id: string;
-  courseId: string | null;
-  courseTitle: string | null;
-  authorId: string;
-  authorName: string;
-  title: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AnnouncementItem = Schemas["AnnouncementDto"];
 
 export function getAnnouncements(token: string, courseId?: string): Promise<AnnouncementItem[]> {
   const qs = courseId ? `?courseId=${courseId}` : "";
@@ -610,60 +447,17 @@ export function deleteAnnouncement(id: string, token: string): Promise<Announcem
 // My courses (student view)
 // ---------------------------------------------------------------------------
 
-export interface MyCourseAssessment {
-  id: string;
-  type: AssessmentType;
-  title: string;
-  timeLimitMinutes: number | null;
-  passScore: number | null;
-  maxAttempts: number | null;
-  isPractice: boolean;
-}
-
-export interface MyCourseAssignment {
-  id: string;
-  title: string;
-  dueAt: string | null;
-  maxAttempts: number | null;
-  isPractice: boolean;
-}
-
-export interface MyCourseModule {
-  id: string;
-  title: string;
-  description: string | null;
-  orderIndex: number;
-  sessions: SessionItem[];
-  assessments: MyCourseAssessment[];
-  assignments: MyCourseAssignment[];
-}
-
-export interface MyCourseContent {
-  courseId: string;
-  courseTitle: string;
-  modules: MyCourseModule[];
-}
+export type MyCourseAssessment = Schemas["MyCourseAssessmentDto"];
+export type MyCourseAssignment = Schemas["MyCourseAssignmentDto"];
+export type MyCourseModule = Schemas["MyCourseModuleDto"];
+export type MyCourseContent = Schemas["MyCourseContentDto"];
 
 export function getMyCourseContent(courseId: string, token: string): Promise<MyCourseContent> {
   return apiFetch<MyCourseContent>(`/my-courses/${courseId}/content`, { token });
 }
 
-export interface UpcomingSession {
-  sessionId: string;
-  courseId: string;
-  courseTitle: string;
-  moduleTitle: string;
-  type: SessionType;
-  title: string;
-  scheduledAt: string;
-  joinLink: string | null;
-  location: string | null;
-}
-
-export interface UpcomingItems {
-  upcomingSessions: UpcomingSession[];
-  recentAnnouncements: AnnouncementItem[];
-}
+export type UpcomingSession = Schemas["UpcomingSessionDto"];
+export type UpcomingItems = Schemas["UpcomingItemsDto"];
 
 export function getUpcomingItems(token: string): Promise<UpcomingItems> {
   return apiFetch<UpcomingItems>("/my-courses/upcoming-items", { token });
@@ -685,7 +479,7 @@ export function markAttendance(
   sessionId: string,
   entries: AttendanceEntry[],
   token: string
-): Promise<{ sessionId: string; message: string }> {
+): Promise<Schemas["AttendanceResponseDto"]> {
   return apiFetch(`/sessions/${sessionId}/attendance`, {
     method: "PUT",
     body: JSON.stringify({ entries }),
@@ -693,58 +487,22 @@ export function markAttendance(
   });
 }
 
-export interface RosterEntry {
-  studentId: string;
-  studentName: string;
-  status: AttendanceStatus | null;
-  notes: string | null;
-}
-
-export interface SessionRoster {
-  sessionId: string;
-  sessionTitle: string;
-  students: RosterEntry[];
-}
+export type RosterEntry = Schemas["RosterEntryDto"];
+export type SessionRoster = Schemas["SessionRosterDto"];
 
 export function getSessionRoster(sessionId: string, token: string): Promise<SessionRoster> {
   return apiFetch<SessionRoster>(`/sessions/${sessionId}/attendance`, { token });
 }
 
-export interface StudentAttendanceSummary {
-  studentId: string;
-  studentName: string;
-  cohortId: string;
-  cohortName: string;
-  sessionsHeld: number;
-  sessionsPresent: number;
-  attendanceRate: number;
-}
-
-export interface CourseAttendanceReport {
-  courseId: string;
-  courseTitle: string;
-  students: StudentAttendanceSummary[];
-}
+export type StudentAttendanceSummary = Schemas["StudentAttendanceSummaryDto"];
+export type CourseAttendanceReport = Schemas["CourseAttendanceReportDto"];
 
 export function getCourseAttendanceReport(courseId: string, token: string): Promise<CourseAttendanceReport> {
   return apiFetch<CourseAttendanceReport>(`/courses/${courseId}/attendance-report`, { token });
 }
 
-export interface MyAttendanceSession {
-  sessionId: string;
-  sessionTitle: string;
-  scheduledAt: string;
-  status: AttendanceStatus | null;
-}
-
-export interface MyAttendance {
-  courseId: string;
-  courseTitle: string;
-  sessionsHeld: number;
-  sessionsPresent: number;
-  attendanceRate: number;
-  sessions: MyAttendanceSession[];
-}
+export type MyAttendanceSession = Schemas["MyAttendanceSessionDto"];
+export type MyAttendance = Schemas["MyAttendanceDto"];
 
 export function getMyAttendance(courseId: string, token: string): Promise<MyAttendance> {
   return apiFetch<MyAttendance>(`/my-courses/${courseId}/attendance`, { token });
@@ -756,22 +514,7 @@ export function getMyAttendance(courseId: string, token: string): Promise<MyAtte
 
 export type AssessmentType = "quiz" | "exam";
 
-export interface AssessmentItem {
-  id: string;
-  moduleId: string;
-  type: AssessmentType;
-  title: string;
-  orderIndex: number;
-  timeLimitMinutes: number | null;
-  passScore: number | null;
-  isPractice: boolean;
-  maxAttempts: number | null;
-  randomizeQuestions: boolean;
-  disableCopyPaste: boolean;
-  questionCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AssessmentItem = Schemas["AssessmentDto"];
 
 export interface AssessmentInput {
   type: AssessmentType;
@@ -805,7 +548,7 @@ export function createAssessment(
   moduleId: string,
   input: AssessmentInput,
   token: string
-): Promise<{ assessmentId: string; message: string }> {
+): Promise<Schemas["AssessmentResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/assessments`, {
     method: "POST",
     body: JSON.stringify(assessmentInputBody(input)),
@@ -813,31 +556,19 @@ export function createAssessment(
   });
 }
 
-export function deleteAssessment(id: string, token: string): Promise<{ assessmentId: string; message: string }> {
+export function deleteAssessment(id: string, token: string): Promise<Schemas["AssessmentResponseDto"]> {
   return apiFetch(`/assessments/${id}`, { method: "DELETE", token });
 }
+
+export type OptionDto = Schemas["OptionDto"];
 
 export interface OptionInput {
   optionText: string;
   isCorrect: boolean;
 }
 
-export interface OptionDto {
-  id: string;
-  optionText: string;
-  isCorrect: boolean;
-}
-
-export interface QuestionDto {
-  id: string;
-  questionText: string;
-  orderIndex: number;
-  options: OptionDto[];
-}
-
-export interface AssessmentDetail extends AssessmentItem {
-  questions: QuestionDto[];
-}
+export type QuestionDto = Schemas["QuestionDto"];
+export type AssessmentDetail = Schemas["AssessmentDetailDto"];
 
 export function getAssessmentById(id: string, token: string): Promise<AssessmentDetail> {
   return apiFetch<AssessmentDetail>(`/assessments/${id}`, { token });
@@ -848,7 +579,7 @@ export function createQuestion(
   questionText: string,
   options: OptionInput[],
   token: string
-): Promise<{ questionId: string; message: string }> {
+): Promise<Schemas["QuestionResponseDto"]> {
   return apiFetch(`/assessments/${assessmentId}/questions`, {
     method: "POST",
     body: JSON.stringify({ questionText, options }),
@@ -856,37 +587,19 @@ export function createQuestion(
   });
 }
 
-export function deleteQuestion(id: string, token: string): Promise<{ questionId: string; message: string }> {
+export function deleteQuestion(id: string, token: string): Promise<Schemas["QuestionResponseDto"]> {
   return apiFetch(`/questions/${id}`, { method: "DELETE", token });
 }
 
-export interface AttemptOption {
-  id: string;
-  optionText: string;
-}
-
-export interface AttemptQuestion {
-  id: string;
-  questionText: string;
-  options: AttemptOption[];
-}
-
-export interface AttemptAssessment {
-  id: string;
-  type: AssessmentType;
-  title: string;
-  timeLimitMinutes: number | null;
-  maxAttempts: number | null;
-  attemptsUsed: number;
-  disableCopyPaste: boolean;
-  questions: AttemptQuestion[];
-}
+export type AttemptOption = Schemas["AttemptOptionDto"];
+export type AttemptQuestion = Schemas["AttemptQuestionDto"];
+export type AttemptAssessment = Schemas["AttemptAssessmentDto"];
 
 export function getAssessmentForAttempt(id: string, token: string): Promise<AttemptAssessment> {
   return apiFetch<AttemptAssessment>(`/assessments/${id}/attempt`, { token });
 }
 
-export function startAttempt(id: string, token: string): Promise<{ attemptId: string; startedAt: string }> {
+export function startAttempt(id: string, token: string): Promise<Schemas["StartAttemptResponseDto"]> {
   return apiFetch(`/assessments/${id}/attempts`, { method: "POST", token });
 }
 
@@ -895,25 +608,8 @@ export interface AnswerInput {
   selectedOptionId: string | null;
 }
 
-export interface AnswerResult {
-  questionId: string;
-  questionText: string;
-  selectedOptionId: string | null;
-  isCorrectSelection: boolean | null;
-  options: OptionDto[];
-}
-
-export interface AttemptResult {
-  attemptId: string;
-  quizId: string;
-  quizTitle: string;
-  attemptNumber: number;
-  score: number | null;
-  passed: boolean | null;
-  startedAt: string;
-  submittedAt: string | null;
-  answers: AnswerResult[];
-}
+export type AnswerResult = Schemas["AnswerResultDto"];
+export type AttemptResult = Schemas["AttemptResultDto"];
 
 export function submitAttempt(
   attemptId: string,
@@ -927,14 +623,7 @@ export function submitAttempt(
   });
 }
 
-export interface AttemptSummary {
-  attemptId: string;
-  attemptNumber: number;
-  score: number | null;
-  passed: boolean | null;
-  startedAt: string;
-  submittedAt: string | null;
-}
+export type AttemptSummary = Schemas["AttemptSummaryDto"];
 
 export function getMyAttempts(assessmentId: string, token: string): Promise<AttemptSummary[]> {
   return apiFetch<AttemptSummary[]>(`/assessments/${assessmentId}/my-attempts`, { token });
@@ -944,22 +633,8 @@ export function getAttemptResult(attemptId: string, token: string): Promise<Atte
   return apiFetch<AttemptResult>(`/attempts/${attemptId}`, { token });
 }
 
-export interface StudentAttempt {
-  attemptId: string;
-  studentId: string;
-  studentName: string;
-  attemptNumber: number;
-  score: number | null;
-  passed: boolean | null;
-  startedAt: string;
-  submittedAt: string | null;
-}
-
-export interface AssessmentResults {
-  assessmentId: string;
-  assessmentTitle: string;
-  attempts: StudentAttempt[];
-}
+export type StudentAttempt = Schemas["StudentAttemptDto"];
+export type AssessmentResults = Schemas["AssessmentResultsDto"];
 
 export function getAssessmentResults(id: string, token: string): Promise<AssessmentResults> {
   return apiFetch<AssessmentResults>(`/assessments/${id}/results`, { token });
@@ -976,29 +651,8 @@ export interface TestCaseInput {
   points: number;
 }
 
-export interface TestCaseDto {
-  id: string;
-  input: string;
-  expectedOutput: string;
-  isHidden: boolean;
-  points: number;
-  orderIndex: number;
-}
-
-export interface AssignmentItem {
-  id: string;
-  moduleId: string;
-  title: string;
-  description: string;
-  orderIndex: number;
-  isPractice: boolean;
-  maxAttempts: number | null;
-  dueAt: string | null;
-  passScore: number | null;
-  testCaseCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type TestCaseDto = Schemas["TestCaseDto"];
+export type AssignmentItem = Schemas["AssignmentDto"];
 
 export interface AssignmentInput {
   title: string;
@@ -1028,7 +682,7 @@ export function createAssignment(
   moduleId: string,
   input: AssignmentInput,
   token: string
-): Promise<{ assignmentId: string; message: string }> {
+): Promise<Schemas["AssignmentResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/assignments`, {
     method: "POST",
     body: JSON.stringify(assignmentInputBody(input)),
@@ -1036,13 +690,11 @@ export function createAssignment(
   });
 }
 
-export function deleteAssignment(id: string, token: string): Promise<{ assignmentId: string; message: string }> {
+export function deleteAssignment(id: string, token: string): Promise<Schemas["AssignmentResponseDto"]> {
   return apiFetch(`/assignments/${id}`, { method: "DELETE", token });
 }
 
-export interface AssignmentDetail extends AssignmentItem {
-  testCases: TestCaseDto[];
-}
+export type AssignmentDetail = Schemas["AssignmentDetailDto"];
 
 export function getAssignmentById(id: string, token: string): Promise<AssignmentDetail> {
   return apiFetch<AssignmentDetail>(`/assignments/${id}`, { token });
@@ -1052,7 +704,7 @@ export function addTestCase(
   assignmentId: string,
   input: TestCaseInput,
   token: string
-): Promise<{ testCaseId: string; message: string }> {
+): Promise<Schemas["TestCaseResponseDto"]> {
   return apiFetch(`/assignments/${assignmentId}/test-cases`, {
     method: "POST",
     body: JSON.stringify(input),
@@ -1060,51 +712,19 @@ export function addTestCase(
   });
 }
 
-export function deleteTestCase(id: string, token: string): Promise<{ testCaseId: string; message: string }> {
+export function deleteTestCase(id: string, token: string): Promise<Schemas["TestCaseResponseDto"]> {
   return apiFetch(`/test-cases/${id}`, { method: "DELETE", token });
 }
 
-export interface SubmissionTestCase {
-  id: string;
-  input: string;
-  expectedOutput: string;
-}
-
-export interface AssignmentForSubmission {
-  id: string;
-  title: string;
-  description: string;
-  dueAt: string | null;
-  maxAttempts: number | null;
-  attemptsUsed: number;
-  sampleTestCases: SubmissionTestCase[];
-}
+export type SubmissionTestCase = Schemas["SubmissionTestCaseDto"];
+export type AssignmentForSubmission = Schemas["AssignmentForSubmissionDto"];
 
 export function getAssignmentForSubmission(id: string, token: string): Promise<AssignmentForSubmission> {
   return apiFetch<AssignmentForSubmission>(`/assignments/${id}/submission`, { token });
 }
 
-export interface TestResult {
-  testCaseId: string;
-  isHidden: boolean;
-  passed: boolean;
-  actualOutput: string | null;
-  errorMessage: string | null;
-  executionTimeMs: number | null;
-}
-
-export interface SubmissionResult {
-  submissionId: string;
-  attemptNumber: number;
-  submittedAt: string;
-  isLate: boolean;
-  autoScore: number | null;
-  autoGradingStatus: string;
-  manualScore: number | null;
-  manualFeedback: string | null;
-  finalScore: number | null;
-  testResults: TestResult[];
-}
+export type TestResult = Schemas["TestResultDto"];
+export type SubmissionResult = Schemas["SubmissionResultDto"];
 
 export function submitAssignment(id: string, code: string, token: string): Promise<SubmissionResult> {
   return apiFetch<SubmissionResult>(`/assignments/${id}/submissions`, {
@@ -1127,16 +747,7 @@ export function gradeSubmission(
   });
 }
 
-export interface SubmissionSummary {
-  submissionId: string;
-  attemptNumber: number;
-  submittedAt: string;
-  isLate: boolean;
-  autoScore: number | null;
-  autoGradingStatus: string;
-  manualScore: number | null;
-  finalScore: number | null;
-}
+export type SubmissionSummary = Schemas["SubmissionSummaryDto"];
 
 export function getMySubmissions(assignmentId: string, token: string): Promise<SubmissionSummary[]> {
   return apiFetch<SubmissionSummary[]>(`/assignments/${assignmentId}/my-submissions`, { token });
@@ -1146,24 +757,8 @@ export function getSubmissionResult(submissionId: string, token: string): Promis
   return apiFetch<SubmissionResult>(`/submissions/${submissionId}`, { token });
 }
 
-export interface StudentSubmission {
-  submissionId: string;
-  studentId: string;
-  studentName: string;
-  attemptNumber: number;
-  submittedAt: string;
-  isLate: boolean;
-  autoScore: number | null;
-  autoGradingStatus: string;
-  manualScore: number | null;
-  finalScore: number | null;
-}
-
-export interface AssignmentSubmissions {
-  assignmentId: string;
-  assignmentTitle: string;
-  submissions: StudentSubmission[];
-}
+export type StudentSubmission = Schemas["StudentSubmissionDto"];
+export type AssignmentSubmissions = Schemas["AssignmentSubmissionsDto"];
 
 export function getSubmissionsForGrading(assignmentId: string, token: string): Promise<AssignmentSubmissions> {
   return apiFetch<AssignmentSubmissions>(`/assignments/${assignmentId}/submissions`, { token });
@@ -1173,48 +768,16 @@ export function getSubmissionsForGrading(assignmentId: string, token: string): P
 // Gradebook
 // ---------------------------------------------------------------------------
 
-export interface AssessmentGrade {
-  assessmentId: string;
-  title: string;
-  type: AssessmentType;
-  bestScore: number | null;
-  passed: boolean | null;
-  attemptsUsed: number;
-}
-
-export interface AssignmentGrade {
-  assignmentId: string;
-  title: string;
-  finalScore: number | null;
-  autoGradingStatus: string;
-  manuallyGraded: boolean;
-}
-
-export interface MyCourseGrades {
-  courseId: string;
-  courseTitle: string;
-  attendanceRate: number;
-  assessments: AssessmentGrade[];
-  assignments: AssignmentGrade[];
-}
+export type AssessmentGrade = Schemas["AssessmentGradeDto"];
+export type AssignmentGrade = Schemas["AssignmentGradeDto"];
+export type MyCourseGrades = Schemas["MyCourseGradesDto"];
 
 export function getMyCourseGrades(courseId: string, token: string): Promise<MyCourseGrades> {
   return apiFetch<MyCourseGrades>(`/my-courses/${courseId}/grades`, { token });
 }
 
-export interface StudentGradebookRow {
-  studentId: string;
-  studentName: string;
-  attendanceRate: number;
-  assessments: AssessmentGrade[];
-  assignments: AssignmentGrade[];
-}
-
-export interface CourseGradebook {
-  courseId: string;
-  courseTitle: string;
-  students: StudentGradebookRow[];
-}
+export type StudentGradebookRow = Schemas["StudentGradebookRowDto"];
+export type CourseGradebook = Schemas["CourseGradebookDto"];
 
 export function getCourseGradebook(courseId: string, token: string): Promise<CourseGradebook> {
   return apiFetch<CourseGradebook>(`/courses/${courseId}/gradebook`, { token });
@@ -1224,31 +787,8 @@ export function getCourseGradebook(courseId: string, token: string): Promise<Cou
 // Course detail + threshold config (admin)
 // ---------------------------------------------------------------------------
 
-export interface CourseInstructorEntry {
-  id: string;
-  instructorId: string;
-  fullName: string;
-  email: string;
-  assignedAt: string;
-}
-
-export interface CourseDetail {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  category: string | null;
-  price: number;
-  currency: string;
-  status: string;
-  completionAttendanceThreshold: number | null;
-  createdById: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
-  instructors: CourseInstructorEntry[];
-}
+export type CourseInstructorEntry = Schemas["CourseInstructorDto"];
+export type CourseDetail = Schemas["CourseDetailDto"];
 
 export function getCourseById(courseId: string, token: string): Promise<CourseDetail> {
   return apiFetch<CourseDetail>(`/courses/${courseId}`, { token });
@@ -1281,48 +821,9 @@ export function updateCourse(
 
 export type CertificateTier = "completion" | "participation";
 
-export interface Certificate {
-  id: string;
-  enrollmentId: string;
-  studentId: string;
-  studentName: string;
-  courseId: string;
-  courseTitle: string;
-  cohortId: string;
-  cohortName: string;
-  tier: CertificateTier;
-  serialNumber: string;
-  verificationCode: string;
-  attendanceRate: number;
-  assessmentsPassed: boolean;
-  issuedByName: string;
-  issuedAt: string;
-  isRevoked: boolean;
-  revokedAt: string | null;
-  revocationReason: string | null;
-}
-
-export interface CertificateCandidate {
-  enrollmentId: string;
-  studentId: string;
-  studentName: string;
-  studentEmail: string;
-  cohortId: string;
-  cohortName: string;
-  attendanceRate: number;
-  attendanceThreshold: number;
-  attendanceMet: boolean;
-  assessmentsPassed: boolean;
-  requiredAssessmentCount: number;
-  recommendedTier: CertificateTier;
-  existingCertificate: Certificate | null;
-}
-
-export interface CourseCertificateCandidates {
-  courseId: string;
-  courseTitle: string;
-  candidates: CertificateCandidate[];
-}
+export type Certificate = Schemas["CertificateDto"];
+export type CertificateCandidate = Schemas["CertificateCandidateDto"];
+export type CourseCertificateCandidates = Schemas["CourseCertificateCandidatesDto"];
 
 export function getCourseCertificateCandidates(
   courseId: string,
@@ -1363,16 +864,7 @@ export function getCertificateById(certificateId: string, token: string): Promis
   return apiFetch<Certificate>(`/certificates/${certificateId}`, { token });
 }
 
-export interface CertificateVerification {
-  found: boolean;
-  isValid: boolean;
-  studentName: string | null;
-  courseTitle: string | null;
-  tier: CertificateTier | null;
-  serialNumber: string | null;
-  issuedAt: string | null;
-  isRevoked: boolean;
-}
+export type CertificateVerification = Schemas["CertificateVerificationDto"];
 
 /** Public — no auth token needed. */
 export function verifyCertificate(code: string): Promise<CertificateVerification> {
@@ -1383,81 +875,23 @@ export function verifyCertificate(code: string): Promise<CertificateVerification
 // Analytics
 // ---------------------------------------------------------------------------
 
-export interface MonthlyCount {
-  year: number;
-  month: number;
-  count: number;
-}
-
-export interface RevenueByCourse {
-  courseId: string;
-  title: string;
-  revenue: number;
-  approvedRequests: number;
-}
-
-export interface AdminBusinessDashboard {
-  totalStudents: number;
-  publishedCourses: number;
-  publishedTracks: number;
-  activeEnrollments: number;
-  pendingEnrollmentRequests: number;
-  totalRevenue: number;
-  totalLeads: number;
-  uncontactedLeads: number;
-  openCohorts: number;
-  topCoursesByRevenue: RevenueByCourse[];
-  enrollmentsByMonth: MonthlyCount[];
-}
+export type MonthlyCount = Schemas["MonthlyCountDto"];
+export type RevenueByCourse = Schemas["RevenueByCourseDto"];
+export type AdminBusinessDashboard = Schemas["AdminBusinessDashboardDto"];
 
 export function getAdminBusinessDashboard(token: string): Promise<AdminBusinessDashboard> {
   return apiFetch<AdminBusinessDashboard>("/analytics/admin/business", { token });
 }
 
-export interface CourseAcademicRow {
-  courseId: string;
-  title: string;
-  activeEnrollments: number;
-  assessments: number;
-  submittedAttempts: number;
-  assessmentPassRate: number;
-  certificatesIssued: number;
-}
-
-export interface AdminAcademicDashboard {
-  certificatesIssued: number;
-  completionCertificates: number;
-  participationCertificates: number;
-  revokedCertificates: number;
-  totalAssessments: number;
-  submittedAttempts: number;
-  assessmentPassRate: number;
-  totalAssignments: number;
-  totalSubmissions: number;
-  courses: CourseAcademicRow[];
-}
+export type CourseAcademicRow = Schemas["CourseAcademicRowDto"];
+export type AdminAcademicDashboard = Schemas["AdminAcademicDashboardDto"];
 
 export function getAdminAcademicDashboard(token: string): Promise<AdminAcademicDashboard> {
   return apiFetch<AdminAcademicDashboard>("/analytics/admin/academic", { token });
 }
 
-export interface InstructorCourseRow {
-  courseId: string;
-  title: string;
-  status: string;
-  activeEnrollments: number;
-  assessments: number;
-  submittedAttempts: number;
-  assessmentPassRate: number;
-  certificatesIssued: number;
-}
-
-export interface InstructorDashboard {
-  assignedCourses: number;
-  totalActiveStudents: number;
-  certificatesIssued: number;
-  courses: InstructorCourseRow[];
-}
+export type InstructorCourseRow = Schemas["InstructorCourseRowDto"];
+export type InstructorDashboard = Schemas["InstructorDashboardDto"];
 
 export function getInstructorDashboard(token: string): Promise<InstructorDashboard> {
   return apiFetch<InstructorDashboard>("/analytics/instructor", { token });
@@ -1467,16 +901,7 @@ export function getInstructorDashboard(token: string): Promise<InstructorDashboa
 // Admin: Users
 // ---------------------------------------------------------------------------
 
-export interface AdminUser {
-  id: string;
-  email: string;
-  fullName: string;
-  phone: string | null;
-  role: string;
-  isActive: boolean;
-  mustChangePassword: boolean;
-  createdAt: string;
-}
+export type AdminUser = Schemas["UserDto"];
 
 export function getUsers(
   params: { role?: string; isActive?: boolean; search?: string },
@@ -1509,10 +934,7 @@ export function reactivateUser(userId: string, token: string): Promise<AdminUser
 // Admin: Courses
 // ---------------------------------------------------------------------------
 
-export interface CourseMutationResult {
-  courseId: string;
-  message: string;
-}
+export type CourseMutationResult = Schemas["CourseMutationResultDto"];
 
 export function getAdminCourses(
   params: { status?: string; category?: string; search?: string },
@@ -1579,34 +1001,9 @@ export function removeInstructorFromCourse(
 // Admin: Tracks
 // ---------------------------------------------------------------------------
 
-export interface TrackCourseEntry {
-  courseId: string;
-  courseTitle: string;
-  courseSlug: string;
-  coursePrice: number;
-  sortOrder: number;
-}
-
-export interface TrackDetail {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  thumbnailUrl: string | null;
-  price: number;
-  currency: string;
-  status: string;
-  createdById: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
-  courses: TrackCourseEntry[];
-}
-
-export interface TrackMutationResult {
-  trackId: string;
-  message: string;
-}
+export type TrackCourseEntry = Schemas["TrackCourseDto"];
+export type TrackDetail = Schemas["TrackDetailDto"];
+export type TrackMutationResult = Schemas["TrackMutationResultDto"];
 
 export function getAdminTracks(
   params: { status?: string; search?: string },
@@ -1689,10 +1086,7 @@ export function removeCourseFromTrack(
 // Admin: Cohorts
 // ---------------------------------------------------------------------------
 
-export interface CohortMutationResult {
-  cohortId: string;
-  message: string;
-}
+export type CohortMutationResult = Schemas["CohortMutationResultDto"];
 
 export function getCourseCohortsAdmin(courseId: string, token: string): Promise<CohortInfo[]> {
   return apiFetch<CohortInfo[]>(`/courses/${courseId}/cohorts`, { token });
@@ -1748,21 +1142,7 @@ export function completeCohort(cohortId: string, token: string): Promise<CohortM
 // Admin: Coupons
 // ---------------------------------------------------------------------------
 
-export interface AdminCoupon {
-  id: string;
-  code: string;
-  type: string;
-  value: number;
-  isActive: boolean;
-  validFrom: string | null;
-  validUntil: string | null;
-  usageLimit: number | null;
-  usedCount: number;
-  createdById: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AdminCoupon = Schemas["CouponDto"];
 
 export function getCoupons(isActive: boolean | undefined, token: string): Promise<AdminCoupon[]> {
   const qs = isActive !== undefined ? `?isActive=${isActive}` : "";
@@ -1799,38 +1179,8 @@ export function deactivateCoupon(couponId: string, token: string): Promise<Admin
 // Admin: Enrollment requests + enrollment cancellation
 // ---------------------------------------------------------------------------
 
-export interface EnrollmentRequestTargetCohort {
-  cohortId: string;
-  cohortName: string;
-  courseId: string;
-  courseTitle: string;
-}
-
-export interface EnrollmentRequestDetail {
-  id: string;
-  applicantName: string;
-  applicantEmail: string;
-  applicantPhone: string | null;
-  courseId: string | null;
-  courseTitle: string | null;
-  trackId: string | null;
-  trackTitle: string | null;
-  paymentMethod: string;
-  paymentProofDownloadUrl: string;
-  originalPrice: number;
-  couponCode: string | null;
-  discountAmount: number;
-  finalPrice: number;
-  status: string;
-  rejectionReason: string | null;
-  reviewedById: string | null;
-  reviewedByName: string | null;
-  reviewedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  targetCohorts: EnrollmentRequestTargetCohort[];
-  resultingEnrollmentIds: string[];
-}
+export type EnrollmentRequestTargetCohort = Schemas["EnrollmentRequestTargetCohortDto"];
+export type EnrollmentRequestDetail = Schemas["EnrollmentRequestDetailDto"];
 
 export function getEnrollmentRequests(
   params: { status?: string; courseId?: string; trackId?: string },
@@ -1848,13 +1198,7 @@ export function getEnrollmentRequestById(id: string, token: string): Promise<Enr
   return apiFetch<EnrollmentRequestDetail>(`/enrollment-requests/${id}`, { token });
 }
 
-export interface EnrollmentApprovalResult {
-  requestId: string;
-  studentId: string;
-  enrollmentIds: string[];
-  studentCreated: boolean;
-  message: string;
-}
+export type EnrollmentApprovalResult = Schemas["EnrollmentApprovalResultDto"];
 
 export function approveEnrollmentRequest(id: string, token: string): Promise<EnrollmentApprovalResult> {
   return apiFetch<EnrollmentApprovalResult>(`/enrollment-requests/${id}/approve`, { method: "PUT", token });
@@ -1864,7 +1208,7 @@ export function rejectEnrollmentRequest(
   id: string,
   rejectionReason: string,
   token: string
-): Promise<{ requestId: string; message: string }> {
+): Promise<Schemas["EnrollmentRequestMessageDto"]> {
   return apiFetch(`/enrollment-requests/${id}/reject`, {
     method: "PUT",
     body: JSON.stringify({ rejectionReason }),
@@ -1877,7 +1221,7 @@ export function cancelEnrollment(
   reason: string,
   markAsRefunded: boolean,
   token: string
-): Promise<unknown> {
+): Promise<Schemas["EnrollmentDto"]> {
   return apiFetch(`/enrollments/${enrollmentId}/cancel`, {
     method: "PUT",
     body: JSON.stringify({ reason, markAsRefunded }),

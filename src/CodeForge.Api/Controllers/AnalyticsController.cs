@@ -1,3 +1,4 @@
+using CodeForge.Application.Analytics.Common;
 using CodeForge.Application.Analytics.GetAdminAcademicDashboard;
 using CodeForge.Application.Analytics.GetAdminBusinessDashboard;
 using CodeForge.Application.Analytics.GetInstructorDashboard;
@@ -23,6 +24,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>Admin business dashboard: enrollments, revenue, leads, cohorts.</summary>
         [HttpGet("admin/business")]
         [Authorize(Policy = "AdminOnly")]
+        [ProducesResponseType(typeof(AdminBusinessDashboardDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> AdminBusiness(CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAdminBusinessDashboardQuery(), cancellationToken);
@@ -32,6 +34,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>Admin academic dashboard: assessments, pass rates, certificates per course.</summary>
         [HttpGet("admin/academic")]
         [Authorize(Policy = "AdminOnly")]
+        [ProducesResponseType(typeof(AdminAcademicDashboardDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> AdminAcademic(CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAdminAcademicDashboardQuery(), cancellationToken);
@@ -41,6 +44,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>The current instructor's analytics across their assigned courses.</summary>
         [HttpGet("instructor")]
         [Authorize(Policy = "InstructorOnly")]
+        [ProducesResponseType(typeof(InstructorDashboardDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Instructor(CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetInstructorDashboardQuery(), cancellationToken);

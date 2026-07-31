@@ -1,4 +1,5 @@
 using CodeForge.Application.Enrollments.CancelEnrollment;
+using CodeForge.Application.Enrollments.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,7 @@ namespace CodeForge.Api.Controllers
         /// Cancel an active enrollment and revoke access. Admin only.
         /// </summary>
         [HttpPut("{id:guid}/cancel")]
+        [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Cancel(Guid id, CancelEnrollmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(

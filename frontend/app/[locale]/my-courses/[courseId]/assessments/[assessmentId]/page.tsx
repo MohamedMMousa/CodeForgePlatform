@@ -124,7 +124,7 @@ export default function AssessmentAttemptPage({
           <p>
             {t.attemptsUsed}: {assessment.attemptsUsed} {t.of} {assessment.maxAttempts ?? "∞"}
           </p>
-          {assessment.maxAttempts !== null && assessment.attemptsUsed >= assessment.maxAttempts ? (
+          {assessment.maxAttempts != null && assessment.attemptsUsed >= assessment.maxAttempts ? (
             <p className="notice err">{t.noAttemptsLeft}</p>
           ) : (
             <button className="btn" onClick={onStart} disabled={starting}>

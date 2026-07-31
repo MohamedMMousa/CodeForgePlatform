@@ -81,7 +81,7 @@ export default function VerifyCertificatePage({
             {result.isValid ? tc.verifyValid : tc.verifyRevoked}
           </p>
           <h2 style={{ margin: "0.5rem 0" }}>{result.courseTitle}</h2>
-          <p><span className="badge">{tierLabel(result.tier)}</span></p>
+          <p><span className="badge">{tierLabel(result.tier ?? null)}</span></p>
           <p>{tc.student}: <strong>{result.studentName}</strong></p>
           <p className="muted">
             {tc.serial}: {result.serialNumber}

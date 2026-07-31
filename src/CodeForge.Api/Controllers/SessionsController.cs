@@ -1,3 +1,4 @@
+using CodeForge.Application.Sessions.Common;
 using CodeForge.Application.Sessions.CreateSession;
 using CodeForge.Application.Sessions.DeleteSession;
 using CodeForge.Application.Sessions.GetModuleSessions;
@@ -23,6 +24,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("modules/{moduleId:guid}/sessions")]
+        [ProducesResponseType(typeof(SessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(Guid moduleId, CreateSessionRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -35,6 +37,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("sessions/{id:guid}")]
+        [ProducesResponseType(typeof(SessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateSessionRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -47,6 +50,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("sessions/{id:guid}")]
+        [ProducesResponseType(typeof(SessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteSessionCommand(id), cancellationToken);
@@ -61,6 +65,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("modules/{moduleId:guid}/sessions")]
+        [ProducesResponseType(typeof(IReadOnlyList<SessionDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForModule(Guid moduleId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetModuleSessionsQuery(moduleId), cancellationToken);
@@ -68,6 +73,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("sessions/{id:guid}")]
+        [ProducesResponseType(typeof(SessionDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetSessionByIdQuery(id), cancellationToken);

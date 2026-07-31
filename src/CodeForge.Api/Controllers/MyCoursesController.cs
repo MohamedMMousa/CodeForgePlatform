@@ -1,3 +1,4 @@
+using CodeForge.Application.MyCourses.Common;
 using CodeForge.Application.MyCourses.GetMyCourseContent;
 using CodeForge.Application.MyCourses.GetMyCourseGrades;
 using CodeForge.Application.MyCourses.GetUpcomingItems;
@@ -21,6 +22,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("upcoming-items")]
+        [ProducesResponseType(typeof(UpcomingItemsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetUpcomingItems(CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetUpcomingItemsQuery(), cancellationToken);
@@ -28,6 +30,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("{courseId:guid}/content")]
+        [ProducesResponseType(typeof(MyCourseContentDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetContent(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyCourseContentQuery(courseId), cancellationToken);
@@ -35,6 +38,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("{courseId:guid}/grades")]
+        [ProducesResponseType(typeof(MyCourseGradesDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetGrades(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyCourseGradesQuery(courseId), cancellationToken);

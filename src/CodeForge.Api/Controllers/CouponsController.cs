@@ -1,3 +1,4 @@
+using CodeForge.Application.Coupons.Common;
 using CodeForge.Application.Coupons.CreateCoupon;
 using CodeForge.Application.Coupons.DeactivateCoupon;
 using CodeForge.Application.Coupons.GetCouponById;
@@ -26,6 +27,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpPost]
+        [ProducesResponseType(typeof(CouponDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(CreateCouponRequest request, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(
@@ -37,6 +39,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id:guid}")]
+        [ProducesResponseType(typeof(CouponDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateCouponRequest request, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(
@@ -48,6 +51,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id:guid}/deactivate")]
+        [ProducesResponseType(typeof(CouponDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(new DeactivateCouponCommand(id), cancellationToken);
@@ -55,6 +59,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<CouponDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] bool? isActive, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(new GetCouponsQuery(isActive), cancellationToken);
@@ -62,6 +67,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpGet("{id:guid}")]
+        [ProducesResponseType(typeof(CouponDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(new GetCouponByIdQuery(id), cancellationToken);
@@ -73,6 +79,7 @@ namespace CodeForge.Api.Controllers
         [AllowAnonymous]
         [EnableRateLimiting(RateLimitPolicies.PublicSubmit)]
         [HttpPost("validate")]
+        [ProducesResponseType(typeof(CouponValidationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Validate(ValidateCouponRequest request, CancellationToken cancellationToken)
         {
             return await SendCouponRequest(

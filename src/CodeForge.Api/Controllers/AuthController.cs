@@ -1,4 +1,5 @@
 using CodeForge.Application.Authentication.ChangePassword;
+using CodeForge.Application.Authentication.Common;
 using CodeForge.Application.Authentication.ForgotPassword;
 using CodeForge.Application.Authentication.GetCurrentUser;
 using CodeForge.Application.Authentication.Login;
@@ -26,6 +27,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("login")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequest(
@@ -35,6 +37,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("refresh-token")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RefreshToken(RefreshTokenRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequest(
@@ -44,6 +47,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("forgot-password")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
+        [ProducesResponseType(typeof(AuthMessageResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequest(
@@ -53,6 +57,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("reset-password")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
+        [ProducesResponseType(typeof(AuthMessageResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequest(
@@ -63,6 +68,7 @@ namespace CodeForge.Api.Controllers
         [Authorize]
         [AllowPendingPasswordChange]
         [HttpPost("change-password")]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequest(
@@ -73,6 +79,7 @@ namespace CodeForge.Api.Controllers
         [Authorize]
         [AllowPendingPasswordChange]
         [HttpGet("me")]
+        [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> Me(CancellationToken cancellationToken)
         {
             return await SendAuthRequest(new GetCurrentUserQuery(), cancellationToken);

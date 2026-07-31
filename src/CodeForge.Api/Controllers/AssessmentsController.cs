@@ -34,6 +34,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("modules/{moduleId:guid}/assessments")]
+        [ProducesResponseType(typeof(AssessmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(Guid moduleId, CreateAssessmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -45,6 +46,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("assessments/{id:guid}")]
+        [ProducesResponseType(typeof(AssessmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateAssessmentRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -56,6 +58,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("assessments/{id:guid}")]
+        [ProducesResponseType(typeof(AssessmentResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteAssessmentCommand(id), cancellationToken);
@@ -70,6 +73,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("modules/{moduleId:guid}/assessments")]
+        [ProducesResponseType(typeof(IReadOnlyList<AssessmentDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForModule(Guid moduleId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetModuleAssessmentsQuery(moduleId), cancellationToken);
@@ -77,6 +81,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assessments/{id:guid}")]
+        [ProducesResponseType(typeof(AssessmentDetailDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAssessmentByIdQuery(id), cancellationToken);
@@ -84,6 +89,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("assessments/{assessmentId:guid}/questions")]
+        [ProducesResponseType(typeof(QuestionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateQuestion(Guid assessmentId, CreateQuestionRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new CreateQuestionCommand(assessmentId, request.QuestionText, request.Options), cancellationToken);
@@ -91,6 +97,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("questions/{id:guid}")]
+        [ProducesResponseType(typeof(QuestionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> UpdateQuestion(Guid id, UpdateQuestionRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new UpdateQuestionCommand(id, request.QuestionText, request.Options), cancellationToken);
@@ -98,6 +105,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("questions/{id:guid}")]
+        [ProducesResponseType(typeof(QuestionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> DeleteQuestion(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteQuestionCommand(id), cancellationToken);
@@ -112,6 +120,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assessments/{id:guid}/attempt")]
+        [ProducesResponseType(typeof(AttemptAssessmentDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForAttempt(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAssessmentForAttemptQuery(id), cancellationToken);
@@ -119,6 +128,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("assessments/{id:guid}/attempts")]
+        [ProducesResponseType(typeof(StartAttemptResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> StartAttempt(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new StartAttemptCommand(id), cancellationToken);
@@ -126,6 +136,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("attempts/{attemptId:guid}/submit")]
+        [ProducesResponseType(typeof(AttemptResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> SubmitAttempt(Guid attemptId, SubmitAttemptRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new SubmitAttemptCommand(attemptId, request.Answers), cancellationToken);
@@ -133,6 +144,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assessments/{id:guid}/my-attempts")]
+        [ProducesResponseType(typeof(IReadOnlyList<AttemptSummaryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyAttempts(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyAttemptsQuery(id), cancellationToken);
@@ -140,6 +152,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("attempts/{attemptId:guid}")]
+        [ProducesResponseType(typeof(AttemptResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAttemptResult(Guid attemptId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAttemptResultQuery(attemptId), cancellationToken);
@@ -147,6 +160,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("assessments/{id:guid}/results")]
+        [ProducesResponseType(typeof(AssessmentResultsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetResults(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAssessmentResultsQuery(id), cancellationToken);

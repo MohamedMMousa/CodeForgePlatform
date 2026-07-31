@@ -22,6 +22,8 @@ dotnet run --project src/CodeForge.Api      # :5205, Swagger at /swagger
 npm --prefix frontend run dev               # :3000
 
 dotnet ef database update --project src/CodeForge.Infrastructure --startup-project src/CodeForge.Api
+
+node scripts/generate-api-types.mjs         # regenerate frontend/lib/api-schema.d.ts; needs the API running
 ```
 
 Do **not** run `npm run lint` — it is `next lint` with no ESLint installed and no config, so it

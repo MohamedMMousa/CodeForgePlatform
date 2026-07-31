@@ -1,4 +1,5 @@
 using CodeForge.Application.EnrollmentRequests.ApproveEnrollmentRequest;
+using CodeForge.Application.EnrollmentRequests.Common;
 using CodeForge.Application.EnrollmentRequests.GetEnrollmentRequestById;
 using CodeForge.Application.EnrollmentRequests.GetEnrollmentRequests;
 using CodeForge.Application.EnrollmentRequests.GetPaymentProofFile;
@@ -31,7 +32,7 @@ namespace CodeForge.Api.Controllers
         [AllowAnonymous]
         [EnableRateLimiting(RateLimitPolicies.PublicSubmit)]
         [Consumes("multipart/form-data")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(EnrollmentRequestDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [RequestSizeLimit(10_000_000)]
@@ -69,7 +70,7 @@ namespace CodeForge.Api.Controllers
         /// </summary>
         [Authorize(Policy = "AdminOnly")]
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IReadOnlyList<EnrollmentRequestDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAll(
@@ -88,7 +89,7 @@ namespace CodeForge.Api.Controllers
         /// </summary>
         [Authorize(Policy = "AdminOnly")]
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(EnrollmentRequestDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -119,7 +120,7 @@ namespace CodeForge.Api.Controllers
         /// </summary>
         [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id:guid}/approve")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(EnrollmentApprovalResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -136,7 +137,7 @@ namespace CodeForge.Api.Controllers
         /// </summary>
         [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id:guid}/reject")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(EnrollmentRequestMessageDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]

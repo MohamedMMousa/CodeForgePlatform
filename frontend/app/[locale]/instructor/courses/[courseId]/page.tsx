@@ -291,9 +291,9 @@ export default function InstructorCoursePage({
         {
           title: courseDetail.title,
           slug: courseDetail.slug,
-          description: courseDetail.description,
-          thumbnailUrl: courseDetail.thumbnailUrl,
-          category: courseDetail.category,
+          description: courseDetail.description ?? null,
+          thumbnailUrl: courseDetail.thumbnailUrl ?? null,
+          category: courseDetail.category ?? null,
           price: courseDetail.price,
           currency: courseDetail.currency,
           completionAttendanceThreshold: parsed
@@ -460,7 +460,7 @@ export default function InstructorCoursePage({
                         </td>
                         <td>{c.assessmentsPassed ? tc.yes : tc.no} ({c.requiredAssessmentCount})</td>
                         <td>
-                          <span className="badge">{tierLabel(c.recommendedTier)}</span>
+                          <span className="badge">{tierLabel(c.recommendedTier as CertificateTier)}</span>
                         </td>
                         <td>
                           {cert ? (
@@ -468,7 +468,7 @@ export default function InstructorCoursePage({
                               <span className="muted">{tc.revoked}</span>
                             ) : (
                               <>
-                                <span className="badge">{tierLabel(cert.tier)}</span>
+                                <span className="badge">{tierLabel(cert.tier as CertificateTier)}</span>
                                 <br />
                                 <span className="muted">{cert.serialNumber}</span>
                               </>
@@ -484,9 +484,9 @@ export default function InstructorCoursePage({
                                 <button
                                   className="btn"
                                   disabled={busyEnrollment === c.enrollmentId}
-                                  onClick={() => onIssue(c.enrollmentId, c.recommendedTier)}
+                                  onClick={() => onIssue(c.enrollmentId, c.recommendedTier as CertificateTier)}
                                 >
-                                  {tc.issue} — {tierLabel(c.recommendedTier)}
+                                  {tc.issue} — {tierLabel(c.recommendedTier as CertificateTier)}
                                 </button>
                                 {c.recommendedTier === "completion" && (
                                   <button

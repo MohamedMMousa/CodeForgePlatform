@@ -14,6 +14,7 @@ using CodeForge.Application.Common.Models;
 using CodeForge.Api.Filters;
 using CodeForge.Api.Middleware;
 using CodeForge.Api.RateLimiting;
+using CodeForge.Api.Swagger;
 using CodeForge.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,11 +49,19 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo 
-    { 
-        Title = "CodeForge Academy API", 
-        Version = "v1" 
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "CodeForge Academy API",
+        Version = "v1"
     });
+
+    // Reflects C# nullable-reference annotations into the schema's `nullable` flags,
+    // and RequireNonNullablePropertiesSchemaFilter promotes non-nullable properties to
+    // `required` — together these make the generated OpenAPI doc exactly as strict as
+    // the DTOs themselves, which frontend/lib/api-schema.d.ts is generated from
+    // (see scripts/generate-api-types.mjs).
+    options.SupportNonNullableReferenceTypes();
+    options.SchemaFilter<RequireNonNullablePropertiesSchemaFilter>();
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

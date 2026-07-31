@@ -1,3 +1,4 @@
+using CodeForge.Application.Materials.Common;
 using CodeForge.Application.Materials.CreateMaterial;
 using CodeForge.Application.Materials.DeleteMaterial;
 using CodeForge.Application.Materials.GetMaterialFile;
@@ -23,6 +24,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("modules/{moduleId:guid}/materials")]
         [RequestSizeLimit(10 * 1024 * 1024)]
+        [ProducesResponseType(typeof(MaterialDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateForModule(
             Guid moduleId, [FromForm] CreateMaterialForm form, CancellationToken cancellationToken)
         {
@@ -31,6 +33,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("sessions/{sessionId:guid}/materials")]
         [RequestSizeLimit(10 * 1024 * 1024)]
+        [ProducesResponseType(typeof(MaterialDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateForSession(
             Guid sessionId, [FromForm] CreateMaterialForm form, CancellationToken cancellationToken)
         {
@@ -66,6 +69,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("materials/{id:guid}")]
+        [ProducesResponseType(typeof(MaterialDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteMaterialCommand(id), cancellationToken);
@@ -84,6 +88,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("modules/{moduleId:guid}/materials")]
+        [ProducesResponseType(typeof(IReadOnlyList<MaterialDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForModule(Guid moduleId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetModuleMaterialsQuery(moduleId), cancellationToken);
@@ -91,6 +96,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("sessions/{sessionId:guid}/materials")]
+        [ProducesResponseType(typeof(IReadOnlyList<MaterialDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForSession(Guid sessionId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetSessionMaterialsQuery(sessionId), cancellationToken);

@@ -1,3 +1,4 @@
+using CodeForge.Application.Modules.Common;
 using CodeForge.Application.Modules.CreateModule;
 using CodeForge.Application.Modules.DeleteModule;
 using CodeForge.Application.Modules.GetCourseModules;
@@ -23,6 +24,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("courses/{courseId:guid}/modules")]
+        [ProducesResponseType(typeof(ModuleResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(Guid courseId, CreateModuleRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -31,6 +33,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("modules/{id:guid}")]
+        [ProducesResponseType(typeof(ModuleResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateModuleRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -39,6 +42,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("modules/{id:guid}")]
+        [ProducesResponseType(typeof(ModuleResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteModuleCommand(id), cancellationToken);
@@ -53,6 +57,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("courses/{courseId:guid}/modules")]
+        [ProducesResponseType(typeof(IReadOnlyList<ModuleListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForCourse(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetCourseModulesQuery(courseId), cancellationToken);
@@ -60,6 +65,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("modules/{id:guid}")]
+        [ProducesResponseType(typeof(ModuleListDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetModuleByIdQuery(id), cancellationToken);

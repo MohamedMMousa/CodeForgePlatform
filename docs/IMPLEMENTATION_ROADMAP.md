@@ -424,15 +424,45 @@ with a second fresh account. 78/78 backend unit tests pass (7 new).
 hand-mirrored every backend DTO (~90 `interface`s) and had already drifted silently —
 see the `CourseInstructorEntry` fix noted in Phase 6 above; `CourseInstructorInfo` (the
 public catalog's mirror of the same `CourseInstructorDto`) had the identical bug and was
-still live. Fixed with `openapi-typescript` generating `frontend/lib/api-schema.d.ts`
+still live (confirmed dead code, though — nothing renders `PublicCourseDetail.instructors`).
+
+Discovered mid-implementation: Swashbuckle had **no response-body schemas at all** —
+every action returned bare `Task<IActionResult>` with no `[ProducesResponseType(typeof(...))]`,
+so the generated OpenAPI doc only ever had the ~55 request-body schemas ASP.NET Core
+infers automatically from `[FromBody]`/`[FromForm]` parameters. Fixed by adding an
+explicit `[ProducesResponseType(typeof(ResponseDto), StatusCodes.Status200OK)]` to every
+action across all 22 controllers (~150 actions; skipped only the two file-download
+actions) — purely additive metadata, no behavior change. Combined with the nullability
+fix (`SupportNonNullableReferenceTypes()` +
+`RequireNonNullablePropertiesSchemaFilter` in `src/CodeForge.Api/Swagger/`), the schema
+count went from 55 to 142 and every property's `required`/`nullable` now matches the C#
+DTO exactly. **New controller actions must add this attribute** — nothing else makes
+Swashbuckle emit a response schema.
+
+Types are generated via `openapi-typescript`, producing `frontend/lib/api-schema.d.ts`
 from the API's own `swagger.json` (`node scripts/generate-api-types.mjs`, run manually
 against the running dev API; both `openapi.json` and the generated `.d.ts` are
 committed so `tsc`/`next build`/CI never need a live API). `lib/api.ts`'s hand-written
 interfaces were replaced with aliases into the generated `components["schemas"]`, kept
 under their original exported names so call sites were untouched; `apiFetch` itself is
-unchanged. A CI job that regenerates and fails on `git diff` is a good Phase 1 addition
-once the API can boot in CI (it currently requires User Secrets + a live database) —
-not built here. Full details: `ARCHITECTURE.md` §6.
+unchanged. Five union type aliases (`SessionType`, `MaterialType`, `AssessmentType`,
+`AttendanceStatus`, `CertificateTier`) stay hand-written since the backend types those
+fields as plain `string` — a handful of call sites that fed a schema's now-widened
+`string` field into a function still expecting the narrow union needed an explicit
+`as CertificateTier`-style cast, since the UI can't know without one that the backend
+only ever emits the constrained values. A CI job that regenerates and fails on
+`git diff` is a good Phase 1 addition once the API can boot in CI (it currently requires
+User Secrets + a live database) — not built here. Full details: `ARCHITECTURE.md` §6.
+
+Verified: `dotnet build`/`dotnet test` green (78/78) throughout the controller-annotation
+pass; `npx tsc --noEmit` and `npm run build` both clean after the `lib/api.ts` swap
+(10 call-site fixes needed — optional/nullable field widening and the tier casts above).
+Drift-guard proved directly: renamed `CourseInstructorDto.FullName` → `DisplayName`,
+rebuilt, regenerated, and `tsc` failed at the exact consuming line
+(`instructor/courses/[courseId]/page.tsx`) with "Property 'fullName' does not exist";
+reverted and confirmed clean again. Browser-checked the catalog, course-detail, and
+admin course-detail pages (the last one after assigning a real instructor, to exercise
+`CourseInstructorDto` live) — correct rendering, no console errors.
 
 ## Session Start Checklist
 

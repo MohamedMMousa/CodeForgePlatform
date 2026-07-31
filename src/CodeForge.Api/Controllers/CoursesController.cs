@@ -1,5 +1,6 @@
 using CodeForge.Application.Courses.ArchiveCourse;
 using CodeForge.Application.Courses.AssignInstructorToCourse;
+using CodeForge.Application.Courses.Common;
 using CodeForge.Application.Courses.CreateCourse;
 using CodeForge.Application.Courses.DeleteCourse;
 using CodeForge.Application.Courses.GetCourseById;
@@ -31,7 +32,7 @@ namespace CodeForge.Api.Controllers
         /// Create a draft course. Admin only.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -53,7 +54,7 @@ namespace CodeForge.Api.Controllers
         /// Update course settings. Admin only.
         /// </summary>
         [HttpPut("{id:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -81,7 +82,7 @@ namespace CodeForge.Api.Controllers
         /// Publish a course so it appears in the catalog. Admin only.
         /// </summary>
         [HttpPut("{id:guid}/publish")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseMutationResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -94,7 +95,7 @@ namespace CodeForge.Api.Controllers
         /// Archive a course and hide it from public catalog listings. Admin only.
         /// </summary>
         [HttpPut("{id:guid}/archive")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseMutationResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -107,7 +108,7 @@ namespace CodeForge.Api.Controllers
         /// Soft delete a course. Admin only.
         /// </summary>
         [HttpDelete("{id:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseMutationResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -120,7 +121,7 @@ namespace CodeForge.Api.Controllers
         /// Assign an instructor to a course. Admin only.
         /// </summary>
         [HttpPost("{id:guid}/instructors/{instructorId:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseInstructorDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -139,7 +140,7 @@ namespace CodeForge.Api.Controllers
         /// Remove an instructor from a course. Admin only.
         /// </summary>
         [HttpDelete("{id:guid}/instructors/{instructorId:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseMutationResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -157,7 +158,7 @@ namespace CodeForge.Api.Controllers
         /// List courses with optional filters. Admin only.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IReadOnlyList<CourseListDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAll(
@@ -173,7 +174,7 @@ namespace CodeForge.Api.Controllers
         /// Get course details. Admin only.
         /// </summary>
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -186,7 +187,7 @@ namespace CodeForge.Api.Controllers
         /// Get instructors assigned to a course. Admin only.
         /// </summary>
         [HttpGet("{id:guid}/instructors")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IReadOnlyList<CourseInstructorDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -20,9 +20,17 @@ No business logic, no try/catch in controllers — see `CODING_STANDARDS.md` §2
 ```csharp
 [HttpPost("login")]
 [EnableRateLimiting(RateLimitPolicies.Auth)]
+[ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
 public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     => await SendAuthRequest(new LoginCommand(request.Email, request.Password), ct);
 ```
+
+Every action returning a body **must** carry `[ProducesResponseType(typeof(ResponseDto), StatusCodes.Status200OK)]`.
+Actions return bare `IActionResult`, which erases the response type — without this
+attribute Swashbuckle emits no schema for the response at all (discovered when building
+the generated frontend TS client; see `ARCHITECTURE.md` §6 and
+`IMPLEMENTATION_ROADMAP.md`'s hardening-pass entry). Skip it only for actions with no
+JSON body (`NoContent()`, raw file downloads via `File(...)`).
 
 ## 3. Authentication & Authorization
 

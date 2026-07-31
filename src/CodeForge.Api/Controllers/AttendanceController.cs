@@ -1,3 +1,4 @@
+using CodeForge.Application.Attendance.Common;
 using CodeForge.Application.Attendance.GetCourseAttendanceReport;
 using CodeForge.Application.Attendance.GetMyAttendance;
 using CodeForge.Application.Attendance.GetSessionRoster;
@@ -21,6 +22,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("sessions/{sessionId:guid}/attendance")]
+        [ProducesResponseType(typeof(AttendanceResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Mark(Guid sessionId, MarkAttendanceRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new MarkAttendanceCommand(sessionId, request.Entries), cancellationToken);
@@ -28,6 +30,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("sessions/{sessionId:guid}/attendance")]
+        [ProducesResponseType(typeof(SessionRosterDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoster(Guid sessionId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetSessionRosterQuery(sessionId), cancellationToken);
@@ -35,6 +38,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("courses/{courseId:guid}/attendance-report")]
+        [ProducesResponseType(typeof(CourseAttendanceReportDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCourseReport(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetCourseAttendanceReportQuery(courseId), cancellationToken);
@@ -42,6 +46,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("my-courses/{courseId:guid}/attendance")]
+        [ProducesResponseType(typeof(MyAttendanceDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyAttendance(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyAttendanceQuery(courseId), cancellationToken);

@@ -1,4 +1,5 @@
 using CodeForge.Application.Cohorts.CancelCohort;
+using CodeForge.Application.Cohorts.Common;
 using CodeForge.Application.Cohorts.CompleteCohort;
 using CodeForge.Application.Cohorts.CreateCohort;
 using CodeForge.Application.Cohorts.GetCohortById;
@@ -24,6 +25,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("courses/{courseId:guid}/cohorts")]
+        [ProducesResponseType(typeof(CohortListDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(Guid courseId, CreateCohortRequest request, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(
@@ -34,6 +36,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("cohorts/{id:guid}")]
+        [ProducesResponseType(typeof(CohortListDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateCohortRequest request, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(
@@ -44,30 +47,35 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("cohorts/{id:guid}/open")]
+        [ProducesResponseType(typeof(CohortMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Open(Guid id, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(new OpenCohortCommand(id), cancellationToken);
         }
 
         [HttpPut("cohorts/{id:guid}/cancel")]
+        [ProducesResponseType(typeof(CohortMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(new CancelCohortCommand(id), cancellationToken);
         }
 
         [HttpPut("cohorts/{id:guid}/complete")]
+        [ProducesResponseType(typeof(CohortMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Complete(Guid id, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(new CompleteCohortCommand(id), cancellationToken);
         }
 
         [HttpGet("courses/{courseId:guid}/cohorts")]
+        [ProducesResponseType(typeof(IReadOnlyList<CohortListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetForCourse(Guid courseId, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(new GetCourseCohortsQuery(courseId), cancellationToken);
         }
 
         [HttpGet("cohorts/{id:guid}")]
+        [ProducesResponseType(typeof(CohortListDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             return await SendCohortRequest(new GetCohortByIdQuery(id), cancellationToken);

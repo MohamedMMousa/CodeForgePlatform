@@ -1,3 +1,4 @@
+using CodeForge.Application.Users.Common;
 using CodeForge.Application.Users.CreateInstructor;
 using CodeForge.Application.Users.DeactivateUser;
 using CodeForge.Application.Users.GetUsers;
@@ -22,6 +23,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<UserDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? role,
             [FromQuery] bool? isActive,
@@ -33,6 +35,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost("instructors")]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateInstructor(
             CreateInstructorCommand command, CancellationToken cancellationToken)
         {
@@ -41,6 +44,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("{id:guid}/deactivate")]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeactivateUserCommand(id), cancellationToken);
@@ -48,6 +52,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("{id:guid}/reactivate")]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Reactivate(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new ReactivateUserCommand(id), cancellationToken);

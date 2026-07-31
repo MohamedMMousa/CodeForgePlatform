@@ -1,3 +1,4 @@
+using CodeForge.Application.Leads.Common;
 using CodeForge.Application.Leads.GetLeads;
 using CodeForge.Application.Leads.MarkLeadContacted;
 using CodeForge.Application.Leads.SubmitLead;
@@ -27,6 +28,7 @@ namespace CodeForge.Api.Controllers
         [AllowAnonymous]
         [EnableRateLimiting(RateLimitPolicies.PublicSubmit)]
         [HttpPost]
+        [ProducesResponseType(typeof(LeadDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Submit(SubmitLeadRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -37,6 +39,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<LeadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
             [FromQuery] bool? isContacted, [FromQuery] Guid? courseId, CancellationToken cancellationToken)
         {
@@ -46,6 +49,7 @@ namespace CodeForge.Api.Controllers
 
         [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id:guid}/mark-contacted")]
+        [ProducesResponseType(typeof(LeadDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> MarkContacted(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new MarkLeadContactedCommand(id), cancellationToken);

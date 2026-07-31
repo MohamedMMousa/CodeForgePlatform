@@ -162,6 +162,20 @@ file uploads, rate limiting, versioning stance).
 - `frontend/lib/api.ts` — a single `apiFetch` wrapper around `fetch`; typed errors via
   `ApiRequestError` carrying the API's `ProblemDetails` shape. All API calls go through
   this, never raw `fetch`.
+- **Generated API types** — `frontend/lib/api-schema.d.ts` is generated from the
+  backend's own OpenAPI document via `node scripts/generate-api-types.mjs` (requires the
+  dev API running; fetches `swagger.json`, writes `openapi.json`, runs
+  `openapi-typescript`). `lib/api.ts`'s exported DTO types are aliases into
+  `components["schemas"]`, not hand-mirrored — a backend field rename surfaces as a
+  `tsc` error at every consuming call site instead of a silent runtime bug. Both
+  `openapi.json` and `api-schema.d.ts` are committed, so `tsc`/`next build`/CI never
+  need a live API; re-run the script manually whenever a backend DTO changes. **Every
+  controller action must carry `[ProducesResponseType(typeof(ResponseDto), StatusCodes.Status200OK)]`**
+  (see `AddSwaggerGen` in `Program.cs`, and `RequireNonNullablePropertiesSchemaFilter`
+  in `src/CodeForge.Api/Swagger/`) — without it, Swashbuckle emits no response schema
+  and the type is lost. A handful of union types (`SessionType`, `MaterialType`,
+  `AssessmentType`, `AttendanceStatus`, `CertificateTier`) stay hand-written in
+  `lib/api.ts` since the backend types those fields as plain `string`.
 - `frontend/lib/auth.tsx` — React context holding the session (tokens + user), backed
   by `localStorage` for this phase. Token refresh rotation and httpOnly-cookie storage
   are a later hardening pass, not yet implemented.

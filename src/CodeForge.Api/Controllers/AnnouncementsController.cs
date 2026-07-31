@@ -1,3 +1,4 @@
+using CodeForge.Application.Announcements.Common;
 using CodeForge.Application.Announcements.CreateAnnouncement;
 using CodeForge.Application.Announcements.DeleteAnnouncement;
 using CodeForge.Application.Announcements.GetAnnouncements;
@@ -22,6 +23,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(CreateAnnouncementRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -30,6 +32,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateAnnouncementRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(
@@ -38,6 +41,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new DeleteAnnouncementCommand(id), cancellationToken);
@@ -45,6 +49,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<AnnouncementDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] Guid? courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetAnnouncementsQuery(courseId), cancellationToken);

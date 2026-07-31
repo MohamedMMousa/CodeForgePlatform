@@ -1,3 +1,4 @@
+using CodeForge.Application.Certificates.Common;
 using CodeForge.Application.Certificates.GetCertificateById;
 using CodeForge.Application.Certificates.GetCourseCertificateCandidates;
 using CodeForge.Application.Certificates.GetMyCertificates;
@@ -28,6 +29,7 @@ namespace CodeForge.Api.Controllers
         /// already-issued certificate.
         /// </summary>
         [HttpGet("courses/{courseId:guid}/certificate-candidates")]
+        [ProducesResponseType(typeof(CourseCertificateCandidatesDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCandidates(Guid courseId, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetCourseCertificateCandidatesQuery(courseId), cancellationToken);
@@ -37,6 +39,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>Issue a certificate for an enrollment. Admin only.</summary>
         [HttpPost("certificates")]
         [Authorize(Policy = "AdminOnly")]
+        [ProducesResponseType(typeof(CertificateDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Issue(IssueCertificateRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new IssueCertificateCommand(request.EnrollmentId, request.Tier), cancellationToken);
@@ -46,6 +49,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>Revoke a previously issued certificate. Admin only.</summary>
         [HttpPut("certificates/{id:guid}/revoke")]
         [Authorize(Policy = "AdminOnly")]
+        [ProducesResponseType(typeof(CertificateDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Revoke(Guid id, RevokeCertificateRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new RevokeCertificateCommand(id, request.Reason), cancellationToken);
@@ -54,6 +58,7 @@ namespace CodeForge.Api.Controllers
 
         /// <summary>The current student's own certificates.</summary>
         [HttpGet("my-certificates")]
+        [ProducesResponseType(typeof(IReadOnlyList<CertificateDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetMyCertificatesQuery(), cancellationToken);
@@ -62,6 +67,7 @@ namespace CodeForge.Api.Controllers
 
         /// <summary>A single certificate — owner student, admin, or the course's instructor.</summary>
         [HttpGet("certificates/{id:guid}")]
+        [ProducesResponseType(typeof(CertificateDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new GetCertificateByIdQuery(id), cancellationToken);
@@ -71,6 +77,7 @@ namespace CodeForge.Api.Controllers
         /// <summary>Public verification by the certificate's verification code. No auth.</summary>
         [HttpGet("certificates/verify/{code}")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(CertificateVerificationDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Verify(string code, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(new VerifyCertificateQuery(code), cancellationToken);

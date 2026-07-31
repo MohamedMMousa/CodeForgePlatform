@@ -96,7 +96,7 @@ export default function AssignmentSubmissionPage({
             </div>
           )}
 
-          {assignment.maxAttempts !== null && assignment.attemptsUsed >= assignment.maxAttempts ? (
+          {assignment.maxAttempts != null && assignment.attemptsUsed >= assignment.maxAttempts ? (
             <p className="notice err">{t.noAttemptsLeft}</p>
           ) : (
             <form onSubmit={onSubmit} className="card">

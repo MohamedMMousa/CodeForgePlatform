@@ -1,5 +1,6 @@
 using CodeForge.Application.Tracks.AddCourseToTrack;
 using CodeForge.Application.Tracks.ArchiveTrack;
+using CodeForge.Application.Tracks.Common;
 using CodeForge.Application.Tracks.CreateTrack;
 using CodeForge.Application.Tracks.DeleteTrack;
 using CodeForge.Application.Tracks.GetTrackById;
@@ -27,6 +28,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(typeof(TrackDetailDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Create(CreateTrackRequest request, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(
@@ -37,6 +39,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [ProducesResponseType(typeof(TrackDetailDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(Guid id, UpdateTrackRequest request, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(
@@ -47,24 +50,28 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpPut("{id:guid}/publish")]
+        [ProducesResponseType(typeof(TrackMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Publish(Guid id, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(new PublishTrackCommand(id), cancellationToken);
         }
 
         [HttpPut("{id:guid}/archive")]
+        [ProducesResponseType(typeof(TrackMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(new ArchiveTrackCommand(id), cancellationToken);
         }
 
         [HttpDelete("{id:guid}")]
+        [ProducesResponseType(typeof(TrackMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(new DeleteTrackCommand(id), cancellationToken);
         }
 
         [HttpPost("{id:guid}/courses/{courseId:guid}")]
+        [ProducesResponseType(typeof(TrackCourseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> AddCourse(
             Guid id, Guid courseId, AddCourseToTrackRequest request, CancellationToken cancellationToken)
         {
@@ -74,12 +81,14 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpDelete("{id:guid}/courses/{courseId:guid}")]
+        [ProducesResponseType(typeof(TrackMutationResultDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> RemoveCourse(Guid id, Guid courseId, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(new RemoveCourseFromTrackCommand(id, courseId), cancellationToken);
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<TrackListDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? status, [FromQuery] string? search, CancellationToken cancellationToken)
         {
@@ -87,6 +96,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [ProducesResponseType(typeof(TrackDetailDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             return await SendTrackRequest(new GetTrackByIdQuery(id), cancellationToken);
