@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -152,12 +153,18 @@ if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.Secret))
         "(dev) or environment variables (production). It must not live in appsettings.json.");
 }
 
-if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
         "Connection string 'DefaultConnection' is not configured. Set it via user-secrets " +
         "(dev) or environment variables (production).");
 }
+
+// Readiness (not liveness) only: DB connectivity is what "ready" means, and only
+// /health/ready is wired to it. See the two app.UseHealthChecks(...) calls below.
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString, name: "postgres", tags: new[] { "ready" });
 
 var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
 
@@ -191,6 +198,17 @@ await DatabaseSeeder.SeedAsync(app.Services);
 // Translate handler/validation exceptions into a consistent ProblemDetails envelope.
 // Registered first so it wraps the entire downstream pipeline.
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Unauthenticated liveness/readiness probes. Placed before HTTPS redirection (so a
+// plain-HTTP probe isn't 307'd), before the rate limiter (so a frequent probe can't
+// exhaust the per-IP bucket), and before auth/MVC entirely — so no [AllowAnonymous] or
+// [AllowPendingPasswordChange] is needed and PasswordChangeRequiredFilter never runs.
+// /health = liveness (process is up; no DB check) — this is what the host's restart
+// probe should hit, since restarting the instance can't fix a DB outage.
+// /health/ready = readiness (DB reachable) — for compose depends_on / humans, never
+// wired to anything that would restart the process on a transient DB blip.
+app.UseHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+app.UseHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

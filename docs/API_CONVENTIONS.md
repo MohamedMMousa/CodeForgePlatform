@@ -11,6 +11,11 @@ with what's here; update this file if a convention changes.
   `/sections/{id}`.
 - No API version prefix yet (single version). Introduce `/v2/...` only if a breaking
   change is unavoidable — prefer additive changes first.
+- `GET /health` and `GET /health/ready` are unauthenticated, outside MVC (terminal
+  middleware, not a controller), and exempt from `PasswordChangeRequiredFilter` and
+  rate limiting by construction. `/health` is liveness (use for host restart probes);
+  `/health/ready` also checks Postgres connectivity (use for `depends_on`/monitoring,
+  never for a restart trigger). See `ARCHITECTURE.md` §3.
 
 ## 2. Controllers Are Thin
 

@@ -101,6 +101,17 @@
 - **Admin bootstrap** — `DatabaseSeeder.SeedAsync` runs at startup, idempotently
   seeding one super-admin from `AdminSeed:Email`/`Password`/`FullName` config. No-op if
   those aren't configured; never overwrites an existing account.
+- **Health checks** — `GET /health` (liveness — process is up, no DB check) and
+  `GET /health/ready` (readiness — Postgres reachable, via `AddNpgSql(...)` tagged
+  `ready`). Both are registered as terminal `app.UseHealthChecks(...)` middleware
+  immediately after `ExceptionHandlingMiddleware` and before HTTPS redirection, the
+  rate limiter, and auth — so neither needs `[AllowAnonymous]`, is never rate-limited,
+  and never runs through `PasswordChangeRequiredFilter`. A host's restart/liveness
+  probe (e.g. Render) should target `/health`, never `/health/ready`: the host's
+  response to a failed probe is to restart the instance, and restarting cannot fix a
+  database outage — pointing the restart trigger at DB connectivity turns a transient
+  Postgres blip into a restart storm. `/health/ready` is for `docker compose`
+  `depends_on: condition: service_healthy` and for humans/monitoring.
 - **Rate limiting** — ASP.NET Core's built-in limiter. A generous global per-IP window
   (100 req/min) plus two named policies: `RateLimitPolicies.Auth` (10/min, applied to
   login/refresh/forgot-password/reset-password) and `RateLimitPolicies.PublicSubmit`
