@@ -128,6 +128,23 @@
   under the same migration id (no schema or data change). Do not hand-edit generated
   migration files except to add raw SQL EF cannot express (e.g. the GIN index on
   `activity_logs.metadata` — see `DATABASE.md`).
+- **Containerization** (`Dockerfile`, `docker-compose.yml`, `Caddyfile`) — multi-stage
+  build (`sdk:8.0` → `aspnet:8.0-jammy`; not Alpine, since the `CultureInfo("ar")`/
+  `("en")` localization pipeline needs full ICU), runs as the non-root `app` user
+  (uid 1654) the base image ships. Migrations are **not** baked into the image or run
+  automatically in every environment: `Database:AutoMigrate` (`Program.cs`, off by
+  default) gates a `Database.MigrateAsync()` call at startup, and only
+  `docker-compose.yml` turns it on — a real deployment should keep it false and run
+  migrations as its own release step, the same way CI's `drift-check` job does via the
+  `dotnet ef` CLI. Compose brings up Postgres → the API (`depends_on: condition:
+  service_healthy`, gated on `/health`) → Caddy (same gate on the API), terminating TLS
+  with Caddy's internal CA for local HTTPS testing. `app.UseForwardedHeaders(...)`
+  (with `KnownNetworks`/`KnownProxies` cleared — safe because the `api` service isn't
+  reachable except through `caddy` on the compose network) restores the real client IP/
+  scheme from Caddy before HTTPS redirection or the rate limiter see the request;
+  without it every request would collapse onto Caddy's container IP and share one
+  rate-limit bucket. All credentials come from `.env` (gitignored; `.env.example` is
+  the committed template) — never baked into the image or `docker-compose.yml` itself.
 - **CI** (`.github/workflows/ci.yml`, two jobs) — **`verify`** installs frontend deps
   then runs `node scripts/verify.mjs` directly: CI does not restate build/test/lint/
   typecheck steps, it invokes the same script the pre-commit hook and a human run, so
@@ -235,14 +252,17 @@ file uploads, rate limiting, versioning stance).
   (2026-02-15) and is no longer usable without prior approval. Currently deferred to
   100% manual grading (`DeferredCodeExecutionService`, see `DATABASE.md` §7) until
   either Piston whitelists this use case, a self-hosted Judge0/Piston instance is
-  stood up (needs Docker, not available in this dev environment), or another engine
-  is chosen.
+  stood up (Docker is available in this dev environment as of the operational-
+  readiness work — see §3 below — so this is no longer blocked on that), or another
+  engine is chosen.
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.
-- **Hosting/deployment target** — not yet chosen. Blocks two other deferred items:
-  a working Python auto-grader (self-hosted Judge0/Piston needs Docker) and load
-  testing (no target environment to test against yet).
+- **Hosting/deployment target** — still not chosen. Local containerization (`Dockerfile`
+  + `docker-compose.yml`, §3) proves the API runs correctly as a container against a
+  real Postgres, which is a prerequisite for choosing a host — but *where* it runs in
+  production (Render, Fly.io, a VPS, …) is a separate decision this doesn't make.
+  Blocks load testing (no target environment to test against yet).
 - **Recording storage upgrade** (external links → private storage + signed URLs) —
   still deferred; unlike payment proofs/materials (hardened in Phase 5), there is no
   upload flow for recordings today — they're external Zoom/YouTube/etc. links, so

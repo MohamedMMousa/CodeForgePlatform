@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/.vs/
+**/PrivateStorage/
+
+frontend/
+tests/
+docs/
+.claude/
+.git/
+.github/
+
+*.md
+.env
+.env.*
+!.env.example

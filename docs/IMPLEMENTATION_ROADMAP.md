@@ -509,6 +509,22 @@ pagination change, six pre-existing `useEffect(load, [...])` sites needing the
 established `eslint-disable` convention for a closure-refreshed-every-render
 dependency, one `<img>` swapped for `next/image`).
 
+**Containerization** (`Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.env.example`)
+— multi-stage build (`sdk:8.0` → `aspnet:8.0-jammy`; not Alpine, the localization
+pipeline's `CultureInfo("ar")`/`("en")` needs full ICU), non-root by default (uid 1654,
+the base image's built-in `app` user), 353MB final image. Migrations don't run
+automatically everywhere — a new `Database:AutoMigrate` config gate (off by default)
+runs `Database.MigrateAsync()` at startup; only `docker-compose.yml` turns it on, so a
+fresh Postgres container gets schema without a manual step while a real deployment
+still runs migrations as its own release step. Compose brings up Postgres → API
+(`depends_on: condition: service_healthy` on `/health`) → Caddy (same gate on the API),
+terminating TLS with Caddy's internal CA. `UseForwardedHeaders` (added to `Program.cs`)
+restores the real client IP/scheme from Caddy before HTTPS redirection or the rate
+limiter see the request — without it, every request behind the proxy collapses onto
+Caddy's container IP and shares one rate-limit bucket. See `ARCHITECTURE.md` §3 and
+§7 (containerization proves the API runs correctly as a container; it doesn't choose
+*where* it runs in production — that's still open).
+
 **CI** (`.github/workflows/ci.yml`, two jobs — see `ARCHITECTURE.md` §3 for the
 job-by-job description). `verify` runs `node scripts/verify.mjs` directly rather than
 restating its steps, so CI can't drift from what a human/the hook actually run.
@@ -531,7 +547,10 @@ watched the job fail with the exact diff in its log; regenerated and fixed the t
 frontend call sites `tsc` flagged, pushed again, watched both jobs go green; closed the
 branch without merging. `dotnet ef database update` and the API boot-with-unset-seed
 path were also dry-run locally against a throwaway Postgres database before ever
-trusting them in CI.
+trusting them in CI. `docker compose up --build` brought up all three services
+healthy; the API applied migrations fresh, correctly skipped seeding with no
+`AdminSeed` configured, and served `/health`/`/health/ready` as 200 through Caddy's
+TLS termination; `docker compose exec api id` confirmed uid 1654 (non-root).
 
 ## Session Start Checklist
 

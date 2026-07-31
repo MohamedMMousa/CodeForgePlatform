@@ -3,8 +3,10 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -192,6 +194,17 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+// Off by default everywhere — dev/CI apply migrations via the `dotnet ef` CLI so a
+// developer sees exactly what's about to run. docker-compose sets this true so a
+// fresh Postgres container gets schema without a manual step; a real deployment
+// should keep it false and run migrations as a separate release step.
+if (app.Configuration.GetValue<bool>("Database:AutoMigrate"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    var db = migrationScope.ServiceProvider.GetRequiredService<CodeForgeDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Bootstrap the initial super-admin (idempotent; no-op unless AdminSeed is configured).
 await DatabaseSeeder.SeedAsync(app.Services);
 
@@ -209,6 +222,20 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 // wired to anything that would restart the process on a transient DB blip.
 app.UseHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
 app.UseHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
+
+// Behind the compose Caddy reverse proxy, requests arrive from the proxy's container
+// IP, not the real client — this restores the real client IP/scheme from
+// X-Forwarded-For/-Proto before HTTPS redirection or the rate limiter (both of which
+// key off RemoteIpAddress/Scheme) see the request. KnownNetworks/KnownProxies are
+// cleared because the proxy's address is a private compose-network IP, not loopback —
+// safe here because the api service isn't reachable except through Caddy.
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
