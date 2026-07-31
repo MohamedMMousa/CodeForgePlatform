@@ -32,6 +32,19 @@ export interface Dictionary {
     mustChange: string;
     failed: string;
   };
+  changePassword: {
+    title: string;
+    forcedNotice: string;
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    submit: string;
+    submitting: string;
+    success: string;
+    mismatch: string;
+    wrongCurrent: string;
+    failed: string;
+  };
   nav: {
     switchTo: string;
     signOut: string;
@@ -509,6 +522,19 @@ const dictionaries: Record<Locale, Dictionary> = {
       mustChange: "You must change your password before continuing.",
       failed: "Invalid email or password."
     },
+    changePassword: {
+      title: "Change your password",
+      forcedNotice: "For security, you must set a new password before continuing.",
+      currentPassword: "Current password",
+      newPassword: "New password",
+      confirmPassword: "Confirm new password",
+      submit: "Change password",
+      submitting: "Changing password…",
+      success: "Password changed.",
+      mismatch: "New password and confirmation do not match.",
+      wrongCurrent: "Current password is incorrect.",
+      failed: "Could not change the password. Please try again."
+    },
     nav: {
       switchTo: "العربية",
       signOut: "Sign out",
@@ -982,6 +1008,19 @@ const dictionaries: Record<Locale, Dictionary> = {
       success: "تم تسجيل الدخول باسم {name} ({role}).",
       mustChange: "يجب تغيير كلمة المرور قبل المتابعة.",
       failed: "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+    },
+    changePassword: {
+      title: "تغيير كلمة المرور",
+      forcedNotice: "لأسباب أمنية، يجب تعيين كلمة مرور جديدة قبل المتابعة.",
+      currentPassword: "كلمة المرور الحالية",
+      newPassword: "كلمة المرور الجديدة",
+      confirmPassword: "تأكيد كلمة المرور الجديدة",
+      submit: "تغيير كلمة المرور",
+      submitting: "جارٍ تغيير كلمة المرور…",
+      success: "تم تغيير كلمة المرور.",
+      mismatch: "كلمة المرور الجديدة وتأكيدها غير متطابقين.",
+      wrongCurrent: "كلمة المرور الحالية غير صحيحة.",
+      failed: "تعذّر تغيير كلمة المرور. يرجى المحاولة مرة أخرى."
     },
     nav: {
       switchTo: "English",

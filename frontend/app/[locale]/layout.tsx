@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth";
 import { dir, getDictionary, isLocale, locales, defaultLocale } from "@/lib/i18n";
 import Link from "next/link";
 import { RoleNav } from "@/components/RoleNav";
+import { PasswordChangeGate } from "@/components/PasswordChangeGate";
 
 export const metadata: Metadata = {
   title: "CodeForge Academy",
@@ -30,6 +31,7 @@ export default async function LocaleLayout({
     <html lang={locale} dir={dir(locale)}>
       <body>
         <AuthProvider>
+          <PasswordChangeGate locale={locale} />
           <header className="topbar">
             <Link className="brand" href={`/${locale}`}>
               <img src="/logo.svg" alt="" />

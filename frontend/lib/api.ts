@@ -9,6 +9,9 @@ export interface ApiError {
   title?: string;
   detail?: string;
   errors?: Record<string, string[]>;
+  /** Machine-readable discriminator for errors the frontend must branch on,
+   * e.g. "password_change_required" — see API_CONVENTIONS.md §4. */
+  code?: string;
 }
 
 export class ApiRequestError extends Error {
@@ -18,6 +21,15 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** Error code the API returns when MustChangePassword blocks the request —
+ * see API_CONVENTIONS.md §4. */
+export const PASSWORD_CHANGE_REQUIRED_CODE = "password_change_required";
+
+/** Dispatched on `window` whenever a 403 carries PASSWORD_CHANGE_REQUIRED_CODE, so
+ * PasswordChangeGate can redirect even when the locally cached session is stale
+ * (e.g. it still says mustChangePassword: false). */
+export const PASSWORD_CHANGE_REQUIRED_EVENT = "codeforge:password-change-required";
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let body: Partial<ApiError> = {};
@@ -26,7 +38,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiRequestError({ status: response.status, ...body });
+    const error: ApiError = { status: response.status, ...body };
+    if (error.code === PASSWORD_CHANGE_REQUIRED_CODE && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(PASSWORD_CHANGE_REQUIRED_EVENT));
+    }
+    throw new ApiRequestError(error);
   }
 
   if (response.status === 204) {
@@ -110,6 +126,23 @@ export function login(
   return apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
+    locale
+  });
+}
+
+/** Reachable even while the account still has mustChangePassword set. Returns a
+ * fresh token pair (mustChangePassword: false) so the caller can resume normal
+ * access without a second login. */
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  token: string,
+  locale?: string
+): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+    token,
     locale
   });
 }

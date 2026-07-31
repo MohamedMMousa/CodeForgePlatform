@@ -37,6 +37,16 @@ public async Task<IActionResult> Login(LoginRequest request, CancellationToken c
   the absence of `[Authorize]`; be explicit.
 - Role string constants live in `CodeForge.Application.Common.Constants.Roles` — never
   hardcode `"admin"` / `"instructor"` / `"student"` string literals.
+- **`MustChangePassword` enforcement:** `PasswordChangeRequiredFilter`
+  (`src/CodeForge.Api/Filters/`) is registered globally on `AddControllers` and rejects
+  every authenticated request from a user whose token carries
+  `must_change_password: "true"` (a claim embedded by `JwtTokenGenerator` at issue time),
+  regardless of `[Authorize]`/policy/role — fail-closed, so a newly added endpoint is
+  covered automatically. Opt an endpoint out with `[AllowPendingPasswordChange]`
+  (currently only `POST /auth/change-password` and `GET /auth/me`); `[AllowAnonymous]`
+  endpoints are always exempt. `POST /auth/change-password` mints a fresh token pair
+  after clearing the flag, so the caller resumes normal access without a second login —
+  see `ChangePasswordCommandHandler`.
 
 ## 4. Error Envelope
 
@@ -49,6 +59,9 @@ All errors go through `ExceptionHandlingMiddleware` and come back as
 
 // 401 — UnauthorizedAccessException
 { "title": "Unauthorized", "status": 401, "detail": "Invalid email or password." }
+
+// 403 — PasswordChangeRequiredException (authenticated, but must change password first)
+{ "title": "Forbidden", "status": 403, "detail": "...", "code": "password_change_required" }
 
 // 404 — KeyNotFoundException
 { "title": "Not Found", "status": 404, "detail": "Course not found." }
@@ -63,8 +76,14 @@ All errors go through `ExceptionHandlingMiddleware` and come back as
 **To signal an error from a handler, throw** — don't return a result object with an
 error flag. Use `KeyNotFoundException` for "doesn't exist", `InvalidOperationException`
 for "exists but the operation is invalid in this state", `UnauthorizedAccessException`
-for auth failures (maps to 401, not 403 — see `ARCHITECTURE.md` §3), and let
-FluentValidation's `ValidationException` handle input-shape errors.
+for "not authenticated, or the credentials are wrong" (maps to 401), and let
+FluentValidation's `ValidationException` handle input-shape errors. `PasswordChangeRequiredException`
+is the one dedicated custom exception in the repo, reserved for "authenticated but not
+permitted until a specific action is taken" (maps to 403) — see `ARCHITECTURE.md` §3.
+
+**The `code` extension field** appears only on errors the frontend must branch on
+programmatically (not just display) — currently only `password_change_required`. Most
+errors have no `code`; the frontend falls back to `title`/`detail` for display.
 
 ## 5. Validation
 

@@ -395,6 +395,45 @@ independently at the API (`AdminOnly` policy returns 403 for a student token on
 one `EmailNotificationTemplatesTests` case for `InstructorAccountCreated`).
 Frontend typechecks clean throughout.
 
+## Hardening Pass (post-Phase 6) — mustChangePassword enforcement + generated API client
+
+Not a numbered phase — a targeted fix requested directly by the user, independent of
+the roadmap's feature sequence. Two unrelated items, landed as separate commits.
+
+**mustChangePassword enforcement.** The flag was set correctly at seed/instructor-
+creation time but nothing acted on it — a user could use the entire API forever on a
+temp/seed password. Fixed with a JWT claim (`JwtTokenGenerator`) plus a global,
+fail-closed MVC filter (`PasswordChangeRequiredFilter`) that blocks every authenticated
+endpoint unless explicitly opted out (`[AllowPendingPasswordChange]`, currently only
+`POST /auth/change-password` and `GET /auth/me`). Maps to `403` with a
+`code: "password_change_required"` extension. `ChangePasswordCommandHandler` now mints
+a fresh token pair after clearing the flag, so the caller resumes normal access without
+a second login. Frontend: `PasswordChangeGate` (mounted globally) redirects to a new
+`/change-password` page whenever the session or a live 403 says so. Full details:
+`ARCHITECTURE.md` §3/§6, `API_CONVENTIONS.md` §3/§4.
+
+Verified end-to-end via a fresh instructor account (created through the real
+`admin/users` "Add instructor" flow, temp password read from the dev email log): forced
+redirect on login, direct navigation to an admin/instructor page bounced back, a
+protected endpoint returned `403`/`password_change_required` via direct API call,
+`GET /auth/me` and `POST /auth/change-password` stayed reachable, and submitting the
+form landed on the role's normal page with a working session — repeated in Arabic/RTL
+with a second fresh account. 78/78 backend unit tests pass (7 new).
+
+**Generated API client (kills DTO drift at the source).** `frontend/lib/api.ts`
+hand-mirrored every backend DTO (~90 `interface`s) and had already drifted silently —
+see the `CourseInstructorEntry` fix noted in Phase 6 above; `CourseInstructorInfo` (the
+public catalog's mirror of the same `CourseInstructorDto`) had the identical bug and was
+still live. Fixed with `openapi-typescript` generating `frontend/lib/api-schema.d.ts`
+from the API's own `swagger.json` (`node scripts/generate-api-types.mjs`, run manually
+against the running dev API; both `openapi.json` and the generated `.d.ts` are
+committed so `tsc`/`next build`/CI never need a live API). `lib/api.ts`'s hand-written
+interfaces were replaced with aliases into the generated `components["schemas"]`, kept
+under their original exported names so call sites were untouched; `apiFetch` itself is
+unchanged. A CI job that regenerates and fails on `git diff` is a good Phase 1 addition
+once the API can boot in CI (it currently requires User Secrets + a live database) —
+not built here. Full details: `ARCHITECTURE.md` §6.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

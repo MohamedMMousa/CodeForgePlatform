@@ -11,6 +11,7 @@ using CodeForge.Application;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Infrastructure;
 using CodeForge.Application.Common.Models;
+using CodeForge.Api.Filters;
 using CodeForge.Api.Middleware;
 using CodeForge.Api.RateLimiting;
 using CodeForge.Infrastructure.Data;
@@ -18,7 +19,13 @@ using CodeForge.Infrastructure.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+// PasswordChangeRequiredFilter is global (fail-closed): it blocks every authenticated
+// endpoint for a user whose token says MustChangePassword, unless the endpoint opts out
+// via [AllowAnonymous] or [AllowPendingPasswordChange]. See ARCHITECTURE.md §3.
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<PasswordChangeRequiredFilter>();
+});
 
 // Localization scaffolding: resolve culture per request (Arabic/English) from the
 // Accept-Language header or a ?culture= query string. Resource files can be added

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using CodeForge.Api.Middleware;
+using CodeForge.Application.Common.Exceptions;
 using FluentAssertions;
 using FluentValidation;
 using FluentValidation.Results;
@@ -44,6 +45,16 @@ namespace CodeForge.UnitTests.Middleware
         {
             var (status, _) = await InvokeWith(new UnauthorizedAccessException("nope"));
             status.Should().Be(StatusCodes.Status401Unauthorized);
+        }
+
+        [Fact]
+        public async Task PasswordChangeRequiredException_MapsTo403_WithCode()
+        {
+            var (status, body) = await InvokeWith(new PasswordChangeRequiredException());
+
+            status.Should().Be(StatusCodes.Status403Forbidden);
+            using var document = JsonDocument.Parse(body);
+            document.RootElement.GetProperty("code").GetString().Should().Be("password_change_required");
         }
 
         [Fact]

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,6 +50,8 @@ namespace CodeForge.Api.Middleware
             ProblemDetails problem = exception switch
             {
                 ValidationException validationException => BuildValidationProblem(validationException),
+                PasswordChangeRequiredException => BuildForbiddenWithCode(
+                    AuthErrorCodes.PasswordChangeRequired, exception.Message),
                 UnauthorizedAccessException => BuildProblem(
                     StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message),
                 KeyNotFoundException => BuildProblem(
@@ -96,5 +100,12 @@ namespace CodeForge.Api.Middleware
             Title = title,
             Detail = detail
         };
+
+        private static ProblemDetails BuildForbiddenWithCode(string code, string detail)
+        {
+            var problem = BuildProblem(StatusCodes.Status403Forbidden, "Forbidden", detail);
+            problem.Extensions["code"] = code;
+            return problem;
+        }
     }
 }

@@ -47,11 +47,27 @@
 - **Exception handling** — `src/CodeForge.Api/Middleware/ExceptionHandlingMiddleware.cs`
   is the single place exceptions become HTTP responses. Handlers throw typed
   exceptions (`ValidationException`, `UnauthorizedAccessException`,
-  `KeyNotFoundException`, `InvalidOperationException`); the middleware maps them to a
-  `ProblemDetails` JSON envelope (400/401/404/400/500). **`UnauthorizedAccessException`
-  always maps to 401** — there is currently no distinct "authenticated but forbidden"
-  403 path; introduce a dedicated `ForbiddenException` if that's needed later.
-  Controllers must never catch exceptions themselves.
+  `KeyNotFoundException`, `InvalidOperationException`, `PasswordChangeRequiredException`);
+  the middleware maps them to a `ProblemDetails` JSON envelope (400/401/403/404/400/500).
+  **`UnauthorizedAccessException` always maps to 401** (not authenticated / bad
+  credentials). `PasswordChangeRequiredException` maps to 403 with an extra `code`
+  extension (`"password_change_required"`) — the one "authenticated but forbidden until
+  a specific action is taken" case in the repo; see the `MustChangePassword enforcement`
+  bullet below and `API_CONVENTIONS.md` §3/§4. Controllers must never catch exceptions
+  themselves.
+- **`MustChangePassword` enforcement** — `PasswordChangeRequiredFilter`
+  (`src/CodeForge.Api/Filters/PasswordChangeRequiredFilter.cs`) is a global MVC
+  authorization filter (registered in `Program.cs` via `AddControllers(o => o.Filters.Add<...>())`)
+  that reads a `must_change_password` claim `JwtTokenGenerator` embeds in every access
+  token. It fails closed: every authenticated endpoint is blocked unless marked
+  `[AllowAnonymous]` or `[AllowPendingPasswordChange]` — a new endpoint is protected the
+  moment it's written, with no per-endpoint opt-in required. Because it reads
+  `HttpContext.User` claims rather than the `Authorization` header directly, it is
+  unaffected by the planned httpOnly-cookie migration (see `frontend/lib/auth.tsx`
+  bullet below). `POST /auth/change-password` (the only opted-out mutating endpoint,
+  alongside the read-only `GET /auth/me`) clears the flag and mints a fresh token pair
+  in the same response, so the caller resumes normal access without a second login —
+  see `ChangePasswordCommandHandler`.
 - **Secrets** — never committed. Local dev uses .NET User Secrets
   (`UserSecretsId=codeforge-api-secrets`); production uses environment variables.
   `appsettings.json` only holds structure/placeholders. The app fails fast at startup
@@ -149,6 +165,14 @@ file uploads, rate limiting, versioning stance).
 - `frontend/lib/auth.tsx` — React context holding the session (tokens + user), backed
   by `localStorage` for this phase. Token refresh rotation and httpOnly-cookie storage
   are a later hardening pass, not yet implemented.
+- **Forced password change** — `components/PasswordChangeGate.tsx` (mounted in
+  `app/[locale]/layout.tsx`) redirects to `/{locale}/change-password` whenever the
+  session says `mustChangePassword`, and also on the `codeforge:password-change-required`
+  `window` event `lib/api.ts` dispatches on any 403 carrying
+  `password_change_required` — a backstop for a stale client-side session. The
+  change-password page (`app/[locale]/change-password/page.tsx`) submits via
+  `changePassword()` and swaps in the returned fresh token pair with
+  `useAuth().applySession()`, so no second login is needed. See `API_CONVENTIONS.md` §3.
 - **Brand** — see `docs/assets/brand-guide.png` and the CSS custom properties in
   `frontend/app/globals.css` (`--bg`, `--card`, `--fg`, `--muted`, `--accent`,
   `--accent-2`). Do not hardcode colors in components; use the CSS variables so theme

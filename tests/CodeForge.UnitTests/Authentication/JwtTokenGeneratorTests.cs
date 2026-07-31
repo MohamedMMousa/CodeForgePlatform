@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Models;
 using CodeForge.Domain.Entities;
 using CodeForge.Infrastructure.Authentication;
@@ -69,6 +72,28 @@ namespace CodeForge.UnitTests.Authentication
 
             // JWTs are three base64url segments separated by dots.
             token.Split('.').Should().HaveCount(3);
+        }
+
+        [Theory]
+        [InlineData(false, "false")]
+        [InlineData(true, "true")]
+        public void GenerateToken_EmbedsMustChangePasswordClaim(bool mustChangePassword, string expected)
+        {
+            var sut = CreateSut();
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "student@codeforge.academy",
+                FullName = "Test Student",
+                Role = "student",
+                PasswordHash = "x",
+                MustChangePassword = mustChangePassword
+            };
+
+            var token = sut.GenerateToken(user);
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+            jwt.Claims.Single(c => c.Type == CustomClaimTypes.MustChangePassword).Value.Should().Be(expected);
         }
     }
 }

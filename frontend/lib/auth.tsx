@@ -20,6 +20,9 @@ interface Session {
 interface AuthContextValue {
   session: Session | null;
   signIn: (email: string, password: string, locale?: string) => Promise<AuthResponse>;
+  /** Swaps in a freshly issued session (e.g. after change-password rotates the
+   * tokens) without a round trip through signIn. */
+  applySession: (auth: AuthResponse) => void;
   signOut: () => void;
 }
 
@@ -62,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(next);
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         return auth;
+      },
+      applySession(auth) {
+        const next = toSession(auth);
+        setSession(next);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       },
       signOut() {
         setSession(null);

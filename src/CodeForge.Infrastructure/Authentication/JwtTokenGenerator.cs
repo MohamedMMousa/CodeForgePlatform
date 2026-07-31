@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
 using CodeForge.Application.Common.Models;
 using CodeForge.Domain.Entities;
@@ -30,7 +31,8 @@ namespace CodeForge.Infrastructure.Authentication
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Name, user.FullName),
-                new Claim(ClaimTypes.Role, user.Role)
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(CustomClaimTypes.MustChangePassword, user.MustChangePassword ? "true" : "false")
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

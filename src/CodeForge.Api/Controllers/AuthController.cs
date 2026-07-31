@@ -4,6 +4,7 @@ using CodeForge.Application.Authentication.GetCurrentUser;
 using CodeForge.Application.Authentication.Login;
 using CodeForge.Application.Authentication.RefreshToken;
 using CodeForge.Application.Authentication.ResetPassword;
+using CodeForge.Api.Filters;
 using CodeForge.Api.RateLimiting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -60,6 +61,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [Authorize]
+        [AllowPendingPasswordChange]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
         {
@@ -69,6 +71,7 @@ namespace CodeForge.Api.Controllers
         }
 
         [Authorize]
+        [AllowPendingPasswordChange]
         [HttpGet("me")]
         public async Task<IActionResult> Me(CancellationToken cancellationToken)
         {
