@@ -14,6 +14,7 @@ using CodeForge.Application;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Infrastructure;
 using CodeForge.Application.Common.Models;
+using CodeForge.Api.Authentication;
 using CodeForge.Api.Filters;
 using CodeForge.Api.Middleware;
 using CodeForge.Api.RateLimiting;
@@ -190,7 +191,24 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
+    options.Events = new JwtBearerEvents
+    {
+        // The cookie is the primary source now; leaving context.Token unset when the
+        // cookie is absent lets the handler fall back to the Authorization header
+        // itself, which keeps Swagger and any direct/dev client working unchanged.
+        OnMessageReceived = context =>
+        {
+            if (context.Request.Cookies.TryGetValue(AuthCookieWriter.AccessTokenCookieName, out var accessToken) &&
+                !string.IsNullOrEmpty(accessToken))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
+
+builder.Services.AddSingleton<AuthCookieWriter>();
 
 var app = builder.Build();
 

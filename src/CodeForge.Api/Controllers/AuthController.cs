@@ -5,6 +5,7 @@ using CodeForge.Application.Authentication.GetCurrentUser;
 using CodeForge.Application.Authentication.Login;
 using CodeForge.Application.Authentication.RefreshToken;
 using CodeForge.Application.Authentication.ResetPassword;
+using CodeForge.Api.Authentication;
 using CodeForge.Api.Filters;
 using CodeForge.Api.RateLimiting;
 using MediatR;
@@ -19,10 +20,12 @@ namespace CodeForge.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ISender _sender;
+        private readonly AuthCookieWriter _cookieWriter;
 
-        public AuthController(ISender sender)
+        public AuthController(ISender sender, AuthCookieWriter cookieWriter)
         {
             _sender = sender;
+            _cookieWriter = cookieWriter;
         }
 
         [HttpPost("login")]
@@ -30,7 +33,7 @@ namespace CodeForge.Api.Controllers
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
         {
-            return await SendAuthRequest(
+            return await SendAuthRequestWithCookies(
                 new LoginCommand(request.Email, request.Password),
                 cancellationToken);
         }
@@ -38,10 +41,19 @@ namespace CodeForge.Api.Controllers
         [HttpPost("refresh-token")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> RefreshToken(RefreshTokenRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> RefreshToken(RefreshTokenRequest? request, CancellationToken cancellationToken)
         {
-            return await SendAuthRequest(
-                new RefreshTokenCommand(request.RefreshToken),
+            // The cookie is the primary source; the body is accepted only as a fallback
+            // for as long as any caller still sends one (dropped once the frontend moves
+            // fully to cookie-only refresh).
+            var refreshToken = Request.Cookies[AuthCookieWriter.RefreshTokenCookieName] ?? request?.RefreshToken;
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+            }
+
+            return await SendAuthRequestWithCookies(
+                new RefreshTokenCommand(refreshToken),
                 cancellationToken);
         }
 
@@ -71,7 +83,7 @@ namespace CodeForge.Api.Controllers
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
         {
-            return await SendAuthRequest(
+            return await SendAuthRequestWithCookies(
                 new ChangePasswordCommand(request.CurrentPassword, request.NewPassword),
                 cancellationToken);
         }
@@ -94,8 +106,21 @@ namespace CodeForge.Api.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Same as SendAuthRequest, for the three actions whose result is an
+        /// AuthResponse: also mints the httpOnly session cookies from it.
+        /// </summary>
+        private async Task<IActionResult> SendAuthRequestWithCookies(
+            IRequest<AuthResponse> request,
+            CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(request, cancellationToken);
+            _cookieWriter.WriteAuthCookies(Response, response);
+            return Ok(response);
+        }
+
         public record LoginRequest(string Email, string Password);
-        public record RefreshTokenRequest(string RefreshToken);
+        public record RefreshTokenRequest(string? RefreshToken);
         public record ForgotPasswordRequest(string Email);
         public record ResetPasswordRequest(string Email, string Token, string NewPassword);
         public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
