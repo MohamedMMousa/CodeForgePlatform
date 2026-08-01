@@ -197,7 +197,13 @@ export async function apiFetchForm<T>(
 // Auth
 // ---------------------------------------------------------------------------
 
-export type AuthResponse = Schemas["AuthResponse"];
+export type CurrentUserResponse = Schemas["CurrentUserResponse"];
+
+// Login, refresh, and change-password all return this same shape now — the tokens
+// they mint never leave the API as JSON, only as httpOnly Set-Cookie headers. Kept
+// as its own name since that's what callers (lib/auth.tsx, the login/change-password
+// pages) already import.
+export type AuthResponse = CurrentUserResponse;
 
 export function login(
   email: string,
@@ -225,8 +231,6 @@ export function changePassword(
     locale
   });
 }
-
-export type CurrentUserResponse = Schemas["CurrentUserResponse"];
 
 /** Re-derives the session from the server (e.g. to pick up a mustChangePassword
  * flip, or after change-password rotates the cookies). Throws ApiRequestError on

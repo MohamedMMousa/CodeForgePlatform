@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace CodeForge.Application.Authentication.Login
 {
-    public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponse>
+    public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResult>
     {
         private readonly ICodeForgeDbContext _context;
         private readonly IPasswordHasher _passwordHasher;
@@ -26,7 +26,7 @@ namespace CodeForge.Application.Authentication.Login
             _jwtSettings = jwtOptions.Value;
         }
 
-        public async Task<AuthResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
+        public async Task<AuthResult> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             var normalizedEmail = request.Email.Trim().ToLower();
             var user = await _context.Users
@@ -53,10 +53,11 @@ namespace CodeForge.Application.Authentication.Login
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new AuthResponse(
+            return new AuthResult(
                 user.Id,
                 user.Email,
                 user.FullName,
+                user.Phone,
                 user.Role,
                 _jwtTokenGenerator.GenerateToken(user),
                 refreshToken,

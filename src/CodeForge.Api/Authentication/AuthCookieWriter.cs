@@ -26,7 +26,7 @@ namespace CodeForge.Api.Authentication
             _jwtSettings = jwtOptions.Value;
         }
 
-        public void WriteAuthCookies(HttpResponse response, AuthResponse auth)
+        public void WriteAuthCookies(HttpResponse response, AuthResult auth)
         {
             var accessTokenExpires = DateTimeOffset.UtcNow
                 .AddMinutes(_jwtSettings.ExpiryMinutes)

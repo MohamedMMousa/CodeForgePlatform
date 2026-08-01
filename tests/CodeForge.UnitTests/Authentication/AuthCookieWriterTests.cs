@@ -19,8 +19,8 @@ namespace CodeForge.UnitTests.Authentication
             RefreshTokenExpiryDays = 7
         }));
 
-        private static AuthResponse CreateAuth() => new(
-            Guid.NewGuid(), "student@codeforge.academy", "Test Student", "student",
+        private static AuthResult CreateAuth() => new(
+            Guid.NewGuid(), "student@codeforge.academy", "Test Student", null, "student",
             "access-token-value", "refresh-token-value", DateTime.UtcNow.AddDays(7), false);
 
         [Fact]

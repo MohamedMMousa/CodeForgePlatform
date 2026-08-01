@@ -3,5 +3,5 @@ using MediatR;
 
 namespace CodeForge.Application.Authentication.RefreshToken
 {
-    public record RefreshTokenCommand(string RefreshToken) : IRequest<AuthResponse>;
+    public record RefreshTokenCommand(string RefreshToken) : IRequest<AuthResult>;
 }

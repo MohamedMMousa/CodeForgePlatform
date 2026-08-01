@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace CodeForge.Application.Authentication.ChangePassword
 {
-    public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand, AuthResponse>
+    public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand, AuthResult>
     {
         private readonly ICodeForgeDbContext _context;
         private readonly ICurrentUserService _currentUserService;
@@ -29,7 +29,7 @@ namespace CodeForge.Application.Authentication.ChangePassword
             _jwtSettings = jwtOptions.Value;
         }
 
-        public async Task<AuthResponse> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
+        public async Task<AuthResult> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(_currentUserService.UserId, out var userId))
             {
@@ -66,10 +66,11 @@ namespace CodeForge.Application.Authentication.ChangePassword
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new AuthResponse(
+            return new AuthResult(
                 user.Id,
                 user.Email,
                 user.FullName,
+                user.Phone,
                 user.Role,
                 _jwtTokenGenerator.GenerateToken(user),
                 refreshToken,

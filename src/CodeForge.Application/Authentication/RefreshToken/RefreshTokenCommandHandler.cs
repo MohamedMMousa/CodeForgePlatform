@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace CodeForge.Application.Authentication.RefreshToken
 {
-    public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, AuthResponse>
+    public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, AuthResult>
     {
         // A lost compare-and-swap means another request won the same rotation race;
         // one retry re-reads the fresh state and resolves to ReturnCurrent/Reuse/Invalid
@@ -32,7 +32,7 @@ namespace CodeForge.Application.Authentication.RefreshToken
             _jwtSettings = jwtOptions.Value;
         }
 
-        public async Task<AuthResponse> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
+        public async Task<AuthResult> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
         {
             var now = DateTime.UtcNow;
             var presentedHash = _jwtTokenGenerator.HashToken(request.RefreshToken);
@@ -67,8 +67,8 @@ namespace CodeForge.Application.Authentication.RefreshToken
                             throw new UnauthorizedAccessException("Invalid or expired refresh token.");
                         }
 
-                        return new AuthResponse(
-                            user.Id, user.Email, user.FullName, user.Role,
+                        return new AuthResult(
+                            user.Id, user.Email, user.FullName, user.Phone, user.Role,
                             _jwtTokenGenerator.GenerateToken(user),
                             user.PendingRefreshToken,
                             user.RefreshTokenExpiryTime.Value,
@@ -101,8 +101,8 @@ namespace CodeForge.Application.Authentication.RefreshToken
 
                         if (won)
                         {
-                            return new AuthResponse(
-                                user.Id, user.Email, user.FullName, user.Role,
+                            return new AuthResult(
+                                user.Id, user.Email, user.FullName, user.Phone, user.Role,
                                 _jwtTokenGenerator.GenerateToken(user),
                                 newPlaintext,
                                 newExpiry,

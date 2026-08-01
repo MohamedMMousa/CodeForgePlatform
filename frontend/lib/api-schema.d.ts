@@ -1527,9 +1527,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["AuthResponse"];
-                        "application/json": components["schemas"]["AuthResponse"];
-                        "text/json": components["schemas"]["AuthResponse"];
+                        "text/plain": components["schemas"]["CurrentUserResponse"];
+                        "application/json": components["schemas"]["CurrentUserResponse"];
+                        "text/json": components["schemas"]["CurrentUserResponse"];
                     };
                 };
             };
@@ -1570,9 +1570,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["AuthResponse"];
-                        "application/json": components["schemas"]["AuthResponse"];
-                        "text/json": components["schemas"]["AuthResponse"];
+                        "text/plain": components["schemas"]["CurrentUserResponse"];
+                        "application/json": components["schemas"]["CurrentUserResponse"];
+                        "text/json": components["schemas"]["CurrentUserResponse"];
                     };
                 };
             };
@@ -1699,10 +1699,43 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["AuthResponse"];
-                        "application/json": components["schemas"]["AuthResponse"];
-                        "text/json": components["schemas"]["AuthResponse"];
+                        "text/plain": components["schemas"]["CurrentUserResponse"];
+                        "application/json": components["schemas"]["CurrentUserResponse"];
+                        "text/json": components["schemas"]["CurrentUserResponse"];
                     };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -5315,18 +5348,6 @@ export interface components {
         AuthMessageResponse: {
             message: string;
         };
-        AuthResponse: {
-            /** Format: uuid */
-            userId: string;
-            email: string;
-            fullName: string;
-            role: string;
-            accessToken: string;
-            refreshToken: string;
-            /** Format: date-time */
-            refreshTokenExpiresAt: string;
-            mustChangePassword: boolean;
-        };
         CancelEnrollmentRequest: {
             reason: string;
             markAsRefunded: boolean;
@@ -6076,7 +6097,7 @@ export interface components {
             message: string;
         };
         RefreshTokenRequest: {
-            refreshToken: string;
+            refreshToken?: string | null;
         };
         RejectEnrollmentRequestBody: {
             rejectionReason: string;

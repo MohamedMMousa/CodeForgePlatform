@@ -31,7 +31,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("login")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequestWithCookies(
@@ -41,7 +41,7 @@ namespace CodeForge.Api.Controllers
 
         [HttpPost("refresh-token")]
         [EnableRateLimiting(RateLimitPolicies.Auth)]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RefreshToken(RefreshTokenRequest? request, CancellationToken cancellationToken)
         {
             // The cookie is the primary source; the body is accepted only as a fallback
@@ -81,7 +81,7 @@ namespace CodeForge.Api.Controllers
         [Authorize]
         [AllowPendingPasswordChange]
         [HttpPost("change-password")]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
         {
             return await SendAuthRequestWithCookies(
@@ -125,16 +125,21 @@ namespace CodeForge.Api.Controllers
 
         /// <summary>
         /// Same as SendAuthRequest, for the three actions whose result is an
-        /// AuthResponse: also mints the httpOnly session cookies from it.
+        /// AuthResult: mints the httpOnly session cookies from it, then returns the
+        /// public-facing CurrentUserResponse — the tokens carried by AuthResult never
+        /// reach the response body.
         /// </summary>
         private async Task<IActionResult> SendAuthRequestWithCookies(
-            IRequest<AuthResponse> request,
+            IRequest<AuthResult> request,
             CancellationToken cancellationToken)
         {
-            var response = await _sender.Send(request, cancellationToken);
-            _cookieWriter.WriteAuthCookies(Response, response);
-            return Ok(response);
+            var result = await _sender.Send(request, cancellationToken);
+            _cookieWriter.WriteAuthCookies(Response, result);
+            return Ok(ToCurrentUserResponse(result));
         }
+
+        private static CurrentUserResponse ToCurrentUserResponse(AuthResult result) => new(
+            result.UserId, result.Email, result.FullName, result.Phone, result.Role, result.MustChangePassword);
 
         public record LoginRequest(string Email, string Password);
         public record RefreshTokenRequest(string? RefreshToken);

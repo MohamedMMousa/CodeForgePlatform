@@ -1600,17 +1600,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             }
@@ -1648,17 +1648,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             }
@@ -1792,20 +1792,32 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         }
       }
@@ -6460,48 +6472,6 @@
         },
         "additionalProperties": false
       },
-      "AuthResponse": {
-        "required": [
-          "accessToken",
-          "email",
-          "fullName",
-          "mustChangePassword",
-          "refreshToken",
-          "refreshTokenExpiresAt",
-          "role",
-          "userId"
-        ],
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "email": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          },
-          "accessToken": {
-            "type": "string"
-          },
-          "refreshToken": {
-            "type": "string"
-          },
-          "refreshTokenExpiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "mustChangePassword": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
       "CancelEnrollmentRequest": {
         "required": [
           "markAsRefunded",
@@ -8983,13 +8953,11 @@
         "additionalProperties": false
       },
       "RefreshTokenRequest": {
-        "required": [
-          "refreshToken"
-        ],
         "type": "object",
         "properties": {
           "refreshToken": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
