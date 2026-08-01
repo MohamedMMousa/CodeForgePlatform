@@ -27,9 +27,12 @@ var builder = WebApplication.CreateBuilder(args);
 // PasswordChangeRequiredFilter is global (fail-closed): it blocks every authenticated
 // endpoint for a user whose token says MustChangePassword, unless the endpoint opts out
 // via [AllowAnonymous] or [AllowPendingPasswordChange]. See ARCHITECTURE.md §3.
+// CsrfProtectionFilter is also global: it only acts on unsafe requests that carry an
+// auth cookie, so it's a no-op for anonymous public endpoints. See ARCHITECTURE.md §3.
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<PasswordChangeRequiredFilter>();
+    options.Filters.Add<CsrfProtectionFilter>();
 });
 
 // Localization scaffolding: resolve culture per request (Arabic/English) from the

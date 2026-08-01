@@ -24,36 +24,41 @@ namespace CodeForge.UnitTests.Authentication
             "access-token-value", "refresh-token-value", DateTime.UtcNow.AddDays(7), false);
 
         [Fact]
-        public void WriteAuthCookies_SetsBothCookies_AsHttpOnlySecureLaxHostOnly()
+        public void WriteAuthCookies_SetsAllThreeCookies_WithCorrectFlags()
         {
             var context = new DefaultHttpContext();
             CreateSut().WriteAuthCookies(context.Response, CreateAuth());
 
             var setCookieHeaders = context.Response.Headers.SetCookie.OfType<string>().ToArray();
-            setCookieHeaders.Should().HaveCount(2);
+            setCookieHeaders.Should().HaveCount(3);
 
             foreach (var header in setCookieHeaders)
             {
                 var lower = header.ToLowerInvariant();
-                lower.Should().Contain("httponly");
                 lower.Should().Contain("secure");
                 lower.Should().Contain("samesite=lax");
                 lower.Should().Contain("path=/");
                 lower.Should().NotContain("domain=");
             }
 
-            setCookieHeaders.Should().Contain(h => h.StartsWith($"{AuthCookieWriter.AccessTokenCookieName}=access-token-value"));
-            setCookieHeaders.Should().Contain(h => h.StartsWith($"{AuthCookieWriter.RefreshTokenCookieName}=refresh-token-value"));
+            var accessHeader = setCookieHeaders.Single(h => h.StartsWith($"{AuthCookieWriter.AccessTokenCookieName}=access-token-value"));
+            accessHeader.ToLowerInvariant().Should().Contain("httponly");
+
+            var refreshHeader = setCookieHeaders.Single(h => h.StartsWith($"{AuthCookieWriter.RefreshTokenCookieName}=refresh-token-value"));
+            refreshHeader.ToLowerInvariant().Should().Contain("httponly");
+
+            var csrfHeader = setCookieHeaders.Single(h => h.StartsWith($"{AuthCookieWriter.CsrfCookieName}="));
+            csrfHeader.ToLowerInvariant().Should().NotContain("httponly");
         }
 
         [Fact]
-        public void ClearAuthCookies_ExpiresBothCookies_InThePast()
+        public void ClearAuthCookies_ExpiresAllThreeCookies_InThePast()
         {
             var context = new DefaultHttpContext();
             CreateSut().ClearAuthCookies(context.Response);
 
             var setCookieHeaders = context.Response.Headers.SetCookie.OfType<string>().ToArray();
-            setCookieHeaders.Should().HaveCount(2);
+            setCookieHeaders.Should().HaveCount(3);
             setCookieHeaders.Should().OnlyContain(h => h.Contains("expires=Thu, 01 Jan 1970"));
         }
     }

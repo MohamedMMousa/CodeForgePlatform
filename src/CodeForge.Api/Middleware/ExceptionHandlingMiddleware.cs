@@ -52,6 +52,8 @@ namespace CodeForge.Api.Middleware
                 ValidationException validationException => BuildValidationProblem(validationException),
                 PasswordChangeRequiredException => BuildForbiddenWithCode(
                     AuthErrorCodes.PasswordChangeRequired, exception.Message),
+                CsrfValidationException => BuildForbiddenWithCode(
+                    AuthErrorCodes.CsrfValidationFailed, exception.Message),
                 UnauthorizedAccessException => BuildProblem(
                     StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message),
                 KeyNotFoundException => BuildProblem(
