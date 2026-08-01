@@ -67,6 +67,7 @@ namespace CodeForge.Infrastructure
             // Authentication Services Registration
             services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
+            services.AddScoped<IRefreshTokenRotationStore, RefreshTokenRotationStore>();
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();

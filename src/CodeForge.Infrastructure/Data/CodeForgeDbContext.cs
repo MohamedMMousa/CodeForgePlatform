@@ -99,6 +99,9 @@ namespace CodeForge.Infrastructure.Data
                 entity.Property(e => e.DeletedAt).HasColumnName("deleted_at").HasColumnType("timestamp with time zone");
                 entity.Property(e => e.RefreshToken).HasColumnName("refresh_token").HasMaxLength(255);
                 entity.Property(e => e.RefreshTokenExpiryTime).HasColumnName("refresh_token_expires_at").HasColumnType("timestamp with time zone");
+                entity.Property(e => e.PreviousRefreshToken).HasColumnName("previous_refresh_token").HasMaxLength(255);
+                entity.Property(e => e.PendingRefreshToken).HasColumnName("pending_refresh_token").HasMaxLength(255);
+                entity.Property(e => e.RefreshTokenRotatedAt).HasColumnName("refresh_token_rotated_at").HasColumnType("timestamp with time zone");
 
                 // Unique index
                 entity.HasIndex(e => e.Email).IsUnique().HasFilter("deleted_at IS NULL");

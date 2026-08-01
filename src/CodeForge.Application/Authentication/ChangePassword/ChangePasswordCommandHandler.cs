@@ -60,6 +60,9 @@ namespace CodeForge.Application.Authentication.ChangePassword
             var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays);
             user.RefreshToken = _jwtTokenGenerator.HashToken(refreshToken);
             user.RefreshTokenExpiryTime = refreshTokenExpiresAt;
+            user.PreviousRefreshToken = null;
+            user.PendingRefreshToken = null;
+            user.RefreshTokenRotatedAt = null;
 
             await _context.SaveChangesAsync(cancellationToken);
 

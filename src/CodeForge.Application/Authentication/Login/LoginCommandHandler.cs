@@ -43,8 +43,13 @@ namespace CodeForge.Application.Authentication.Login
             var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays);
 
             // Persist only the hash; the plaintext token is returned to the client.
+            // A fresh login starts a new rotation lineage — any grace-window state
+            // left over from a prior session is stale and must not carry forward.
             user.RefreshToken = _jwtTokenGenerator.HashToken(refreshToken);
             user.RefreshTokenExpiryTime = refreshTokenExpiresAt;
+            user.PreviousRefreshToken = null;
+            user.PendingRefreshToken = null;
+            user.RefreshTokenRotatedAt = null;
 
             await _context.SaveChangesAsync(cancellationToken);
 

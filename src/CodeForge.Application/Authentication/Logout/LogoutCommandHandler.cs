@@ -24,7 +24,9 @@ namespace CodeForge.Application.Authentication.Logout
 
             var hashedToken = _jwtTokenGenerator.HashToken(request.RefreshToken);
             var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.RefreshToken == hashedToken, cancellationToken);
+                .FirstOrDefaultAsync(
+                    x => x.RefreshToken == hashedToken || x.PreviousRefreshToken == hashedToken,
+                    cancellationToken);
 
             if (user is null)
             {
@@ -33,6 +35,9 @@ namespace CodeForge.Application.Authentication.Logout
 
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
+            user.PreviousRefreshToken = null;
+            user.PendingRefreshToken = null;
+            user.RefreshTokenRotatedAt = null;
 
             await _context.SaveChangesAsync(cancellationToken);
         }

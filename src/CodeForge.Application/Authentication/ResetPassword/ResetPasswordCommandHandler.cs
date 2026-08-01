@@ -45,6 +45,9 @@ namespace CodeForge.Application.Authentication.ResetPassword
             resetToken.User.MustChangePassword = false;
             resetToken.User.RefreshToken = null;
             resetToken.User.RefreshTokenExpiryTime = null;
+            resetToken.User.PreviousRefreshToken = null;
+            resetToken.User.PendingRefreshToken = null;
+            resetToken.User.RefreshTokenRotatedAt = null;
             resetToken.UsedAt = now;
 
             await _context.SaveChangesAsync(cancellationToken);

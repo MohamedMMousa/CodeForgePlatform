@@ -24,6 +24,18 @@ namespace CodeForge.Domain.Entities
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
+        // Rotation grace window (see RefreshTokenRotationPolicy): PreviousRefreshToken
+        // is the hash of the token just superseded, so a concurrent latecomer
+        // presenting it within the grace window is recognized rather than treated as
+        // reuse. PendingRefreshToken is the PLAINTEXT of the current token — an
+        // intentional, narrowly-scoped exception to "hashed at rest," needed so a
+        // latecomer can be handed back the exact same value the winner already has.
+        // It is overwritten on every subsequent rotation, so at most one superseded
+        // plaintext value ever lingers.
+        public string? PreviousRefreshToken { get; set; }
+        public string? PendingRefreshToken { get; set; }
+        public DateTime? RefreshTokenRotatedAt { get; set; }
+
         // Navigation properties
         public virtual ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
         public virtual ICollection<Course> CreatedCourses { get; set; } = new List<Course>();
