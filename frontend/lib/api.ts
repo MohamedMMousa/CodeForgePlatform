@@ -27,8 +27,64 @@ export interface PagedResult<T> {
   totalCount: number;
 }
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5205";
+// Browser calls go through Next's own /api/* rewrite (see next.config.mjs) so the
+// request stays same-origin and cf_access/cf_refresh ride along as first-party
+// cookies. Server components bypass the rewrite and call the API directly — a
+// relative path has no base to resolve against outside a browser.
+const BASE_URL = typeof window === "undefined"
+  ? (process.env.API_INTERNAL_URL ?? "http://localhost:5205")
+  : "/api";
+
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}
+
+const CSRF_HEADER_NAME = "X-CSRF-Token";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/** Echoes the non-HttpOnly cf_csrf cookie back as a header for unsafe methods — the
+ * double-submit CSRF check CsrfProtectionFilter enforces server-side. No-op outside
+ * the browser (no document, and server-side calls carry no auth cookie anyway). */
+function csrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie.match(/(?:^|;\s*)cf_csrf=([^;]+)/);
+  return match ? { [CSRF_HEADER_NAME]: decodeURIComponent(match[1]) } : {};
+}
+
+// Concurrent 401s share one in-flight refresh instead of each firing their own —
+// the refresh endpoint itself only lets the first request through unscathed (see
+// RefreshTokenRotationPolicy on the backend); this just avoids the redundant calls.
+let refreshPromise: Promise<boolean> | null = null;
+
+function attemptRefresh(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${BASE_URL}/auth/refresh-token`, {
+      method: "POST",
+      credentials: "include",
+      headers: csrfHeader()
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+function canRetryOn401(path: string): boolean {
+  return isBrowser() && !path.startsWith("/auth/login") && !path.startsWith("/auth/refresh-token");
+}
+
+/** Retries once, after a refresh, on a 401 — everywhere except the login/refresh
+ * endpoints themselves (nothing to refresh into on those). */
+async function fetchWithAuthRetry(path: string, init: RequestInit): Promise<Response> {
+  const response = await fetch(`${BASE_URL}${path}`, init);
+  if (response.status === 401 && canRetryOn401(path) && (await attemptRefresh())) {
+    return fetch(`${BASE_URL}${path}`, init);
+  }
+  return response;
+}
 
 export interface ApiError {
   status: number;
@@ -82,13 +138,17 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit & { locale?: string; token?: string } = {}
 ): Promise<T> {
-  const { locale, token, headers, ...rest } = options;
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const { locale, token, headers, method, ...rest } = options;
+  const httpMethod = (method ?? "GET").toUpperCase();
+  const response = await fetchWithAuthRetry(path, {
     ...rest,
+    method,
+    credentials: isBrowser() ? "include" : undefined,
     headers: {
       "Content-Type": "application/json",
       ...(locale ? { "Accept-Language": locale } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(SAFE_METHODS.has(httpMethod) ? {} : csrfHeader()),
       ...headers
     }
   });
@@ -99,7 +159,8 @@ export async function apiFetch<T>(
  * and opens it in a new tab via a blob URL. These endpoints are never plain <a href>
  * links — the server requires a Bearer token, which only fetch (not navigation) can send. */
 export async function downloadAuthenticatedFile(path: string, token: string): Promise<void> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetchWithAuthRetry(path, {
+    credentials: isBrowser() ? "include" : undefined,
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!response.ok) {
@@ -118,12 +179,15 @@ export async function apiFetchForm<T>(
   formData: FormData,
   options: { locale?: string; token?: string; method?: string } = {}
 ): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const httpMethod = (options.method ?? "POST").toUpperCase();
+  const response = await fetchWithAuthRetry(path, {
     method: options.method ?? "POST",
     body: formData,
+    credentials: isBrowser() ? "include" : undefined,
     headers: {
       ...(options.locale ? { "Accept-Language": options.locale } : {}),
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})
+      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      ...(SAFE_METHODS.has(httpMethod) ? {} : csrfHeader())
     }
   });
   return handleResponse<T>(response);
