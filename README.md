@@ -94,6 +94,25 @@ dotnet test CodeForge.slnx
 cd frontend && npx tsc --noEmit
 ```
 
+### Optional: auth token-leak / cache-posture check
+
+`scripts/check-token-leak.mjs` asserts that authenticated pages leak no token material
+and stay non-cacheable, and that no `app/[locale]` route is prerendered. It needs a
+running stack and credentials, so it is not part of `scripts/verify.mjs`. Run it against
+a **production** build — a dev server serializes cookie values into the RSC payload via
+React's dev-only debug channel (harmless, and explained in `docs/ARCHITECTURE.md` §6),
+so the script refuses to certify one:
+
+```bash
+cd frontend && npm run build && npx next start -p 3001
+```
+
+```bash
+CHECK_EMAIL=admin@codeforge.academy CHECK_PASSWORD=<pw> node scripts/check-token-leak.mjs --base-url=http://localhost:3001
+```
+
+`--build-only` runs just the prerender assertions against `.next`, with no server needed.
+
 ### Optional: real email / WhatsApp
 
 By default the API logs outgoing notifications instead of sending them

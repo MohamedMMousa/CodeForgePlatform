@@ -282,6 +282,36 @@ file uploads, rate limiting, versioning stance).
   server components see it too) replaces the old `applySession`; `signOut()` is now
   async (`POST /auth/logout`, then `router.refresh()` — middleware then redirects if
   the current page is protected).
+- **Cookie values in the dev RSC payload — dev-only, verified absent in production.**
+  View-source on a protected page under `npm run dev` shows `cf_access`/`cf_refresh`
+  values inside a `__next_f.push` block. This is **not** the app serializing them:
+  `getServerSession()` forwards the cookie in a *request* header and returns only
+  `await response.json()`, and `toSession()` narrows that to five scalar fields — no
+  `Response`, no `Headers`, and no token ever enters the React tree. What you are
+  seeing is React 19's dev-only server-component debug channel capturing the awaited
+  return value of `cookies()` (the whole cookie jar) as `[name, {name, value}]`
+  entries, tagged with `"env":"Server"` and a stack frame pointing at
+  `session.ts`/`layout.tsx`. Two independent confirmations, so nobody has to
+  re-investigate:
+  1. *Empirical* — a production build (`npm run build && npx next start`) serves zero
+     occurrences of either token, of the literals `cf_access`/`cf_refresh`, or even of
+     `eyJ`, across page HTML, RSC flight payloads, and prefetch payloads, in both
+     locales, while still rendering signed-in.
+  2. *Structural* — `next/dist/compiled/react-server-dom-webpack/server.node.js`
+     selects its implementation on a hard `process.env.NODE_ENV === 'production'`
+     branch, and the production bundle contains **no** `forwardDebugInfo` (20
+     occurrences in dev → 0), `emitDebugChunk` (9 → 0), or owner-stack code (7 → 0).
+     The debug channel is absent from the production build, not merely disabled.
+
+  There is therefore **no configuration flag to reach for** — none can suppress it in
+  dev (the dev bundle *is* the mechanism) and none can enable it in production (the
+  code isn't there). `experimental.browserDebugInfoInTerminal` is unrelated: it
+  forwards *browser* console output to the dev terminal. Since the flash fix requires
+  reading `cookies()` in a Server Component, the dev behaviour is inherent and is left
+  alone. Treat it as dev hygiene rather than a vulnerability: the tokens are the
+  developer's own, but avoid pasting dev view-source into issues or attaching dev HAR
+  captures. `node scripts/check-token-leak.mjs` asserts all of this and deliberately
+  refuses to certify a dev server rather than reporting a misleading pass.
 - **Forced password change** — `components/PasswordChangeGate.tsx` (mounted in
   `app/[locale]/layout.tsx`) redirects to `/{locale}/change-password` whenever the
   session says `mustChangePassword`, and also on the `codeforge:password-change-required`

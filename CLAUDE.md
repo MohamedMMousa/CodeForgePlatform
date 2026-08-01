@@ -25,6 +25,9 @@ npm --prefix frontend run dev               # :3000
 dotnet ef database update --project src/CodeForge.Infrastructure --startup-project src/CodeForge.Api
 
 node scripts/generate-api-types.mjs         # regenerate frontend/lib/api-schema.d.ts; needs the API running
+
+node scripts/check-token-leak.mjs --build-only   # auth token-leak + cache-posture guard
+# full run needs a running stack + CHECK_EMAIL/CHECK_PASSWORD, against a PROD build (see README)
 ```
 
 Backend secrets come from .NET User Secrets, never `appsettings.json`. The API fails fast at

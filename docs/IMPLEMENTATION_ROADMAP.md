@@ -629,12 +629,44 @@ frontend in production, pointing at the real API URL — its `localhost:5205` fa
 correct for local dev only and will silently break every `/api/*` call if left unset
 elsewhere.
 
+**Follow-up: dev RSC payload audit — closed, no product change.** A review after this
+phase spotted `cf_access`/`cf_refresh` values inside a `__next_f.push` block in
+view-source and asked whether that reopened what the token-removal commit closed. It
+does not. The cause is React 19's dev-only debug channel serializing the awaited return
+of `cookies()`, not application code — `getServerSession()` never puts a `Response`,
+`Headers`, or token into the React tree. Production was verified clean empirically (a
+real `next build`/`next start`: zero occurrences of either token, of
+`cf_access`/`cf_refresh`, or of `eyJ`, across HTML, RSC, and prefetch payloads, both
+locales) *and* structurally (the production React flight bundle physically lacks the
+debug-emission code). No flag exists to change either side. Full reasoning and evidence
+in `ARCHITECTURE.md` §6 so this doesn't get re-investigated. The audit did confirm the
+cache posture is correct — authenticated HTML and RSC responses send `private,
+no-cache, no-store, max-age=0, must-revalidate`, and no `app/[locale]` route is
+prerendered — which is now regression-guarded (below).
+
+**`scripts/check-token-leak.mjs` — the guard that came out of that audit.** Zero-dep,
+run against a running stack: it signs in, then asserts across `/en` and `/ar` that
+authenticated HTML *and* RSC payloads carry no token material, that every such response
+is non-cacheable, and — from `.next` alone, no server needed (`--build-only`) — that no
+`app/[locale]` route is prerendered or ISR-cached. That last pair is the one protecting
+production: adding `export const revalidate` or `force-static` anywhere under
+`app/[locale]` would bake or share an authenticated render between users, a failure
+`no-store` cannot catch because the page would never reach the request path. Both
+assertions were negative-tested (injected regressions, confirmed red, restored) rather
+than merely observed green. It is deliberately **not** in `node scripts/verify.mjs` —
+it needs a live API and credentials — and it refuses to certify a `next dev` target
+rather than reporting a misleading pass, since dev output can't speak for production.
+
 **Near-term backlog, not someday: integration test host for the auth pipeline.**
 `tests/CodeForge.UnitTests` is pure-unit — no `WebApplicationFactory`, so nothing
 exercises the real cookie/CSRF/`JwtBearer` pipeline end-to-end. This phase's coverage
 came from live browser/curl verification instead, which is real but not repeatable by
-CI. Auth is now the single piece of this system most likely to break silently under a
-future change with nothing automated to catch it.
+CI. `scripts/check-token-leak.mjs` now covers one slice of this repeatably (token
+exposure and cache posture in rendered output), but it tests the frontend's rendered
+surface, not the API pipeline — cookie issuance, `OnMessageReceived`, the CSRF filter,
+the rotation grace window, and `PasswordChangeRequiredFilter` still have no automated
+end-to-end coverage. Auth remains the piece of this system most likely to break
+silently under a future change.
 
 **Verified:** `node scripts/verify.mjs` green at every commit. Live, not just
 type-checked: login sets `cf_access`/`cf_refresh`/`cf_csrf` with the correct flags and
