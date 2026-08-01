@@ -3,6 +3,7 @@ using CodeForge.Application.Authentication.Common;
 using CodeForge.Application.Authentication.ForgotPassword;
 using CodeForge.Application.Authentication.GetCurrentUser;
 using CodeForge.Application.Authentication.Login;
+using CodeForge.Application.Authentication.Logout;
 using CodeForge.Application.Authentication.RefreshToken;
 using CodeForge.Application.Authentication.ResetPassword;
 using CodeForge.Api.Authentication;
@@ -86,6 +87,22 @@ namespace CodeForge.Api.Controllers
             return await SendAuthRequestWithCookies(
                 new ChangePasswordCommand(request.CurrentPassword, request.NewPassword),
                 cancellationToken);
+        }
+
+        // Anonymous by design: logout must succeed even when the access token has
+        // already expired, and it authenticates itself off the refresh cookie rather
+        // than a ClaimsPrincipal. It never fails and always clears cookies, so a client
+        // that is already signed out (or presenting a stale token) still gets a clean
+        // result. See LogoutCommandHandler.
+        [AllowAnonymous]
+        [HttpPost("logout")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+        {
+            var refreshToken = Request.Cookies[AuthCookieWriter.RefreshTokenCookieName];
+            await _sender.Send(new LogoutCommand(refreshToken), cancellationToken);
+            _cookieWriter.ClearAuthCookies(Response);
+            return NoContent();
         }
 
         [Authorize]
