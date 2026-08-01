@@ -48,7 +48,7 @@ export default function AdminCouponsPage({
 
   function load() {
     if (!session) return;
-    getCoupons(undefined, session.accessToken, { page, pageSize: PAGE_SIZE })
+    getCoupons(undefined, { page, pageSize: PAGE_SIZE })
       .then((result) => {
         setCoupons(result.items);
         setTotalCount(result.totalCount);
@@ -98,9 +98,9 @@ export default function AdminCouponsPage({
         usageLimit: usageLimit ? Number(usageLimit) : null
       };
       if (editingId) {
-        await updateCoupon(editingId, { ...shared, isActive }, session.accessToken);
+        await updateCoupon(editingId, { ...shared, isActive });
       } else {
-        await createCoupon({ code, ...shared }, session.accessToken);
+        await createCoupon({ code, ...shared });
       }
       resetForm();
       load();
@@ -115,7 +115,7 @@ export default function AdminCouponsPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await deactivateCoupon(id, session.accessToken);
+      await deactivateCoupon(id);
       load();
     } catch (err) {
       onError(err);

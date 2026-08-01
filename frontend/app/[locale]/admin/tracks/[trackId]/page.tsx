@@ -47,7 +47,7 @@ export default function AdminTrackDetailPage({
 
   function load() {
     if (!session) return;
-    getTrackById(trackId, session.accessToken)
+    getTrackById(trackId)
       .then((tr) => {
         setTrack(tr);
         setTitle(tr.title);
@@ -58,7 +58,7 @@ export default function AdminTrackDetailPage({
         setCurrency(tr.currency);
       })
       .catch(onError);
-    getAdminCourses({ pageSize: 100 }, session.accessToken)
+    getAdminCourses({ pageSize: 100 })
       .then((result) => setCourses(result.items))
       .catch(() => {});
   }
@@ -78,7 +78,6 @@ export default function AdminTrackDetailPage({
       const updated = await updateTrack(
         trackId,
         { title, slug, description: description || null, thumbnailUrl: thumbnailUrl || null, price: Number(price), currency },
-        session.accessToken
       );
       setTrack(updated);
     } catch (err) {
@@ -94,7 +93,7 @@ export default function AdminTrackDetailPage({
     setAddingCourse(true);
     setError(null);
     try {
-      await addCourseToTrack(trackId, selectedCourseId, Number(sortOrder), session.accessToken);
+      await addCourseToTrack(trackId, selectedCourseId, Number(sortOrder));
       setSelectedCourseId("");
       setSortOrder("0");
       load();
@@ -108,7 +107,7 @@ export default function AdminTrackDetailPage({
   async function onRemoveCourse(courseId: string) {
     if (!session) return;
     try {
-      await removeCourseFromTrack(trackId, courseId, session.accessToken);
+      await removeCourseFromTrack(trackId, courseId);
       load();
     } catch (err) {
       onError(err);

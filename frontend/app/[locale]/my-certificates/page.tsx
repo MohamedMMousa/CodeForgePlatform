@@ -27,7 +27,7 @@ export default function MyCertificatesPage({
 
   useEffect(() => {
     if (!session) return;
-    getMyCertificates(session.accessToken, { page, pageSize: PAGE_SIZE })
+    getMyCertificates({ page, pageSize: PAGE_SIZE })
       .then((result) => {
         setCertificates(result.items);
         setTotalCount(result.totalCount);

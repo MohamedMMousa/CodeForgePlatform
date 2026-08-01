@@ -1,8 +1,9 @@
 "use client";
 
 // Redirects to the forced change-password screen whenever the current session says
-// mustChangePassword, and backstops a stale/tampered localStorage session by also
-// listening for the 403 the API sends on any other blocked call (see lib/api.ts).
+// mustChangePassword, and backstops a stale client-side session (e.g. a cookie
+// rotated must_change_password=true after the page loaded) by also listening for
+// the 403 the API sends on any other blocked call (see lib/api.ts).
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";

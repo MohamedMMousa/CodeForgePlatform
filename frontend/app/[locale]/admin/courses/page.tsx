@@ -50,7 +50,7 @@ export default function AdminCoursesPage({
 
   function load() {
     if (!session) return;
-    getAdminCourses({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+    getAdminCourses({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE })
       .then((result) => {
         setCourses(result.items);
         setTotalCount(result.totalCount);
@@ -81,7 +81,6 @@ export default function AdminCoursesPage({
           price: Number(price),
           currency
         },
-        session.accessToken
       );
       setTitle("");
       setSlug("");
@@ -101,7 +100,7 @@ export default function AdminCoursesPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await publishCourse(id, session.accessToken);
+      await publishCourse(id);
       load();
     } catch (err) {
       onError(err);
@@ -114,7 +113,7 @@ export default function AdminCoursesPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await archiveCourse(id, session.accessToken);
+      await archiveCourse(id);
       load();
     } catch (err) {
       onError(err);
@@ -128,7 +127,7 @@ export default function AdminCoursesPage({
     if (!confirm(t.confirmDelete)) return;
     setBusyId(id);
     try {
-      await deleteCourse(id, session.accessToken);
+      await deleteCourse(id);
       load();
     } catch (err) {
       onError(err);

@@ -96,27 +96,27 @@ export default function InstructorCoursePage({
 
   function reload() {
     if (!session) return;
-    getCourseModules(courseId, session.accessToken).then(setModules).catch(onError);
-    getAnnouncements(session.accessToken, courseId, { page: announcementsPage, pageSize: PAGE_SIZE })
+    getCourseModules(courseId).then(setModules).catch(onError);
+    getAnnouncements(courseId, { page: announcementsPage, pageSize: PAGE_SIZE })
       .then((result) => {
         setAnnouncements(result.items);
         setAnnouncementsTotal(result.totalCount);
       })
       .catch(onError);
     if (isAdmin) {
-      getCourseById(courseId, session.accessToken)
+      getCourseById(courseId)
         .then((c) => {
           setCourseDetail(c);
           setThresholdInput(c.completionAttendanceThreshold?.toString() ?? "");
         })
         .catch(onError);
-      getCourseCohortsAdmin(courseId, session.accessToken, { page: cohortsPage, pageSize: PAGE_SIZE })
+      getCourseCohortsAdmin(courseId, { page: cohortsPage, pageSize: PAGE_SIZE })
         .then((result) => {
           setCohorts(result.items);
           setCohortsTotal(result.totalCount);
         })
         .catch(onError);
-      getUsers({ role: "instructor", isActive: true, pageSize: 100 }, session.accessToken)
+      getUsers({ role: "instructor", isActive: true, pageSize: 100 })
         .then((result) => setAvailableInstructors(result.items))
         .catch(() => {});
     }
@@ -156,9 +156,9 @@ export default function InstructorCoursePage({
         gracePeriodDays: Number(cohortGraceDays)
       };
       if (editingCohortId) {
-        await updateCohort(editingCohortId, input, session.accessToken);
+        await updateCohort(editingCohortId, input);
       } else {
-        await createCohort(courseId, input, session.accessToken);
+        await createCohort(courseId, input);
       }
       resetCohortForm();
       reload();
@@ -174,7 +174,7 @@ export default function InstructorCoursePage({
     setCohortBusyId(id);
     try {
       const fn = action === "open" ? openCohort : action === "cancel" ? cancelCohort : completeCohort;
-      await fn(id, session.accessToken);
+      await fn(id);
       reload();
     } catch (err) {
       onError(err);
@@ -188,7 +188,7 @@ export default function InstructorCoursePage({
     if (!session || !selectedInstructorId) return;
     setAssigningInstructor(true);
     try {
-      await assignInstructorToCourse(courseId, selectedInstructorId, session.accessToken);
+      await assignInstructorToCourse(courseId, selectedInstructorId);
       setSelectedInstructorId("");
       reload();
     } catch (err) {
@@ -201,7 +201,7 @@ export default function InstructorCoursePage({
   async function onRemoveInstructor(instructorId: string) {
     if (!session) return;
     try {
-      await removeInstructorFromCourse(courseId, instructorId, session.accessToken);
+      await removeInstructorFromCourse(courseId, instructorId);
       reload();
     } catch (err) {
       onError(err);
@@ -219,7 +219,7 @@ export default function InstructorCoursePage({
     if (!session) return;
     setSavingModule(true);
     try {
-      await createModule(courseId, { title: newModuleTitle, description: newModuleDescription || undefined }, session.accessToken);
+      await createModule(courseId, { title: newModuleTitle, description: newModuleDescription || undefined });
       setNewModuleTitle("");
       setNewModuleDescription("");
       reload();
@@ -232,7 +232,7 @@ export default function InstructorCoursePage({
 
   async function onDeleteModule(id: string) {
     if (!session || !confirm(t.confirmDelete)) return;
-    await deleteModule(id, session.accessToken).catch(onError);
+    await deleteModule(id).catch(onError);
     reload();
   }
 
@@ -241,7 +241,7 @@ export default function InstructorCoursePage({
     if (!session) return;
     setPostingAnn(true);
     try {
-      await createAnnouncement({ courseId, title: newAnnTitle, body: newAnnBody }, session.accessToken);
+      await createAnnouncement({ courseId, title: newAnnTitle, body: newAnnBody });
       setNewAnnTitle("");
       setNewAnnBody("");
       reload();
@@ -256,13 +256,13 @@ export default function InstructorCoursePage({
     if (!session) return;
     setShowGradebook(!showGradebook);
     if (!showGradebook && !gradebook) {
-      await getCourseGradebook(courseId, session.accessToken).then(setGradebook).catch(onError);
+      await getCourseGradebook(courseId).then(setGradebook).catch(onError);
     }
   }
 
   function reloadCandidates() {
     if (!session) return;
-    getCourseCertificateCandidates(courseId, session.accessToken).then(setCandidates).catch(onError);
+    getCourseCertificateCandidates(courseId).then(setCandidates).catch(onError);
   }
 
   function toggleCerts() {
@@ -276,7 +276,7 @@ export default function InstructorCoursePage({
     if (!session) return;
     setBusyEnrollment(enrollmentId);
     try {
-      await issueCertificate(enrollmentId, tier, session.accessToken);
+      await issueCertificate(enrollmentId, tier);
       reloadCandidates();
     } catch (err) {
       onError(err);
@@ -289,7 +289,7 @@ export default function InstructorCoursePage({
     if (!session) return;
     setBusyEnrollment(enrollmentId);
     try {
-      await revokeCertificate(certificateId, null, session.accessToken);
+      await revokeCertificate(certificateId, null);
       reloadCandidates();
     } catch (err) {
       onError(err);
@@ -316,7 +316,6 @@ export default function InstructorCoursePage({
           currency: courseDetail.currency,
           completionAttendanceThreshold: parsed
         },
-        session.accessToken
       );
       setCourseDetail(updated);
       reloadCandidates();

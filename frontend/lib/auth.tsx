@@ -1,82 +1,68 @@
 "use client";
 
-// Lightweight auth context for the shell: holds the signed-in session and tokens.
-// Persistence is localStorage for now; hardened token handling (refresh rotation,
-// httpOnly cookies) is a later-phase concern. This proves end-to-end auth wiring.
+// Auth context for the shell: holds the signed-in user's profile (not tokens — those
+// live only in httpOnly cookies the server manages; see lib/session.ts and
+// middleware.ts). Seeded from a server-resolved initialSession so the first client
+// render already matches what the server rendered, which is what avoids the
+// sign-in flash — there is no hydration effect here on purpose.
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { AuthResponse, login as apiLogin } from "./api";
+import { createContext, useContext, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AuthResponse, ApiRequestError, login as apiLogin, logout as apiLogout, getCurrentUser } from "./api";
+import { Session, toSession } from "./session-mapping";
 
-interface Session {
-  userId: string;
-  email: string;
-  fullName: string;
-  role: string;
-  accessToken: string;
-  refreshToken: string;
-  mustChangePassword: boolean;
-}
+export type { Session } from "./session-mapping";
 
 interface AuthContextValue {
   session: Session | null;
   signIn: (email: string, password: string, locale?: string) => Promise<AuthResponse>;
-  /** Swaps in a freshly issued session (e.g. after change-password rotates the
-   * tokens) without a round trip through signIn. */
-  applySession: (auth: AuthResponse) => void;
-  signOut: () => void;
+  /** Re-derives the session from the server — e.g. after change-password rotates
+   * the cookies — and refreshes server components so they see the new state too. */
+  refreshSession: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-const STORAGE_KEY = "codeforge.session";
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function toSession(auth: AuthResponse): Session {
-  return {
-    userId: auth.userId,
-    email: auth.email,
-    fullName: auth.fullName,
-    role: auth.role,
-    accessToken: auth.accessToken,
-    refreshToken: auth.refreshToken,
-    mustChangePassword: auth.mustChangePassword
-  };
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    const raw =
-      typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-    if (raw) {
-      try {
-        setSession(JSON.parse(raw) as Session);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
+export function AuthProvider({
+  initialSession,
+  children
+}: {
+  initialSession: Session | null;
+  children: React.ReactNode;
+}) {
+  const [session, setSession] = useState<Session | null>(initialSession);
+  const router = useRouter();
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       async signIn(email, password, locale) {
         const auth = await apiLogin(email, password, locale);
-        const next = toSession(auth);
-        setSession(next);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setSession(toSession(auth));
+        router.refresh();
         return auth;
       },
-      applySession(auth) {
-        const next = toSession(auth);
-        setSession(next);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      async refreshSession() {
+        try {
+          const current = await getCurrentUser();
+          setSession(toSession(current));
+        } catch (error) {
+          if (error instanceof ApiRequestError && error.info.status === 401) {
+            setSession(null);
+          } else {
+            throw error;
+          }
+        }
+        router.refresh();
       },
-      signOut() {
+      async signOut() {
+        await apiLogout();
         setSession(null);
-        window.localStorage.removeItem(STORAGE_KEY);
+        router.refresh();
       }
     }),
-    [session]
+    [session, router]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -49,7 +49,7 @@ export default function AdminTracksPage({
 
   function load() {
     if (!session) return;
-    getAdminTracks({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+    getAdminTracks({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE })
       .then((result) => {
         setTracks(result.items);
         setTotalCount(result.totalCount);
@@ -72,7 +72,6 @@ export default function AdminTracksPage({
     try {
       await createTrack(
         { title, slug, description: description || null, thumbnailUrl: thumbnailUrl || null, price: Number(price), currency },
-        session.accessToken
       );
       setTitle("");
       setSlug("");
@@ -91,7 +90,7 @@ export default function AdminTracksPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await publishTrack(id, session.accessToken);
+      await publishTrack(id);
       load();
     } catch (err) {
       onError(err);
@@ -104,7 +103,7 @@ export default function AdminTracksPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await archiveTrack(id, session.accessToken);
+      await archiveTrack(id);
       load();
     } catch (err) {
       onError(err);
@@ -118,7 +117,7 @@ export default function AdminTracksPage({
     if (!confirm(t.confirmDelete)) return;
     setBusyId(id);
     try {
-      await deleteTrack(id, session.accessToken);
+      await deleteTrack(id);
       load();
     } catch (err) {
       onError(err);

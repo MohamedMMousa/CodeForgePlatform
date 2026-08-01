@@ -93,10 +93,10 @@ export default function InstructorModulePage({
 
   function reload() {
     if (!session) return;
-    getModuleSessions(moduleId, session.accessToken).then(setSessions).catch(onError);
-    getModuleMaterials(moduleId, session.accessToken).then(setModuleMaterials).catch(onError);
-    getModuleAssessments(moduleId, session.accessToken).then(setAssessments).catch(onError);
-    getModuleAssignments(moduleId, session.accessToken).then(setAssignments).catch(onError);
+    getModuleSessions(moduleId).then(setSessions).catch(onError);
+    getModuleMaterials(moduleId).then(setModuleMaterials).catch(onError);
+    getModuleAssessments(moduleId).then(setAssessments).catch(onError);
+    getModuleAssignments(moduleId).then(setAssignments).catch(onError);
   }
 
   useEffect(reload, [session, moduleId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -106,7 +106,7 @@ export default function InstructorModulePage({
     if (!session) return;
     setSaving(true);
     try {
-      await createSession(moduleId, form, session.accessToken);
+      await createSession(moduleId, form);
       setForm(emptySession);
       reload();
     } catch (err) {
@@ -118,7 +118,7 @@ export default function InstructorModulePage({
 
   async function onDeleteSession(id: string) {
     if (!session || !confirm(t.confirmDelete)) return;
-    await deleteSession(id, session.accessToken).catch(onError);
+    await deleteSession(id).catch(onError);
     reload();
   }
 
@@ -130,7 +130,7 @@ export default function InstructorModulePage({
     setExpandedSession(id);
     setExpandedAttendance(null);
     if (!session || sessionMaterials[id]) return;
-    const materials = await getSessionMaterials(id, session.accessToken).catch((err) => {
+    const materials = await getSessionMaterials(id).catch((err) => {
       onError(err);
       return [] as MaterialItem[];
     });
@@ -144,9 +144,9 @@ export default function InstructorModulePage({
 
   async function onDeleteMaterial(id: string, forSessionId: string | null) {
     if (!session) return;
-    await deleteMaterial(id, session.accessToken).catch(onError);
+    await deleteMaterial(id).catch(onError);
     if (forSessionId) {
-      const materials = await getSessionMaterials(forSessionId, session.accessToken);
+      const materials = await getSessionMaterials(forSessionId);
       setSessionMaterials((prev) => ({ ...prev, [forSessionId]: materials }));
     } else {
       reload();
@@ -206,8 +206,8 @@ export default function InstructorModulePage({
               materials={sessionMaterials[s.id] ?? []}
               onDelete={(materialId) => onDeleteMaterial(materialId, s.id)}
               onCreate={async (input) => {
-                await createSessionMaterial(s.id, input, session.accessToken);
-                const materials = await getSessionMaterials(s.id, session.accessToken);
+                await createSessionMaterial(s.id, input);
+                const materials = await getSessionMaterials(s.id);
                 setSessionMaterials((prev) => ({ ...prev, [s.id]: materials }));
                 reload();
               }}
@@ -215,7 +215,7 @@ export default function InstructorModulePage({
           )}
 
           {expandedAttendance === s.id && (
-            <AttendancePanel sessionId={s.id} token={session.accessToken} t={t} onError={onError} />
+            <AttendancePanel sessionId={s.id} t={t} onError={onError} />
           )}
         </div>
       ))}
@@ -315,7 +315,7 @@ export default function InstructorModulePage({
         materials={moduleMaterials ?? []}
         onDelete={(materialId) => onDeleteMaterial(materialId, null)}
         onCreate={async (input) => {
-          await createModuleMaterial(moduleId, input, session.accessToken);
+          await createModuleMaterial(moduleId, input);
           reload();
         }}
       />
@@ -324,7 +324,6 @@ export default function InstructorModulePage({
       <AssessmentsPanel
         moduleId={moduleId}
         assessments={assessments ?? []}
-        token={session.accessToken}
         t={t}
         onError={onError}
         reload={reload}
@@ -334,7 +333,6 @@ export default function InstructorModulePage({
       <AssignmentsPanel
         moduleId={moduleId}
         assignments={assignments ?? []}
-        token={session.accessToken}
         t={t}
         locale={locale}
         onError={onError}
@@ -377,7 +375,7 @@ function MaterialsPanel({
 
   function onDownload(fileDownloadUrl: string) {
     if (!session) return;
-    downloadAuthenticatedFile(fileDownloadUrl, session.accessToken).catch(() => {});
+    downloadAuthenticatedFile(fileDownloadUrl).catch(() => {});
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -482,12 +480,10 @@ function MaterialsPanel({
 
 function AttendancePanel({
   sessionId,
-  token,
   t,
   onError
 }: {
   sessionId: string;
-  token: string;
   t: Dict;
   onError: (err: unknown) => void;
 }) {
@@ -498,7 +494,7 @@ function AttendancePanel({
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    getSessionRoster(sessionId, token)
+    getSessionRoster(sessionId)
       .then((r) => {
         setRoster(r);
         const initialStatuses: Record<string, string> = {};
@@ -511,7 +507,7 @@ function AttendancePanel({
         setNotes(initialNotes);
       })
       .catch(onError);
-  }, [sessionId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSave() {
     if (!roster) return;
@@ -525,7 +521,6 @@ function AttendancePanel({
           status: (statuses[entry.studentId] ?? "present") as "present" | "absent" | "late" | "excused",
           notes: notes[entry.studentId] || undefined
         })),
-        token
       );
       setSaved(true);
     } catch (err) {
@@ -578,14 +573,12 @@ function AttendancePanel({
 function AssessmentsPanel({
   moduleId,
   assessments,
-  token,
   t,
   onError,
   reload
 }: {
   moduleId: string;
   assessments: AssessmentItem[];
-  token: string;
   t: Dict;
   onError: (err: unknown) => void;
   reload: () => void;
@@ -598,7 +591,7 @@ function AssessmentsPanel({
     e.preventDefault();
     setSaving(true);
     try {
-      await createAssessment(moduleId, form, token);
+      await createAssessment(moduleId, form);
       setForm(emptyAssessment);
       reload();
     } catch (err) {
@@ -610,7 +603,7 @@ function AssessmentsPanel({
 
   async function onDelete(id: string) {
     if (!confirm(t.confirmDelete)) return;
-    await deleteAssessment(id, token).catch(onError);
+    await deleteAssessment(id).catch(onError);
     reload();
   }
 
@@ -634,7 +627,7 @@ function AssessmentsPanel({
             </button>
           </div>
           {expanded === a.id && (
-            <AssessmentDetailPanel assessmentId={a.id} token={token} t={t} onError={onError} onChange={reload} />
+            <AssessmentDetailPanel assessmentId={a.id} t={t} onError={onError} onChange={reload} />
           )}
         </div>
       ))}
@@ -729,13 +722,11 @@ function AssessmentsPanel({
 
 function AssessmentDetailPanel({
   assessmentId,
-  token,
   t,
   onError,
   onChange
 }: {
   assessmentId: string;
-  token: string;
   t: Dict;
   onError: (err: unknown) => void;
   onChange: () => void;
@@ -751,16 +742,16 @@ function AssessmentDetailPanel({
   const [saving, setSaving] = useState(false);
 
   function load() {
-    getAssessmentById(assessmentId, token).then((d) => setQuestions(d.questions)).catch(onError);
+    getAssessmentById(assessmentId).then((d) => setQuestions(d.questions)).catch(onError);
   }
 
-  useEffect(load, [assessmentId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [assessmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onAddQuestion(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await createQuestion(assessmentId, questionText, options, token);
+      await createQuestion(assessmentId, questionText, options);
       setQuestionText("");
       setOptions([{ optionText: "", isCorrect: true }, { optionText: "", isCorrect: false }]);
       load();
@@ -774,7 +765,7 @@ function AssessmentDetailPanel({
 
   async function onDeleteQuestion(id: string) {
     if (!confirm(t.confirmDelete)) return;
-    await deleteQuestion(id, token).catch(onError);
+    await deleteQuestion(id).catch(onError);
     load();
     onChange();
   }
@@ -782,7 +773,7 @@ function AssessmentDetailPanel({
   async function toggleResults() {
     setShowResults(!showResults);
     if (!showResults && !results) {
-      await getAssessmentResults(assessmentId, token).then(setResults).catch(onError);
+      await getAssessmentResults(assessmentId).then(setResults).catch(onError);
     }
   }
 
@@ -896,7 +887,6 @@ function AssessmentDetailPanel({
 function AssignmentsPanel({
   moduleId,
   assignments,
-  token,
   t,
   locale,
   onError,
@@ -904,7 +894,6 @@ function AssignmentsPanel({
 }: {
   moduleId: string;
   assignments: AssignmentItem[];
-  token: string;
   t: Dict;
   locale: string;
   onError: (err: unknown) => void;
@@ -918,7 +907,7 @@ function AssignmentsPanel({
     e.preventDefault();
     setSaving(true);
     try {
-      await createAssignment(moduleId, form, token);
+      await createAssignment(moduleId, form);
       setForm(emptyAssignment);
       reload();
     } catch (err) {
@@ -930,7 +919,7 @@ function AssignmentsPanel({
 
   async function onDelete(id: string) {
     if (!confirm(t.confirmDelete)) return;
-    await deleteAssignment(id, token).catch(onError);
+    await deleteAssignment(id).catch(onError);
     reload();
   }
 
@@ -954,10 +943,10 @@ function AssignmentsPanel({
             </button>
           </div>
           {expanded === `tc-${a.id}` && (
-            <TestCasesPanel assignmentId={a.id} token={token} t={t} onError={onError} onChange={reload} />
+            <TestCasesPanel assignmentId={a.id} t={t} onError={onError} onChange={reload} />
           )}
           {expanded === `sub-${a.id}` && (
-            <SubmissionsPanel assignmentId={a.id} token={token} t={t} locale={locale} onError={onError} />
+            <SubmissionsPanel assignmentId={a.id} t={t} locale={locale} onError={onError} />
           )}
         </div>
       ))}
@@ -1025,13 +1014,11 @@ function AssignmentsPanel({
 
 function TestCasesPanel({
   assignmentId,
-  token,
   t,
   onError,
   onChange
 }: {
   assignmentId: string;
-  token: string;
   t: Dict;
   onError: (err: unknown) => void;
   onChange: () => void;
@@ -1044,16 +1031,16 @@ function TestCasesPanel({
   const [saving, setSaving] = useState(false);
 
   function load() {
-    getAssignmentById(assignmentId, token).then((d) => setTestCases(d.testCases)).catch(onError);
+    getAssignmentById(assignmentId).then((d) => setTestCases(d.testCases)).catch(onError);
   }
 
-  useEffect(load, [assignmentId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [assignmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await addTestCase(assignmentId, { input, expectedOutput, isHidden, points }, token);
+      await addTestCase(assignmentId, { input, expectedOutput, isHidden, points });
       setInput("");
       setExpectedOutput("");
       setIsHidden(false);
@@ -1069,7 +1056,7 @@ function TestCasesPanel({
 
   async function onDelete(id: string) {
     if (!confirm(t.confirmDelete)) return;
-    await deleteTestCase(id, token).catch(onError);
+    await deleteTestCase(id).catch(onError);
     load();
     onChange();
   }
@@ -1120,13 +1107,11 @@ function TestCasesPanel({
 
 function SubmissionsPanel({
   assignmentId,
-  token,
   t,
   locale,
   onError
 }: {
   assignmentId: string;
-  token: string;
   t: Dict;
   locale: string;
   onError: (err: unknown) => void;
@@ -1135,15 +1120,15 @@ function SubmissionsPanel({
   const [grading, setGrading] = useState<Record<string, { score: string; feedback: string }>>({});
 
   function load() {
-    getSubmissionsForGrading(assignmentId, token).then(setData).catch(onError);
+    getSubmissionsForGrading(assignmentId).then(setData).catch(onError);
   }
 
-  useEffect(load, [assignmentId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [assignmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onGrade(submissionId: string) {
     const entry = grading[submissionId];
     if (!entry || entry.score === "") return;
-    await gradeSubmission(submissionId, Number(entry.score), entry.feedback || undefined, token).catch(onError);
+    await gradeSubmission(submissionId, Number(entry.score), entry.feedback || undefined).catch(onError);
     load();
   }
 

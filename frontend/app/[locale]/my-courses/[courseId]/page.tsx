@@ -34,7 +34,7 @@ export default function MyCoursePage({
 
   useEffect(() => {
     if (!session) return;
-    getMyCourseContent(courseId, session.accessToken)
+    getMyCourseContent(courseId)
       .then(setContent)
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
   }, [session, courseId, t.loadError]);
@@ -46,7 +46,7 @@ export default function MyCoursePage({
     }
     setExpandedSession(id);
     if (!session || sessionMaterials[id]) return;
-    const materials = await getSessionMaterials(id, session.accessToken).catch(() => []);
+    const materials = await getSessionMaterials(id).catch(() => []);
     setSessionMaterials((prev) => ({ ...prev, [id]: materials }));
   }
 
@@ -60,7 +60,7 @@ export default function MyCoursePage({
     if (!session) return;
     setShowGrades(!showGrades);
     if (!showGrades && !grades) {
-      await getMyCourseGrades(courseId, session.accessToken).then(setGrades).catch(() => undefined);
+      await getMyCourseGrades(courseId).then(setGrades).catch(() => undefined);
     }
   }
 
@@ -155,7 +155,7 @@ export default function MyCoursePage({
                                   <button
                                     className="btn secondary"
                                     onClick={() =>
-                                      session && downloadAuthenticatedFile(mat.fileDownloadUrl!, session.accessToken).catch(() => {})
+                                      session && downloadAuthenticatedFile(mat.fileDownloadUrl!).catch(() => {})
                                     }
                                   >
                                     {t.downloadFile}

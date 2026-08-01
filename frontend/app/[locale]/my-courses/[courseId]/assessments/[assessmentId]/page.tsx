@@ -40,7 +40,7 @@ export default function AssessmentAttemptPage({
 
   function load() {
     if (!session) return;
-    getAssessmentForAttempt(assessmentId, session.accessToken).then(setAssessment).catch(onError);
+    getAssessmentForAttempt(assessmentId).then(setAssessment).catch(onError);
   }
 
   useEffect(load, [session, assessmentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -60,7 +60,7 @@ export default function AssessmentAttemptPage({
     if (!session || !assessment) return;
     setStarting(true);
     try {
-      const res = await startAttempt(assessmentId, session.accessToken);
+      const res = await startAttempt(assessmentId);
       setAttemptId(res.attemptId);
       if (assessment.timeLimitMinutes) {
         setSecondsLeft(assessment.timeLimitMinutes * 60);
@@ -81,7 +81,7 @@ export default function AssessmentAttemptPage({
         questionId,
         selectedOptionId
       }));
-      const res = await submitAttempt(attemptId, answerList, session.accessToken);
+      const res = await submitAttempt(attemptId, answerList);
       setResult(res);
       setSecondsLeft(null);
     } catch (err) {

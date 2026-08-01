@@ -37,14 +37,14 @@ export default function InstructorCoursesPage({
   useEffect(() => {
     if (!session) return;
     const load = session.role === "admin" ? getAllCourses : getAssignedCourses;
-    load(session.accessToken, { page, pageSize: PAGE_SIZE })
+    load({ page, pageSize: PAGE_SIZE })
       .then((result) => {
         setCourses(result.items);
         setTotalCount(result.totalCount);
       })
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
     if (session.role === "instructor") {
-      getInstructorDashboard(session.accessToken).then(setDashboard).catch(() => {});
+      getInstructorDashboard().then(setDashboard).catch(() => {});
     }
   }, [session, page, t.loadError]);
 

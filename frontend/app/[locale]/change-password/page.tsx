@@ -21,7 +21,7 @@ export default function ChangePasswordPage({
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
   const t = getDictionary(locale).changePassword;
 
-  const { session, applySession } = useAuth();
+  const { session, refreshSession } = useAuth();
   const router = useRouter();
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -30,12 +30,11 @@ export default function ChangePasswordPage({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // middleware redirects a signed-out visitor away from this route before it
+  // renders; this is just a type-narrowing safety net for the rare case where the
+  // server-resolved session and the cookie briefly disagree.
   if (!session) {
-    return (
-      <main className="container">
-        <p className="notice err">{t.failed}</p>
-      </main>
-    );
+    return null;
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -48,8 +47,8 @@ export default function ChangePasswordPage({
     setBusy(true);
     setMessage(null);
     try {
-      const auth = await changePassword(currentPassword, newPassword, session!.accessToken, locale);
-      applySession(auth);
+      const auth = await changePassword(currentPassword, newPassword, locale);
+      await refreshSession();
       setMessage({ ok: true, text: t.success });
       router.replace(landingPathFor(auth.role, locale));
     } catch (error) {

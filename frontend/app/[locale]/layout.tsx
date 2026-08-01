@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "../globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { toSession } from "@/lib/session-mapping";
 import { dir, getDictionary, isLocale, locales, defaultLocale } from "@/lib/i18n";
+import { getServerSession } from "@/lib/session";
 import Image from "next/image";
 import Link from "next/link";
 import { RoleNav } from "@/components/RoleNav";
@@ -28,11 +30,13 @@ export default async function LocaleLayout({
   const { locale: rawLocale } = await params;
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
   const t = getDictionary(locale);
+  const serverSession = await getServerSession();
+  const initialSession = serverSession ? toSession(serverSession) : null;
 
   return (
     <html lang={locale} dir={dir(locale)}>
       <body>
-        <AuthProvider>
+        <AuthProvider initialSession={initialSession}>
           <PasswordChangeGate locale={locale} />
           <header className="topbar">
             <Link className="brand" href={`/${locale}`}>

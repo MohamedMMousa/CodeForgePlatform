@@ -32,7 +32,7 @@ export default function AdminEnrollmentRequestsPage({
 
   useEffect(() => {
     if (!session) return;
-    getEnrollmentRequests({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+    getEnrollmentRequests({ status: statusFilter || undefined, page, pageSize: PAGE_SIZE })
       .then((result) => {
         setRequests(result.items);
         setTotalCount(result.totalCount);

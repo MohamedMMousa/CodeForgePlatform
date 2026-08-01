@@ -38,7 +38,7 @@ export default function AdminUsersPage({
 
   function load() {
     if (!session) return;
-    getUsers({ role: roleFilter || undefined, page, pageSize: PAGE_SIZE }, session.accessToken)
+    getUsers({ role: roleFilter || undefined, page, pageSize: PAGE_SIZE })
       .then((result) => {
         setUsers(result.items);
         setTotalCount(result.totalCount);
@@ -62,7 +62,7 @@ export default function AdminUsersPage({
     setError(null);
     setNotice(null);
     try {
-      await createInstructor({ fullName, email, phone: phone || undefined }, session.accessToken);
+      await createInstructor({ fullName, email, phone: phone || undefined });
       setFullName("");
       setEmail("");
       setPhone("");
@@ -79,7 +79,7 @@ export default function AdminUsersPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await deactivateUser(id, session.accessToken);
+      await deactivateUser(id);
       load();
     } catch (err) {
       onError(err);
@@ -92,7 +92,7 @@ export default function AdminUsersPage({
     if (!session) return;
     setBusyId(id);
     try {
-      await reactivateUser(id, session.accessToken);
+      await reactivateUser(id);
       load();
     } catch (err) {
       onError(err);

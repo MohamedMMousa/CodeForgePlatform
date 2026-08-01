@@ -38,7 +38,7 @@ export default function AdminEnrollmentRequestDetailPage({
 
   function load() {
     if (!session) return;
-    getEnrollmentRequestById(id, session.accessToken).then(setRequest).catch(onError);
+    getEnrollmentRequestById(id).then(setRequest).catch(onError);
   }
 
   useEffect(load, [session, id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,7 +51,7 @@ export default function AdminEnrollmentRequestDetailPage({
     if (!session) return;
     setBusy(true);
     try {
-      await approveEnrollmentRequest(id, session.accessToken);
+      await approveEnrollmentRequest(id);
       load();
     } catch (err) {
       onError(err);
@@ -64,7 +64,7 @@ export default function AdminEnrollmentRequestDetailPage({
     if (!session || !rejectionReason.trim()) return;
     setBusy(true);
     try {
-      await rejectEnrollmentRequest(id, rejectionReason.trim(), session.accessToken);
+      await rejectEnrollmentRequest(id, rejectionReason.trim());
       load();
     } catch (err) {
       onError(err);
@@ -75,14 +75,14 @@ export default function AdminEnrollmentRequestDetailPage({
 
   function onDownloadProof() {
     if (!request || !session) return;
-    downloadAuthenticatedFile(request.paymentProofDownloadUrl, session.accessToken).catch(onError);
+    downloadAuthenticatedFile(request.paymentProofDownloadUrl).catch(onError);
   }
 
   async function onCancelEnrollment(enrollmentId: string) {
     if (!session || !cancelReason.trim()) return;
     setCancelBusyId(enrollmentId);
     try {
-      await cancelEnrollment(enrollmentId, cancelReason.trim(), markRefunded, session.accessToken);
+      await cancelEnrollment(enrollmentId, cancelReason.trim(), markRefunded);
       setCancelReason("");
       setMarkRefunded(false);
     } catch (err) {

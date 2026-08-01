@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ApiRequestError } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
@@ -19,6 +19,15 @@ export default function LoginPage({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Set by middleware when it redirects here after a refresh attempt fails on a
+  // protected route. Read directly off the URL rather than useSearchParams() to
+  // avoid the Suspense boundary that hook requires.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("sessionExpired")) {
+      setMessage({ ok: false, text: t.sessionExpired });
+    }
+  }, [t.sessionExpired]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();

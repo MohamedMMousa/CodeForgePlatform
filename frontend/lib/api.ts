@@ -155,13 +155,13 @@ export async function apiFetch<T>(
   return handleResponse<T>(response);
 }
 
-/** Fetches a private file (materials, payment proofs) with the Authorization header
- * and opens it in a new tab via a blob URL. These endpoints are never plain <a href>
- * links — the server requires a Bearer token, which only fetch (not navigation) can send. */
-export async function downloadAuthenticatedFile(path: string, token: string): Promise<void> {
+/** Fetches a private file (materials, payment proofs) — auth rides along as the
+ * cf_access cookie — and opens it in a new tab via a blob URL. These endpoints are
+ * never plain <a href> links since the server requires authentication, which only
+ * fetch (not a plain navigation) sends. */
+export async function downloadAuthenticatedFile(path: string): Promise<void> {
   const response = await fetchWithAuthRetry(path, {
-    credentials: isBrowser() ? "include" : undefined,
-    headers: { Authorization: `Bearer ${token}` }
+    credentials: isBrowser() ? "include" : undefined
   });
   if (!response.ok) {
     throw new ApiRequestError({ status: response.status, detail: "Could not download the file." });
@@ -217,15 +217,28 @@ export function login(
 export function changePassword(
   currentPassword: string,
   newPassword: string,
-  token: string,
   locale?: string
 ): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/change-password", {
     method: "POST",
     body: JSON.stringify({ currentPassword, newPassword }),
-    token,
     locale
   });
+}
+
+export type CurrentUserResponse = Schemas["CurrentUserResponse"];
+
+/** Re-derives the session from the server (e.g. to pick up a mustChangePassword
+ * flip, or after change-password rotates the cookies). Throws ApiRequestError on
+ * 401 — callers treat that as "not signed in". */
+export function getCurrentUser(locale?: string): Promise<CurrentUserResponse> {
+  return apiFetch<CurrentUserResponse>("/auth/me", { locale });
+}
+
+/** Clears the session cookies server-side and revokes the refresh token. Never
+ * throws on an already-signed-out caller — see AuthController.Logout. */
+export function logout(locale?: string): Promise<void> {
+  return apiFetch<void>("/auth/logout", { method: "POST", locale });
 }
 
 // ---------------------------------------------------------------------------
@@ -360,25 +373,23 @@ export function submitLead(input: {
 // ---------------------------------------------------------------------------
 
 export function getAssignedCourses(
-  token: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<CourseListItem>> {
   const query = new URLSearchParams();
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<CourseListItem>>(`/instructor/courses${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<CourseListItem>>(`/instructor/courses${qs ? `?${qs}` : ""}`);
 }
 
 export function getAllCourses(
-  token: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<CourseListItem>> {
   const query = new URLSearchParams();
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -387,24 +398,22 @@ export function getAllCourses(
 
 export type ModuleItem = Schemas["ModuleListDto"];
 
-export function getCourseModules(courseId: string, token: string): Promise<ModuleItem[]> {
-  return apiFetch<ModuleItem[]>(`/courses/${courseId}/modules`, { token });
+export function getCourseModules(courseId: string): Promise<ModuleItem[]> {
+  return apiFetch<ModuleItem[]>(`/courses/${courseId}/modules`);
 }
 
 export function createModule(
   courseId: string,
   input: { title: string; description?: string },
-  token: string
 ): Promise<Schemas["ModuleResponseDto"]> {
   return apiFetch(`/courses/${courseId}/modules`, {
     method: "POST",
-    body: JSON.stringify({ title: input.title, description: input.description ?? null }),
-    token
+    body: JSON.stringify({ title: input.title, description: input.description ?? null })
   });
 }
 
-export function deleteModule(id: string, token: string): Promise<Schemas["ModuleResponseDto"]> {
-  return apiFetch(`/modules/${id}`, { method: "DELETE", token });
+export function deleteModule(id: string): Promise<Schemas["ModuleResponseDto"]> {
+  return apiFetch(`/modules/${id}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -441,24 +450,22 @@ function sessionInputBody(input: SessionInput) {
   };
 }
 
-export function getModuleSessions(moduleId: string, token: string): Promise<SessionItem[]> {
-  return apiFetch<SessionItem[]>(`/modules/${moduleId}/sessions`, { token });
+export function getModuleSessions(moduleId: string): Promise<SessionItem[]> {
+  return apiFetch<SessionItem[]>(`/modules/${moduleId}/sessions`);
 }
 
 export function createSession(
   moduleId: string,
   input: SessionInput,
-  token: string
 ): Promise<Schemas["SessionResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/sessions`, {
     method: "POST",
-    body: JSON.stringify(sessionInputBody(input)),
-    token
+    body: JSON.stringify(sessionInputBody(input))
   });
 }
 
-export function deleteSession(id: string, token: string): Promise<Schemas["SessionResponseDto"]> {
-  return apiFetch(`/sessions/${id}`, { method: "DELETE", token });
+export function deleteSession(id: string): Promise<Schemas["SessionResponseDto"]> {
+  return apiFetch(`/sessions/${id}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -469,12 +476,12 @@ export type MaterialType = "file" | "text" | "link";
 
 export type MaterialItem = Schemas["MaterialDto"];
 
-export function getModuleMaterials(moduleId: string, token: string): Promise<MaterialItem[]> {
-  return apiFetch<MaterialItem[]>(`/modules/${moduleId}/materials`, { token });
+export function getModuleMaterials(moduleId: string): Promise<MaterialItem[]> {
+  return apiFetch<MaterialItem[]>(`/modules/${moduleId}/materials`);
 }
 
-export function getSessionMaterials(sessionId: string, token: string): Promise<MaterialItem[]> {
-  return apiFetch<MaterialItem[]>(`/sessions/${sessionId}/materials`, { token });
+export function getSessionMaterials(sessionId: string): Promise<MaterialItem[]> {
+  return apiFetch<MaterialItem[]>(`/sessions/${sessionId}/materials`);
 }
 
 export interface CreateMaterialInput {
@@ -500,21 +507,19 @@ function materialForm(input: CreateMaterialInput): FormData {
 export function createModuleMaterial(
   moduleId: string,
   input: CreateMaterialInput,
-  token: string
 ): Promise<MaterialItem> {
-  return apiFetchForm<MaterialItem>(`/modules/${moduleId}/materials`, materialForm(input), { token });
+  return apiFetchForm<MaterialItem>(`/modules/${moduleId}/materials`, materialForm(input));
 }
 
 export function createSessionMaterial(
   sessionId: string,
   input: CreateMaterialInput,
-  token: string
 ): Promise<MaterialItem> {
-  return apiFetchForm<MaterialItem>(`/sessions/${sessionId}/materials`, materialForm(input), { token });
+  return apiFetchForm<MaterialItem>(`/sessions/${sessionId}/materials`, materialForm(input));
 }
 
-export function deleteMaterial(id: string, token: string): Promise<MaterialItem> {
-  return apiFetch(`/materials/${id}`, { method: "DELETE", token });
+export function deleteMaterial(id: string): Promise<MaterialItem> {
+  return apiFetch(`/materials/${id}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -524,7 +529,6 @@ export function deleteMaterial(id: string, token: string): Promise<MaterialItem>
 export type AnnouncementItem = Schemas["AnnouncementDto"];
 
 export function getAnnouncements(
-  token: string,
   courseId?: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<AnnouncementItem>> {
@@ -533,22 +537,20 @@ export function getAnnouncements(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<AnnouncementItem>>(`/announcements${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<AnnouncementItem>>(`/announcements${qs ? `?${qs}` : ""}`);
 }
 
 export function createAnnouncement(
   input: { courseId?: string; title: string; body: string },
-  token: string
 ): Promise<AnnouncementItem> {
   return apiFetch<AnnouncementItem>("/announcements", {
     method: "POST",
-    body: JSON.stringify({ courseId: input.courseId ?? null, title: input.title, body: input.body }),
-    token
+    body: JSON.stringify({ courseId: input.courseId ?? null, title: input.title, body: input.body })
   });
 }
 
-export function deleteAnnouncement(id: string, token: string): Promise<AnnouncementItem> {
-  return apiFetch(`/announcements/${id}`, { method: "DELETE", token });
+export function deleteAnnouncement(id: string): Promise<AnnouncementItem> {
+  return apiFetch(`/announcements/${id}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -560,15 +562,15 @@ export type MyCourseAssignment = Schemas["MyCourseAssignmentDto"];
 export type MyCourseModule = Schemas["MyCourseModuleDto"];
 export type MyCourseContent = Schemas["MyCourseContentDto"];
 
-export function getMyCourseContent(courseId: string, token: string): Promise<MyCourseContent> {
-  return apiFetch<MyCourseContent>(`/my-courses/${courseId}/content`, { token });
+export function getMyCourseContent(courseId: string): Promise<MyCourseContent> {
+  return apiFetch<MyCourseContent>(`/my-courses/${courseId}/content`);
 }
 
 export type UpcomingSession = Schemas["UpcomingSessionDto"];
 export type UpcomingItems = Schemas["UpcomingItemsDto"];
 
-export function getUpcomingItems(token: string): Promise<UpcomingItems> {
-  return apiFetch<UpcomingItems>("/my-courses/upcoming-items", { token });
+export function getUpcomingItems(): Promise<UpcomingItems> {
+  return apiFetch<UpcomingItems>("/my-courses/upcoming-items");
 }
 
 // ---------------------------------------------------------------------------
@@ -586,34 +588,32 @@ export interface AttendanceEntry {
 export function markAttendance(
   sessionId: string,
   entries: AttendanceEntry[],
-  token: string
 ): Promise<Schemas["AttendanceResponseDto"]> {
   return apiFetch(`/sessions/${sessionId}/attendance`, {
     method: "PUT",
-    body: JSON.stringify({ entries }),
-    token
+    body: JSON.stringify({ entries })
   });
 }
 
 export type RosterEntry = Schemas["RosterEntryDto"];
 export type SessionRoster = Schemas["SessionRosterDto"];
 
-export function getSessionRoster(sessionId: string, token: string): Promise<SessionRoster> {
-  return apiFetch<SessionRoster>(`/sessions/${sessionId}/attendance`, { token });
+export function getSessionRoster(sessionId: string): Promise<SessionRoster> {
+  return apiFetch<SessionRoster>(`/sessions/${sessionId}/attendance`);
 }
 
 export type StudentAttendanceSummary = Schemas["StudentAttendanceSummaryDto"];
 export type CourseAttendanceReport = Schemas["CourseAttendanceReportDto"];
 
-export function getCourseAttendanceReport(courseId: string, token: string): Promise<CourseAttendanceReport> {
-  return apiFetch<CourseAttendanceReport>(`/courses/${courseId}/attendance-report`, { token });
+export function getCourseAttendanceReport(courseId: string): Promise<CourseAttendanceReport> {
+  return apiFetch<CourseAttendanceReport>(`/courses/${courseId}/attendance-report`);
 }
 
 export type MyAttendanceSession = Schemas["MyAttendanceSessionDto"];
 export type MyAttendance = Schemas["MyAttendanceDto"];
 
-export function getMyAttendance(courseId: string, token: string): Promise<MyAttendance> {
-  return apiFetch<MyAttendance>(`/my-courses/${courseId}/attendance`, { token });
+export function getMyAttendance(courseId: string): Promise<MyAttendance> {
+  return apiFetch<MyAttendance>(`/my-courses/${courseId}/attendance`);
 }
 
 // ---------------------------------------------------------------------------
@@ -648,24 +648,22 @@ function assessmentInputBody(input: AssessmentInput) {
   };
 }
 
-export function getModuleAssessments(moduleId: string, token: string): Promise<AssessmentItem[]> {
-  return apiFetch<AssessmentItem[]>(`/modules/${moduleId}/assessments`, { token });
+export function getModuleAssessments(moduleId: string): Promise<AssessmentItem[]> {
+  return apiFetch<AssessmentItem[]>(`/modules/${moduleId}/assessments`);
 }
 
 export function createAssessment(
   moduleId: string,
   input: AssessmentInput,
-  token: string
 ): Promise<Schemas["AssessmentResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/assessments`, {
     method: "POST",
-    body: JSON.stringify(assessmentInputBody(input)),
-    token
+    body: JSON.stringify(assessmentInputBody(input))
   });
 }
 
-export function deleteAssessment(id: string, token: string): Promise<Schemas["AssessmentResponseDto"]> {
-  return apiFetch(`/assessments/${id}`, { method: "DELETE", token });
+export function deleteAssessment(id: string): Promise<Schemas["AssessmentResponseDto"]> {
+  return apiFetch(`/assessments/${id}`, { method: "DELETE" });
 }
 
 export type OptionDto = Schemas["OptionDto"];
@@ -678,37 +676,35 @@ export interface OptionInput {
 export type QuestionDto = Schemas["QuestionDto"];
 export type AssessmentDetail = Schemas["AssessmentDetailDto"];
 
-export function getAssessmentById(id: string, token: string): Promise<AssessmentDetail> {
-  return apiFetch<AssessmentDetail>(`/assessments/${id}`, { token });
+export function getAssessmentById(id: string): Promise<AssessmentDetail> {
+  return apiFetch<AssessmentDetail>(`/assessments/${id}`);
 }
 
 export function createQuestion(
   assessmentId: string,
   questionText: string,
   options: OptionInput[],
-  token: string
 ): Promise<Schemas["QuestionResponseDto"]> {
   return apiFetch(`/assessments/${assessmentId}/questions`, {
     method: "POST",
-    body: JSON.stringify({ questionText, options }),
-    token
+    body: JSON.stringify({ questionText, options })
   });
 }
 
-export function deleteQuestion(id: string, token: string): Promise<Schemas["QuestionResponseDto"]> {
-  return apiFetch(`/questions/${id}`, { method: "DELETE", token });
+export function deleteQuestion(id: string): Promise<Schemas["QuestionResponseDto"]> {
+  return apiFetch(`/questions/${id}`, { method: "DELETE" });
 }
 
 export type AttemptOption = Schemas["AttemptOptionDto"];
 export type AttemptQuestion = Schemas["AttemptQuestionDto"];
 export type AttemptAssessment = Schemas["AttemptAssessmentDto"];
 
-export function getAssessmentForAttempt(id: string, token: string): Promise<AttemptAssessment> {
-  return apiFetch<AttemptAssessment>(`/assessments/${id}/attempt`, { token });
+export function getAssessmentForAttempt(id: string): Promise<AttemptAssessment> {
+  return apiFetch<AttemptAssessment>(`/assessments/${id}/attempt`);
 }
 
-export function startAttempt(id: string, token: string): Promise<Schemas["StartAttemptResponseDto"]> {
-  return apiFetch(`/assessments/${id}/attempts`, { method: "POST", token });
+export function startAttempt(id: string): Promise<Schemas["StartAttemptResponseDto"]> {
+  return apiFetch(`/assessments/${id}/attempts`, { method: "POST" });
 }
 
 export interface AnswerInput {
@@ -722,30 +718,28 @@ export type AttemptResult = Schemas["AttemptResultDto"];
 export function submitAttempt(
   attemptId: string,
   answers: AnswerInput[],
-  token: string
 ): Promise<AttemptResult> {
   return apiFetch<AttemptResult>(`/attempts/${attemptId}/submit`, {
     method: "PUT",
-    body: JSON.stringify({ answers }),
-    token
+    body: JSON.stringify({ answers })
   });
 }
 
 export type AttemptSummary = Schemas["AttemptSummaryDto"];
 
-export function getMyAttempts(assessmentId: string, token: string): Promise<AttemptSummary[]> {
-  return apiFetch<AttemptSummary[]>(`/assessments/${assessmentId}/my-attempts`, { token });
+export function getMyAttempts(assessmentId: string): Promise<AttemptSummary[]> {
+  return apiFetch<AttemptSummary[]>(`/assessments/${assessmentId}/my-attempts`);
 }
 
-export function getAttemptResult(attemptId: string, token: string): Promise<AttemptResult> {
-  return apiFetch<AttemptResult>(`/attempts/${attemptId}`, { token });
+export function getAttemptResult(attemptId: string): Promise<AttemptResult> {
+  return apiFetch<AttemptResult>(`/attempts/${attemptId}`);
 }
 
 export type StudentAttempt = Schemas["StudentAttemptDto"];
 export type AssessmentResults = Schemas["AssessmentResultsDto"];
 
-export function getAssessmentResults(id: string, token: string): Promise<AssessmentResults> {
-  return apiFetch<AssessmentResults>(`/assessments/${id}/results`, { token });
+export function getAssessmentResults(id: string): Promise<AssessmentResults> {
+  return apiFetch<AssessmentResults>(`/assessments/${id}/results`);
 }
 
 // ---------------------------------------------------------------------------
@@ -782,63 +776,58 @@ function assignmentInputBody(input: AssignmentInput) {
   };
 }
 
-export function getModuleAssignments(moduleId: string, token: string): Promise<AssignmentItem[]> {
-  return apiFetch<AssignmentItem[]>(`/modules/${moduleId}/assignments`, { token });
+export function getModuleAssignments(moduleId: string): Promise<AssignmentItem[]> {
+  return apiFetch<AssignmentItem[]>(`/modules/${moduleId}/assignments`);
 }
 
 export function createAssignment(
   moduleId: string,
   input: AssignmentInput,
-  token: string
 ): Promise<Schemas["AssignmentResponseDto"]> {
   return apiFetch(`/modules/${moduleId}/assignments`, {
     method: "POST",
-    body: JSON.stringify(assignmentInputBody(input)),
-    token
+    body: JSON.stringify(assignmentInputBody(input))
   });
 }
 
-export function deleteAssignment(id: string, token: string): Promise<Schemas["AssignmentResponseDto"]> {
-  return apiFetch(`/assignments/${id}`, { method: "DELETE", token });
+export function deleteAssignment(id: string): Promise<Schemas["AssignmentResponseDto"]> {
+  return apiFetch(`/assignments/${id}`, { method: "DELETE" });
 }
 
 export type AssignmentDetail = Schemas["AssignmentDetailDto"];
 
-export function getAssignmentById(id: string, token: string): Promise<AssignmentDetail> {
-  return apiFetch<AssignmentDetail>(`/assignments/${id}`, { token });
+export function getAssignmentById(id: string): Promise<AssignmentDetail> {
+  return apiFetch<AssignmentDetail>(`/assignments/${id}`);
 }
 
 export function addTestCase(
   assignmentId: string,
   input: TestCaseInput,
-  token: string
 ): Promise<Schemas["TestCaseResponseDto"]> {
   return apiFetch(`/assignments/${assignmentId}/test-cases`, {
     method: "POST",
-    body: JSON.stringify(input),
-    token
+    body: JSON.stringify(input)
   });
 }
 
-export function deleteTestCase(id: string, token: string): Promise<Schemas["TestCaseResponseDto"]> {
-  return apiFetch(`/test-cases/${id}`, { method: "DELETE", token });
+export function deleteTestCase(id: string): Promise<Schemas["TestCaseResponseDto"]> {
+  return apiFetch(`/test-cases/${id}`, { method: "DELETE" });
 }
 
 export type SubmissionTestCase = Schemas["SubmissionTestCaseDto"];
 export type AssignmentForSubmission = Schemas["AssignmentForSubmissionDto"];
 
-export function getAssignmentForSubmission(id: string, token: string): Promise<AssignmentForSubmission> {
-  return apiFetch<AssignmentForSubmission>(`/assignments/${id}/submission`, { token });
+export function getAssignmentForSubmission(id: string): Promise<AssignmentForSubmission> {
+  return apiFetch<AssignmentForSubmission>(`/assignments/${id}/submission`);
 }
 
 export type TestResult = Schemas["TestResultDto"];
 export type SubmissionResult = Schemas["SubmissionResultDto"];
 
-export function submitAssignment(id: string, code: string, token: string): Promise<SubmissionResult> {
+export function submitAssignment(id: string, code: string): Promise<SubmissionResult> {
   return apiFetch<SubmissionResult>(`/assignments/${id}/submissions`, {
     method: "POST",
-    body: JSON.stringify({ code }),
-    token
+    body: JSON.stringify({ code })
   });
 }
 
@@ -846,30 +835,28 @@ export function gradeSubmission(
   submissionId: string,
   manualScore: number,
   manualFeedback: string | undefined,
-  token: string
 ): Promise<SubmissionResult> {
   return apiFetch<SubmissionResult>(`/submissions/${submissionId}/grade`, {
     method: "PUT",
-    body: JSON.stringify({ manualScore, manualFeedback: manualFeedback ?? null }),
-    token
+    body: JSON.stringify({ manualScore, manualFeedback: manualFeedback ?? null })
   });
 }
 
 export type SubmissionSummary = Schemas["SubmissionSummaryDto"];
 
-export function getMySubmissions(assignmentId: string, token: string): Promise<SubmissionSummary[]> {
-  return apiFetch<SubmissionSummary[]>(`/assignments/${assignmentId}/my-submissions`, { token });
+export function getMySubmissions(assignmentId: string): Promise<SubmissionSummary[]> {
+  return apiFetch<SubmissionSummary[]>(`/assignments/${assignmentId}/my-submissions`);
 }
 
-export function getSubmissionResult(submissionId: string, token: string): Promise<SubmissionResult> {
-  return apiFetch<SubmissionResult>(`/submissions/${submissionId}`, { token });
+export function getSubmissionResult(submissionId: string): Promise<SubmissionResult> {
+  return apiFetch<SubmissionResult>(`/submissions/${submissionId}`);
 }
 
 export type StudentSubmission = Schemas["StudentSubmissionDto"];
 export type AssignmentSubmissions = Schemas["AssignmentSubmissionsDto"];
 
-export function getSubmissionsForGrading(assignmentId: string, token: string): Promise<AssignmentSubmissions> {
-  return apiFetch<AssignmentSubmissions>(`/assignments/${assignmentId}/submissions`, { token });
+export function getSubmissionsForGrading(assignmentId: string): Promise<AssignmentSubmissions> {
+  return apiFetch<AssignmentSubmissions>(`/assignments/${assignmentId}/submissions`);
 }
 
 // ---------------------------------------------------------------------------
@@ -880,15 +867,15 @@ export type AssessmentGrade = Schemas["AssessmentGradeDto"];
 export type AssignmentGrade = Schemas["AssignmentGradeDto"];
 export type MyCourseGrades = Schemas["MyCourseGradesDto"];
 
-export function getMyCourseGrades(courseId: string, token: string): Promise<MyCourseGrades> {
-  return apiFetch<MyCourseGrades>(`/my-courses/${courseId}/grades`, { token });
+export function getMyCourseGrades(courseId: string): Promise<MyCourseGrades> {
+  return apiFetch<MyCourseGrades>(`/my-courses/${courseId}/grades`);
 }
 
 export type StudentGradebookRow = Schemas["StudentGradebookRowDto"];
 export type CourseGradebook = Schemas["CourseGradebookDto"];
 
-export function getCourseGradebook(courseId: string, token: string): Promise<CourseGradebook> {
-  return apiFetch<CourseGradebook>(`/courses/${courseId}/gradebook`, { token });
+export function getCourseGradebook(courseId: string): Promise<CourseGradebook> {
+  return apiFetch<CourseGradebook>(`/courses/${courseId}/gradebook`);
 }
 
 // ---------------------------------------------------------------------------
@@ -898,8 +885,8 @@ export function getCourseGradebook(courseId: string, token: string): Promise<Cou
 export type CourseInstructorEntry = Schemas["CourseInstructorDto"];
 export type CourseDetail = Schemas["CourseDetailDto"];
 
-export function getCourseById(courseId: string, token: string): Promise<CourseDetail> {
-  return apiFetch<CourseDetail>(`/courses/${courseId}`, { token });
+export function getCourseById(courseId: string): Promise<CourseDetail> {
+  return apiFetch<CourseDetail>(`/courses/${courseId}`);
 }
 
 export function updateCourse(
@@ -914,12 +901,10 @@ export function updateCourse(
     currency: string;
     completionAttendanceThreshold: number | null;
   },
-  token: string
 ): Promise<CourseDetail> {
   return apiFetch<CourseDetail>(`/courses/${courseId}`, {
     method: "PUT",
-    body: JSON.stringify(input),
-    token
+    body: JSON.stringify(input)
   });
 }
 
@@ -935,48 +920,42 @@ export type CourseCertificateCandidates = Schemas["CourseCertificateCandidatesDt
 
 export function getCourseCertificateCandidates(
   courseId: string,
-  token: string
 ): Promise<CourseCertificateCandidates> {
-  return apiFetch<CourseCertificateCandidates>(`/courses/${courseId}/certificate-candidates`, { token });
+  return apiFetch<CourseCertificateCandidates>(`/courses/${courseId}/certificate-candidates`);
 }
 
 export function issueCertificate(
   enrollmentId: string,
   tier: CertificateTier | null,
-  token: string
 ): Promise<Certificate> {
   return apiFetch<Certificate>("/certificates", {
     method: "POST",
-    body: JSON.stringify({ enrollmentId, tier }),
-    token
+    body: JSON.stringify({ enrollmentId, tier })
   });
 }
 
 export function revokeCertificate(
   certificateId: string,
   reason: string | null,
-  token: string
 ): Promise<Certificate> {
   return apiFetch<Certificate>(`/certificates/${certificateId}/revoke`, {
     method: "PUT",
-    body: JSON.stringify({ reason }),
-    token
+    body: JSON.stringify({ reason })
   });
 }
 
 export function getMyCertificates(
-  token: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<Certificate>> {
   const query = new URLSearchParams();
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<Certificate>>(`/my-certificates${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<Certificate>>(`/my-certificates${qs ? `?${qs}` : ""}`);
 }
 
-export function getCertificateById(certificateId: string, token: string): Promise<Certificate> {
-  return apiFetch<Certificate>(`/certificates/${certificateId}`, { token });
+export function getCertificateById(certificateId: string): Promise<Certificate> {
+  return apiFetch<Certificate>(`/certificates/${certificateId}`);
 }
 
 export type CertificateVerification = Schemas["CertificateVerificationDto"];
@@ -994,22 +973,22 @@ export type MonthlyCount = Schemas["MonthlyCountDto"];
 export type RevenueByCourse = Schemas["RevenueByCourseDto"];
 export type AdminBusinessDashboard = Schemas["AdminBusinessDashboardDto"];
 
-export function getAdminBusinessDashboard(token: string): Promise<AdminBusinessDashboard> {
-  return apiFetch<AdminBusinessDashboard>("/analytics/admin/business", { token });
+export function getAdminBusinessDashboard(): Promise<AdminBusinessDashboard> {
+  return apiFetch<AdminBusinessDashboard>("/analytics/admin/business");
 }
 
 export type CourseAcademicRow = Schemas["CourseAcademicRowDto"];
 export type AdminAcademicDashboard = Schemas["AdminAcademicDashboardDto"];
 
-export function getAdminAcademicDashboard(token: string): Promise<AdminAcademicDashboard> {
-  return apiFetch<AdminAcademicDashboard>("/analytics/admin/academic", { token });
+export function getAdminAcademicDashboard(): Promise<AdminAcademicDashboard> {
+  return apiFetch<AdminAcademicDashboard>("/analytics/admin/academic");
 }
 
 export type InstructorCourseRow = Schemas["InstructorCourseRowDto"];
 export type InstructorDashboard = Schemas["InstructorDashboardDto"];
 
-export function getInstructorDashboard(token: string): Promise<InstructorDashboard> {
-  return apiFetch<InstructorDashboard>("/analytics/instructor", { token });
+export function getInstructorDashboard(): Promise<InstructorDashboard> {
+  return apiFetch<InstructorDashboard>("/analytics/instructor");
 }
 
 // ---------------------------------------------------------------------------
@@ -1020,7 +999,6 @@ export type AdminUser = Schemas["UserDto"];
 
 export function getUsers(
   params: { role?: string; isActive?: boolean; search?: string; page?: number; pageSize?: number },
-  token: string
 ): Promise<PagedResult<AdminUser>> {
   const query = new URLSearchParams();
   if (params.role) query.set("role", params.role);
@@ -1029,22 +1007,21 @@ export function getUsers(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<AdminUser>>(`/users${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<AdminUser>>(`/users${qs ? `?${qs}` : ""}`);
 }
 
 export function createInstructor(
   input: { fullName: string; email: string; phone?: string },
-  token: string
 ): Promise<AdminUser> {
-  return apiFetch<AdminUser>("/users/instructors", { method: "POST", body: JSON.stringify(input), token });
+  return apiFetch<AdminUser>("/users/instructors", { method: "POST", body: JSON.stringify(input) });
 }
 
-export function deactivateUser(userId: string, token: string): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/users/${userId}/deactivate`, { method: "PUT", token });
+export function deactivateUser(userId: string): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/deactivate`, { method: "PUT" });
 }
 
-export function reactivateUser(userId: string, token: string): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/users/${userId}/reactivate`, { method: "PUT", token });
+export function reactivateUser(userId: string): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/reactivate`, { method: "PUT" });
 }
 
 // ---------------------------------------------------------------------------
@@ -1055,7 +1032,6 @@ export type CourseMutationResult = Schemas["CourseMutationResultDto"];
 
 export function getAdminCourses(
   params: { status?: string; category?: string; search?: string; page?: number; pageSize?: number },
-  token: string
 ): Promise<PagedResult<CourseListItem>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
@@ -1064,7 +1040,7 @@ export function getAdminCourses(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<CourseListItem>>(`/courses${qs ? `?${qs}` : ""}`);
 }
 
 export function createCourse(
@@ -1077,43 +1053,36 @@ export function createCourse(
     price: number;
     currency: string;
   },
-  token: string
 ): Promise<CourseDetail> {
-  return apiFetch<CourseDetail>("/courses", { method: "POST", body: JSON.stringify(input), token });
+  return apiFetch<CourseDetail>("/courses", { method: "POST", body: JSON.stringify(input) });
 }
 
-export function publishCourse(courseId: string, token: string): Promise<CourseMutationResult> {
-  return apiFetch<CourseMutationResult>(`/courses/${courseId}/publish`, { method: "PUT", token });
+export function publishCourse(courseId: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/publish`, { method: "PUT" });
 }
 
-export function archiveCourse(courseId: string, token: string): Promise<CourseMutationResult> {
-  return apiFetch<CourseMutationResult>(`/courses/${courseId}/archive`, { method: "PUT", token });
+export function archiveCourse(courseId: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}/archive`, { method: "PUT" });
 }
 
-export function deleteCourse(courseId: string, token: string): Promise<CourseMutationResult> {
-  return apiFetch<CourseMutationResult>(`/courses/${courseId}`, { method: "DELETE", token });
+export function deleteCourse(courseId: string): Promise<CourseMutationResult> {
+  return apiFetch<CourseMutationResult>(`/courses/${courseId}`, { method: "DELETE" });
 }
 
 export function assignInstructorToCourse(
   courseId: string,
   instructorId: string,
-  token: string
 ): Promise<CourseMutationResult> {
   return apiFetch<CourseMutationResult>(`/courses/${courseId}/instructors/${instructorId}`, {
-    method: "POST",
-    token
-  });
+    method: "POST" });
 }
 
 export function removeInstructorFromCourse(
   courseId: string,
   instructorId: string,
-  token: string
 ): Promise<CourseMutationResult> {
   return apiFetch<CourseMutationResult>(`/courses/${courseId}/instructors/${instructorId}`, {
-    method: "DELETE",
-    token
-  });
+    method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -1126,7 +1095,6 @@ export type TrackMutationResult = Schemas["TrackMutationResultDto"];
 
 export function getAdminTracks(
   params: { status?: string; search?: string; page?: number; pageSize?: number },
-  token: string
 ): Promise<PagedResult<TrackListItem>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
@@ -1134,11 +1102,11 @@ export function getAdminTracks(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<TrackListItem>>(`/tracks${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<TrackListItem>>(`/tracks${qs ? `?${qs}` : ""}`);
 }
 
-export function getTrackById(trackId: string, token: string): Promise<TrackDetail> {
-  return apiFetch<TrackDetail>(`/tracks/${trackId}`, { token });
+export function getTrackById(trackId: string): Promise<TrackDetail> {
+  return apiFetch<TrackDetail>(`/tracks/${trackId}`);
 }
 
 export function createTrack(
@@ -1150,9 +1118,8 @@ export function createTrack(
     price: number;
     currency: string;
   },
-  token: string
 ): Promise<TrackDetail> {
-  return apiFetch<TrackDetail>("/tracks", { method: "POST", body: JSON.stringify(input), token });
+  return apiFetch<TrackDetail>("/tracks", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function updateTrack(
@@ -1165,42 +1132,38 @@ export function updateTrack(
     price: number;
     currency: string;
   },
-  token: string
 ): Promise<TrackDetail> {
-  return apiFetch<TrackDetail>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(input), token });
+  return apiFetch<TrackDetail>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function publishTrack(trackId: string, token: string): Promise<TrackMutationResult> {
-  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/publish`, { method: "PUT", token });
+export function publishTrack(trackId: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/publish`, { method: "PUT" });
 }
 
-export function archiveTrack(trackId: string, token: string): Promise<TrackMutationResult> {
-  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/archive`, { method: "PUT", token });
+export function archiveTrack(trackId: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/archive`, { method: "PUT" });
 }
 
-export function deleteTrack(trackId: string, token: string): Promise<TrackMutationResult> {
-  return apiFetch<TrackMutationResult>(`/tracks/${trackId}`, { method: "DELETE", token });
+export function deleteTrack(trackId: string): Promise<TrackMutationResult> {
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}`, { method: "DELETE" });
 }
 
 export function addCourseToTrack(
   trackId: string,
   courseId: string,
   sortOrder: number,
-  token: string
 ): Promise<TrackCourseEntry> {
   return apiFetch<TrackCourseEntry>(`/tracks/${trackId}/courses/${courseId}`, {
     method: "POST",
-    body: JSON.stringify({ sortOrder }),
-    token
+    body: JSON.stringify({ sortOrder })
   });
 }
 
 export function removeCourseFromTrack(
   trackId: string,
   courseId: string,
-  token: string
 ): Promise<TrackMutationResult> {
-  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/courses/${courseId}`, { method: "DELETE", token });
+  return apiFetch<TrackMutationResult>(`/tracks/${trackId}/courses/${courseId}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------
@@ -1211,14 +1174,13 @@ export type CohortMutationResult = Schemas["CohortMutationResultDto"];
 
 export function getCourseCohortsAdmin(
   courseId: string,
-  token: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<CohortInfo>> {
   const query = new URLSearchParams();
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<CohortInfo>>(`/courses/${courseId}/cohorts${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<CohortInfo>>(`/courses/${courseId}/cohorts${qs ? `?${qs}` : ""}`);
 }
 
 export function createCohort(
@@ -1231,12 +1193,10 @@ export function createCohort(
     capacity: number;
     gracePeriodDays: number;
   },
-  token: string
 ): Promise<CohortInfo> {
   return apiFetch<CohortInfo>(`/courses/${courseId}/cohorts`, {
     method: "POST",
-    body: JSON.stringify(input),
-    token
+    body: JSON.stringify(input)
   });
 }
 
@@ -1250,21 +1210,20 @@ export function updateCohort(
     capacity: number;
     gracePeriodDays: number;
   },
-  token: string
 ): Promise<CohortInfo> {
-  return apiFetch<CohortInfo>(`/cohorts/${cohortId}`, { method: "PUT", body: JSON.stringify(input), token });
+  return apiFetch<CohortInfo>(`/cohorts/${cohortId}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function openCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
-  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/open`, { method: "PUT", token });
+export function openCohort(cohortId: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/open`, { method: "PUT" });
 }
 
-export function cancelCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
-  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/cancel`, { method: "PUT", token });
+export function cancelCohort(cohortId: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/cancel`, { method: "PUT" });
 }
 
-export function completeCohort(cohortId: string, token: string): Promise<CohortMutationResult> {
-  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/complete`, { method: "PUT", token });
+export function completeCohort(cohortId: string): Promise<CohortMutationResult> {
+  return apiFetch<CohortMutationResult>(`/cohorts/${cohortId}/complete`, { method: "PUT" });
 }
 
 // ---------------------------------------------------------------------------
@@ -1275,7 +1234,6 @@ export type AdminCoupon = Schemas["CouponDto"];
 
 export function getCoupons(
   isActive: boolean | undefined,
-  token: string,
   params: { page?: number; pageSize?: number } = {}
 ): Promise<PagedResult<AdminCoupon>> {
   const query = new URLSearchParams();
@@ -1283,14 +1241,13 @@ export function getCoupons(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<AdminCoupon>>(`/coupons${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<AdminCoupon>>(`/coupons${qs ? `?${qs}` : ""}`);
 }
 
 export function createCoupon(
   input: { code: string; type: string; value: number; validFrom?: string | null; validUntil?: string | null; usageLimit?: number | null },
-  token: string
 ): Promise<AdminCoupon> {
-  return apiFetch<AdminCoupon>("/coupons", { method: "POST", body: JSON.stringify(input), token });
+  return apiFetch<AdminCoupon>("/coupons", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function updateCoupon(
@@ -1303,13 +1260,12 @@ export function updateCoupon(
     validUntil?: string | null;
     usageLimit?: number | null;
   },
-  token: string
 ): Promise<AdminCoupon> {
-  return apiFetch<AdminCoupon>(`/coupons/${couponId}`, { method: "PUT", body: JSON.stringify(input), token });
+  return apiFetch<AdminCoupon>(`/coupons/${couponId}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function deactivateCoupon(couponId: string, token: string): Promise<AdminCoupon> {
-  return apiFetch<AdminCoupon>(`/coupons/${couponId}/deactivate`, { method: "PUT", token });
+export function deactivateCoupon(couponId: string): Promise<AdminCoupon> {
+  return apiFetch<AdminCoupon>(`/coupons/${couponId}/deactivate`, { method: "PUT" });
 }
 
 // ---------------------------------------------------------------------------
@@ -1321,7 +1277,6 @@ export type EnrollmentRequestDetail = Schemas["EnrollmentRequestDetailDto"];
 
 export function getEnrollmentRequests(
   params: { status?: string; courseId?: string; trackId?: string; page?: number; pageSize?: number },
-  token: string
 ): Promise<PagedResult<EnrollmentRequestResult>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
@@ -1330,28 +1285,26 @@ export function getEnrollmentRequests(
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return apiFetch<PagedResult<EnrollmentRequestResult>>(`/enrollment-requests${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<PagedResult<EnrollmentRequestResult>>(`/enrollment-requests${qs ? `?${qs}` : ""}`);
 }
 
-export function getEnrollmentRequestById(id: string, token: string): Promise<EnrollmentRequestDetail> {
-  return apiFetch<EnrollmentRequestDetail>(`/enrollment-requests/${id}`, { token });
+export function getEnrollmentRequestById(id: string): Promise<EnrollmentRequestDetail> {
+  return apiFetch<EnrollmentRequestDetail>(`/enrollment-requests/${id}`);
 }
 
 export type EnrollmentApprovalResult = Schemas["EnrollmentApprovalResultDto"];
 
-export function approveEnrollmentRequest(id: string, token: string): Promise<EnrollmentApprovalResult> {
-  return apiFetch<EnrollmentApprovalResult>(`/enrollment-requests/${id}/approve`, { method: "PUT", token });
+export function approveEnrollmentRequest(id: string): Promise<EnrollmentApprovalResult> {
+  return apiFetch<EnrollmentApprovalResult>(`/enrollment-requests/${id}/approve`, { method: "PUT" });
 }
 
 export function rejectEnrollmentRequest(
   id: string,
   rejectionReason: string,
-  token: string
 ): Promise<Schemas["EnrollmentRequestMessageDto"]> {
   return apiFetch(`/enrollment-requests/${id}/reject`, {
     method: "PUT",
-    body: JSON.stringify({ rejectionReason }),
-    token
+    body: JSON.stringify({ rejectionReason })
   });
 }
 
@@ -1359,11 +1312,9 @@ export function cancelEnrollment(
   enrollmentId: string,
   reason: string,
   markAsRefunded: boolean,
-  token: string
 ): Promise<Schemas["EnrollmentDto"]> {
   return apiFetch(`/enrollments/${enrollmentId}/cancel`, {
     method: "PUT",
-    body: JSON.stringify({ reason, markAsRefunded }),
-    token
+    body: JSON.stringify({ reason, markAsRefunded })
   });
 }

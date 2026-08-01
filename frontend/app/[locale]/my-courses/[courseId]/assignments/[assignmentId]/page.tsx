@@ -37,8 +37,8 @@ export default function AssignmentSubmissionPage({
 
   function reload() {
     if (!session) return;
-    getAssignmentForSubmission(assignmentId, session.accessToken).then(setAssignment).catch(onError);
-    getMySubmissions(assignmentId, session.accessToken).then(setSubmissions).catch(onError);
+    getAssignmentForSubmission(assignmentId).then(setAssignment).catch(onError);
+    getMySubmissions(assignmentId).then(setSubmissions).catch(onError);
   }
 
   useEffect(reload, [session, assignmentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -48,7 +48,7 @@ export default function AssignmentSubmissionPage({
     if (!session) return;
     setSubmitting(true);
     try {
-      const res = await submitAssignment(assignmentId, code, session.accessToken);
+      const res = await submitAssignment(assignmentId, code);
       setResult(res);
       reload();
     } catch (err) {

@@ -31,6 +31,7 @@ export interface Dictionary {
     success: string;
     mustChange: string;
     failed: string;
+    sessionExpired: string;
   };
   changePassword: {
     title: string;
@@ -526,7 +527,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       signingIn: "Signing in…",
       success: "Signed in as {name} ({role}).",
       mustChange: "You must change your password before continuing.",
-      failed: "Invalid email or password."
+      failed: "Invalid email or password.",
+      sessionExpired: "Your session expired. Please sign in again."
     },
     changePassword: {
       title: "Change your password",
@@ -1019,7 +1021,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       signingIn: "جارٍ تسجيل الدخول…",
       success: "تم تسجيل الدخول باسم {name} ({role}).",
       mustChange: "يجب تغيير كلمة المرور قبل المتابعة.",
-      failed: "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+      failed: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      sessionExpired: "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى."
     },
     changePassword: {
       title: "تغيير كلمة المرور",

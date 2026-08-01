@@ -39,8 +39,8 @@ export default function AdminAnalyticsPage({
 
   useEffect(() => {
     if (!session || session.role !== "admin") return;
-    getAdminBusinessDashboard(session.accessToken).then(setBusiness).catch(onError);
-    getAdminAcademicDashboard(session.accessToken).then(setAcademic).catch(onError);
+    getAdminBusinessDashboard().then(setBusiness).catch(onError);
+    getAdminAcademicDashboard().then(setAcademic).catch(onError);
     function onError(err: unknown) {
       setError(err instanceof ApiRequestError ? err.message : ta.loadError);
     }

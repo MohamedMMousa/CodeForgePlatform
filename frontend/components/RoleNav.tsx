@@ -34,7 +34,14 @@ export function RoleNav({ locale, t }: { locale: string; t: Dictionary }) {
       )}
       <Link href={`/${locale}/verify`}>{t.certificates.verifyButton}</Link>
       <span className="muted">{session.fullName}</span>
-      <button className="btn secondary" onClick={() => signOut()}>
+      <button
+        className="btn secondary"
+        onClick={() => {
+          // signOut() clears cookies and calls router.refresh(); if the current
+          // page is protected, middleware then redirects to login on that refresh.
+          void signOut();
+        }}
+      >
         {t.nav.signOut}
       </button>
     </>

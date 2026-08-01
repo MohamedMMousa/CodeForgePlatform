@@ -21,7 +21,7 @@ export default function DashboardPage({
 
   useEffect(() => {
     if (!session) return;
-    getUpcomingItems(session.accessToken)
+    getUpcomingItems()
       .then(setData)
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
   }, [session, t.loadError]);
