@@ -552,6 +552,108 @@ healthy; the API applied migrations fresh, correctly skipped seeding with no
 `AdminSeed` configured, and served `/health`/`/health/ready` as 200 through Caddy's
 TLS termination; `docker compose exec api id` confirmed uid 1654 (non-root).
 
+## Auth Hardening (post-Phase 6) — httpOnly cookies, CSRF, and the sign-in flash
+
+Not a numbered phase — a security-driven fix requested directly by the user, plus one
+unrelated routing bug fixed alongside it since it touched the same `app/[locale]/layout.tsx`
+neighborhood. Ten commits, landed independently-revertable; see the last three below for
+the coupled group that ships and reverts together.
+
+**Locale switcher (independent, commit 1).** The switcher was a bare `<Link
+href={\`/${other}\`}>` — switching language from any deep page (e.g.
+`/en/admin/enrollment-requests/abc?status=pending`) landed on the other locale's site
+root, dropping the path and query entirely. Fixed with a client `LocaleSwitcher`
+component reading `usePathname()`/`useSearchParams()` to swap only the leading locale
+segment. No relation to the cookie work below.
+
+**httpOnly cookies + CSRF + logout (commits 2–4, additive).** Tokens moved from the
+response body into `cf_access`/`cf_refresh` httpOnly cookies (`AuthCookieWriter`),
+closing the XSS token-theft surface the previous approach left open. `JwtBearer` now
+reads the cookie via `OnMessageReceived`, falling back to the `Authorization` header so
+Swagger/dev clients keep working. A new `POST /auth/logout` (previously nonexistent —
+sign-out just cleared `localStorage`, which cannot clear an httpOnly cookie) clears
+cookies and revokes the refresh token, and is `[AllowAnonymous]` specifically so it
+still works with an expired access token. `CsrfProtectionFilter` adds the double-submit
+defense the bearer-token model never needed: any unsafe request carrying an auth cookie
+must echo `cf_csrf` in `X-CSRF-Token`. All three commits are inert until the frontend
+switches transport (commit 6), which is what let them land ahead of it safely.
+
+**Refresh-token rotation grace window (commit 5).** Tokens rotate on every use, so two
+same-origin requests racing to refresh the same expired access token — Next.js prefetch
+fan-out is the concrete trigger — would otherwise have the loser present an
+already-superseded token and get logged out, exactly the failure mode the flash fix
+(below) could not tolerate. `RefreshTokenRotationPolicy` (a pure function, unit-tested
+directly) plus an atomic compare-and-swap (`IRefreshTokenRotationStore`, implemented in
+Infrastructure since `ExecuteUpdateAsync` lives in the EF Relational package Application
+doesn't reference) let a presenter of a just-superseded token within 30 seconds receive
+the same already-rotated pair instead of racing to rotate again. Outside the window,
+that same presentation is now treated as reuse and kills the whole session — real reuse
+detection the codebase didn't have before. Caught two real bugs during live testing, not
+just unit tests: `ExecuteUpdateAsync` doesn't compile from Application (wrong package),
+and EF's identity map returned a stale tracked entity on the retry loop's second read
+until every read in the loop got `AsNoTracking()`.
+
+**Next.js proxy + cookie transport (commit 6).** `next.config.mjs` rewrites `/api/*` to
+`API_INTERNAL_URL`, so the browser only ever sees one origin — this is the deployment
+decision the cookie flags depend on: it makes `cf_access`/`cf_refresh` first-party,
+host-only, `SameSite=Lax` cookies possible without a shared registrable domain between
+the frontend (Vercel) and API (Render) hosts, which `*.vercel.app`/`*.onrender.com`
+otherwise rule out (both are on the Public Suffix List, making them cross-site to each
+other by definition — `SameSite=None` would have been the only alternative, a
+materially weaker posture). `lib/api.ts` sends `credentials: 'include'` and the
+`X-CSRF-Token` header on unsafe methods now, plus a 401→refresh→retry with a shared
+in-flight promise so concurrent 401s don't each fire their own refresh.
+
+**Server-side session + kill the flash (commits 7–9, coupled — revert together in
+reverse order).** The flash existed because the session was only readable client-side
+after render; `AuthProvider` started at `session = null` and hydrated in a `useEffect`,
+so every protected page's guard rendered its signed-out branch for one paint. Fixed by
+resolving the session server-side (`lib/session.ts`, React `cache()`-wrapped) and seeding
+`AuthProvider` with it as an `initialSession` prop — the first client render already
+matches the server-rendered HTML, no hydration gap to flash during. `middleware.ts`
+does the other half: on an expired access cookie with a valid refresh cookie, it
+refreshes server-side and **patches the forwarded request's `Cookie` header** (not just
+the response) so the *same* render sees the new token — `Set-Cookie` alone only helps
+the browser's *next* request. Dropping `accessToken`/`refreshToken` from the client
+`Session` type broke `tsc` at ~83 call sites across 19 pages; rather than ship a red
+intermediate commit, the separately-planned "mechanical token cleanup" step was folded
+into the same commit as the flash fix (a deliberate, flagged deviation from the
+original plan) — scripted mechanically, not hand-edited, and verified with `tsc` plus a
+full diff read-through. The last commit in the group removes tokens from the response
+bodies entirely (`AuthResponse` renamed `AuthResult`, stays internal; the client-facing
+body becomes `CurrentUserResponse`, the same shape `GET /auth/me` already returned) —
+after this, tokens exist nowhere JavaScript can reach, only in `Set-Cookie` headers.
+
+**Deploy-time requirement.** `API_INTERNAL_URL` must be set on whatever host runs the
+frontend in production, pointing at the real API URL — its `localhost:5205` fallback is
+correct for local dev only and will silently break every `/api/*` call if left unset
+elsewhere.
+
+**Near-term backlog, not someday: integration test host for the auth pipeline.**
+`tests/CodeForge.UnitTests` is pure-unit — no `WebApplicationFactory`, so nothing
+exercises the real cookie/CSRF/`JwtBearer` pipeline end-to-end. This phase's coverage
+came from live browser/curl verification instead, which is real but not repeatable by
+CI. Auth is now the single piece of this system most likely to break silently under a
+future change with nothing automated to catch it.
+
+**Verified:** `node scripts/verify.mjs` green at every commit. Live, not just
+type-checked: login sets `cf_access`/`cf_refresh`/`cf_csrf` with the correct flags and
+`localStorage` stays empty; the raw SSR HTML (fetched and DOM-parsed with `<script>`
+tags stripped, not just the hydrated page) already contains the signed-in nav and admin
+content with no sign-in fallback on the very first response — the actual no-flash
+proof; a signed-out visit to a protected route redirects to `/login` before rendering;
+with `JwtSettings:ExpiryMinutes` temporarily dropped to 1 (reverted after) and the
+access cookie's own 30-second expiry lapsed, reloading a protected page returned `200`
+with full content and no redirect, confirming the middleware refresh path itself, not
+just cookie-presence logic; 5 truly concurrent `POST /auth/refresh-token` calls
+presenting the same token all returned `200` and converged on exactly one new refresh
+token; replaying a superseded token past the 30-second grace window `401`s and kills
+the session (the post-rotation token stops working too, not just the stale one); a raw
+`fetch` to `/auth/logout` without `X-CSRF-Token` correctly `403`s
+(`csrf_validation_failed`); the locale switcher preserves a deep path and query in both
+directions. 101/101 backend unit tests pass throughout (9 new: `AuthCookieWriterTests`,
+`CsrfProtectionFilterTests`, `RefreshTokenRotationPolicyTests`).
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

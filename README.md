@@ -19,7 +19,8 @@ a channel-agnostic notification system, and a full admin console are all built �
 | Frontend | Next.js 15 (App Router), React 19, locale-prefixed routes (`/en`, `/ar`) |
 | Tests | xUnit + FluentAssertions (`tests/CodeForge.UnitTests`) |
 
-No BFF layer — the frontend calls the API directly from the browser.
+The browser calls the API through a same-origin Next.js proxy (`/api/*` → the API), not
+directly — see `docs/ARCHITECTURE.md` §6. This keeps auth cookies first-party.
 
 ## Repository layout
 
@@ -76,11 +77,15 @@ admin account from `AdminSeed:*` on first run.
 ```bash
 cd frontend
 npm install
-echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:5205" > .env.local
+echo "API_INTERNAL_URL=http://localhost:5205" > .env.local
 npm run dev
 ```
 
-Runs at **http://localhost:3000**.
+Runs at **http://localhost:3000**. The browser only ever talks to this origin — Next.js
+proxies `/api/*` to `API_INTERNAL_URL` server-side (`next.config.mjs`), which is what
+lets auth cookies stay first-party. `API_INTERNAL_URL` is server-only (never
+`NEXT_PUBLIC_`); in production it must be set on the frontend host to the real API URL,
+or every `/api/*` call breaks.
 
 ### 3. Run tests
 

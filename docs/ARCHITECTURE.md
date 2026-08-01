@@ -39,7 +39,7 @@
 | Infrastructure | .NET 8 class library (`src/CodeForge.Infrastructure`) | EF Core + Npgsql, JWT, BCrypt, email senders, file storage, database seeding. |
 | Domain | .NET 8 class library (`src/CodeForge.Domain`) | POCO entities only, grouped by domain in `Entities/Entities.cs`. Anemic by design — validation/business rules live in Application. |
 | Database | PostgreSQL | See `DATABASE.md`. |
-| Frontend | Next.js 15 (App Router), `frontend/` | Locale-prefixed routes (`/en`, `/ar`), RTL-aware, calls the API directly from the browser (no BFF layer). |
+| Frontend | Next.js 15 (App Router), `frontend/` | Locale-prefixed routes (`/en`, `/ar`), RTL-aware. Browser calls go through a `/api/*` Next.js rewrite to the API (§6) — not a direct cross-origin call — so auth cookies stay first-party. |
 | Tests | xUnit + FluentAssertions, `tests/CodeForge.UnitTests` | Backend only so far; grows alongside handlers. |
 
 ## 3. Cross-Cutting Infrastructure (built in Phase 0)
@@ -62,20 +62,56 @@
   token. It fails closed: every authenticated endpoint is blocked unless marked
   `[AllowAnonymous]` or `[AllowPendingPasswordChange]` — a new endpoint is protected the
   moment it's written, with no per-endpoint opt-in required. Because it reads
-  `HttpContext.User` claims rather than the `Authorization` header directly, it is
-  unaffected by the planned httpOnly-cookie migration (see `frontend/lib/auth.tsx`
-  bullet below). `POST /auth/change-password` (the only opted-out mutating endpoint,
-  alongside the read-only `GET /auth/me`) clears the flag and mints a fresh token pair
-  in the same response, so the caller resumes normal access without a second login —
-  see `ChangePasswordCommandHandler`.
+  `HttpContext.User` claims rather than the `Authorization` header/cookie directly, it
+  survived the httpOnly-cookie migration (see below) unmodified — it was designed for
+  exactly that. `POST /auth/change-password` (the only opted-out mutating endpoint,
+  alongside the read-only `GET /auth/me`) clears the flag and mints a fresh token pair,
+  set as cookies in the same response, so the caller resumes normal access without a
+  second login — see `ChangePasswordCommandHandler`.
+- **Session cookies, CSRF, and logout** — access and refresh tokens live only in
+  httpOnly, Secure, `SameSite=Lax`, host-only (no `Domain=`) cookies (`cf_access`,
+  `cf_refresh`), issued by `AuthCookieWriter` and read by `JwtBearerEvents.OnMessageReceived`
+  (`Program.cs`) — the header still works as a fallback (Swagger, direct clients).
+  This is safe as first-party/`SameSite=Lax` only because the frontend proxies `/api/*`
+  to this API via a Next.js rewrite (`frontend/next.config.mjs`), so the browser only
+  ever sees one origin; see `frontend/lib/session.ts` and `middleware.ts` below. A
+  non-httpOnly `cf_csrf` cookie backs a double-submit check
+  (`src/CodeForge.Api/Filters/CsrfProtectionFilter.cs`, global, same shape as
+  `PasswordChangeRequiredFilter`): any unsafe request carrying `cf_access` or
+  `cf_refresh` must echo `cf_csrf`'s value in `X-CSRF-Token`, or it 403s with
+  `csrf_validation_failed`. `POST /auth/logout` (`AllowAnonymous` — it authenticates
+  off the refresh cookie itself, not a `ClaimsPrincipal`, so it works even with an
+  expired access token) clears all three cookies and revokes the refresh token; it
+  never fails, so an already-signed-out client still gets a clean result.
+- **Refresh token rotation, grace window, and reuse detection** —
+  `RefreshTokenRotationPolicy` (pure function: `(currentHash, previousHash, rotatedAt,
+  presentedHash, now) → Rotate | ReturnCurrent | Reuse | Invalid`) plus
+  `RefreshTokenCommandHandler`'s atomic compare-and-swap
+  (`IRefreshTokenRotationStore`, implemented in Infrastructure via EF's
+  `ExecuteUpdateAsync` — that API lives in the Relational package, which Application
+  doesn't reference, hence the interface) exist to make concurrent refreshes safe.
+  Tokens rotate on every use; without a grace window, two same-origin requests racing
+  to refresh the same expired access token (Next.js prefetch fan-out is the concrete
+  trigger, and is exactly what `middleware.ts`'s refresh-on-expiry does) would have
+  the loser present an already-superseded token and get logged out. Within 30 seconds
+  of a rotation, presenting the just-superseded token returns the same already-rotated
+  pair instead of rotating again — concurrent requests converge on one token rather
+  than racing. Outside the window, presenting a superseded token is treated as reuse
+  and kills the whole session (both generations), which is stricter than before this
+  existed. `PendingRefreshToken` (the current token's plaintext) is a deliberate,
+  narrowly-scoped exception to "hashed at rest" — there is no way to hand a concurrent
+  latecomer the exact token value a winner already received without it — and is
+  overwritten on every subsequent rotation, so at most one superseded plaintext value
+  ever lingers.
 - **Secrets** — never committed. Local dev uses .NET User Secrets
   (`UserSecretsId=codeforge-api-secrets`); production uses environment variables.
   `appsettings.json` only holds structure/placeholders. The app fails fast at startup
   if `JwtSettings:Secret` or the connection string is missing.
 - **Refresh & reset tokens** — hashed at rest (SHA-256 via
-  `IJwtTokenGenerator.HashToken`). Only the hash is stored; the plaintext token is
-  returned to the client (login/refresh) or emailed (password reset) and never
-  persisted.
+  `IJwtTokenGenerator.HashToken`). Only the hash is stored (see the rotation-grace
+  exception above); the plaintext token is set as a cookie (login/refresh) or emailed
+  (password reset), never returned in a JSON response body, and never persisted
+  outside the hash/pending-plaintext columns.
 - **Email** — `IEmailSender` abstraction; `SmtpEmailSender` when `EmailSettings:Enabled`
   is true and a host is configured, otherwise `LoggingEmailSender` (dev fallback that
   logs instead of sending). Forgot-password sends a reset link by email; the API never
@@ -196,7 +232,25 @@ file uploads, rate limiting, versioning stance).
 ## 6. Frontend Architecture
 
 - **Next.js App Router**, locale-prefixed routes under `frontend/app/[locale]/...`.
-  `middleware.ts` redirects any un-prefixed path to the default locale (`en`).
+  `middleware.ts` redirects any un-prefixed path to the default locale (`en`), then
+  resolves auth for the request: `cf_access` present → continue; absent but
+  `cf_refresh` present → refresh server-side (leaning on the rotation grace window
+  above for concurrency safety), **patch the forwarded request's `Cookie` header**
+  (not just set a response cookie — `Set-Cookie` only updates the browser for its
+  *next* request, and the whole point is that *this* render already reflects the
+  refreshed session) then continue; neither cookie, on a route in `PROTECTED_PREFIXES`
+  → redirect to `/{locale}/login`; neither cookie, on a public route → continue
+  signed-out, no redirect. This is UX routing only — the API remains the actual
+  authorization boundary regardless of what middleware decides.
+- **Proxy** — `frontend/next.config.mjs` rewrites `/api/:path*` to `API_INTERNAL_URL`
+  (server-only env var, never bundled into browser JS; defaults to
+  `http://localhost:5205`). The browser only ever talks to one origin; this is what
+  makes `SameSite=Lax` cookies possible without a shared registrable domain between
+  the frontend and API hosts (see the deployment note in §7). `frontend/lib/api.ts`'s
+  `BASE_URL` is isomorphic — `"/api"` in the browser (resolved by the rewrite),
+  `API_INTERNAL_URL` directly when called from a Server Component (which has no
+  browser to resolve a relative URL against, and would otherwise take a pointless
+  extra hop through the rewrite it's already running inside).
 - `frontend/lib/i18n.ts` — dependency-free dictionary lookup + `{token}` interpolation.
   Add new UI strings to both `en` and `ar` in the same change.
 - `frontend/lib/api.ts` — a single `apiFetch` wrapper around `fetch`; typed errors via
@@ -216,24 +270,30 @@ file uploads, rate limiting, versioning stance).
   and the type is lost. A handful of union types (`SessionType`, `MaterialType`,
   `AssessmentType`, `AttendanceStatus`, `CertificateTier`) stay hand-written in
   `lib/api.ts` since the backend types those fields as plain `string`.
-- `frontend/lib/auth.tsx` — React context holding the session (tokens + user), backed
-  by `localStorage` for this phase. Token refresh rotation and httpOnly-cookie storage
-  are a later hardening pass, not yet implemented.
+- `frontend/lib/auth.tsx` — React context holding the signed-in user's *profile*, not
+  tokens; those live only in the httpOnly cookies the server manages. Seeded from a
+  server-resolved `initialSession` prop (see `frontend/lib/session.ts`, wrapped in
+  React `cache()`) so the first client render already matches what the server
+  rendered — no hydration effect, no flash. `toSession()`/the `Session` type live in
+  `frontend/lib/session-mapping.ts` rather than `auth.tsx` itself, deliberately
+  without a `"use client"`/`"use server"` directive: a function exported from a `"use
+  client"` module can't be called from the Server Component layout that also needs it.
+  `refreshSession()` (re-derives from `GET /auth/me`, then `router.refresh()` so
+  server components see it too) replaces the old `applySession`; `signOut()` is now
+  async (`POST /auth/logout`, then `router.refresh()` — middleware then redirects if
+  the current page is protected).
 - **Forced password change** — `components/PasswordChangeGate.tsx` (mounted in
   `app/[locale]/layout.tsx`) redirects to `/{locale}/change-password` whenever the
   session says `mustChangePassword`, and also on the `codeforge:password-change-required`
   `window` event `lib/api.ts` dispatches on any 403 carrying
   `password_change_required` — a backstop for a stale client-side session. The
   change-password page (`app/[locale]/change-password/page.tsx`) submits via
-  `changePassword()` and swaps in the returned fresh token pair with
-  `useAuth().applySession()`, so no second login is needed. See `API_CONVENTIONS.md` §3.
+  `changePassword()` and calls `useAuth().refreshSession()`, so no second login is
+  needed. See `API_CONVENTIONS.md` §3.
 - **Brand** — see `docs/assets/brand-guide.png` and the CSS custom properties in
   `frontend/app/globals.css` (`--bg`, `--card`, `--fg`, `--muted`, `--accent`,
   `--accent-2`). Do not hardcode colors in components; use the CSS variables so theme
   changes stay centralized.
-- **No BFF layer** — the browser calls the ASP.NET API directly using
-  `NEXT_PUBLIC_API_BASE_URL`. This is acceptable at current scale; revisit if
-  server-only secrets or response aggregation become necessary.
 
 ## 7. Deferred / Open Architectural Decisions
 
@@ -262,7 +322,24 @@ file uploads, rate limiting, versioning stance).
   + `docker-compose.yml`, §3) proves the API runs correctly as a container against a
   real Postgres, which is a prerequisite for choosing a host — but *where* it runs in
   production (Render, Fly.io, a VPS, …) is a separate decision this doesn't make.
-  Blocks load testing (no target environment to test against yet).
+  Blocks load testing (no target environment to test against yet). The `/api/*` proxy
+  (§6) was chosen specifically so this decision doesn't gate the auth model: it works
+  whether the frontend and API end up on the same registrable domain or, as currently
+  planned (Vercel + Render), different ones — `*.vercel.app` and `*.onrender.com` are
+  both on the Public Suffix List and are cross-site to each other by definition, which
+  would otherwise force `SameSite=None` cookies and a materially weaker CSRF posture.
+  **Deploy-time requirement:** `API_INTERNAL_URL` must be set on whatever host runs the
+  frontend, pointing at the API's real URL — it has a `localhost:5205` fallback that
+  is correct for local dev only and will silently point the proxy nowhere useful (500s
+  on every `/api/*` call) if left unset in production.
+- **Integration test coverage for the auth pipeline** — near-term backlog, not
+  someday. `tests/CodeForge.UnitTests` is pure-unit (no `WebApplicationFactory`), so
+  nothing exercises the real cookie/CSRF/`JwtBearer` pipeline end-to-end — cookie
+  issuance, `OnMessageReceived` reading `cf_access`, `CsrfProtectionFilter`, the
+  refresh rotation grace window, `PasswordChangeRequiredFilter` through the full HTTP
+  stack. This gap was accepted for the httpOnly-cookie migration (verified instead via
+  live browser/curl checks, not automated), but it is the single piece of this system
+  most likely to break silently under a future change with nothing to catch it.
 - **Recording storage upgrade** (external links → private storage + signed URLs) —
   still deferred; unlike payment proofs/materials (hardened in Phase 5), there is no
   upload flow for recordings today — they're external Zoom/YouTube/etc. links, so

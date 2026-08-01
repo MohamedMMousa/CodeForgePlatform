@@ -25,9 +25,9 @@ No business logic, no try/catch in controllers — see `CODING_STANDARDS.md` §2
 ```csharp
 [HttpPost("login")]
 [EnableRateLimiting(RateLimitPolicies.Auth)]
-[ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
 public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
-    => await SendAuthRequest(new LoginCommand(request.Email, request.Password), ct);
+    => await SendAuthRequestWithCookies(new LoginCommand(request.Email, request.Password), ct);
 ```
 
 Every action returning a body **must** carry `[ProducesResponseType(typeof(ResponseDto), StatusCodes.Status200OK)]`.
@@ -39,9 +39,27 @@ JSON body (`NoContent()`, raw file downloads via `File(...)`).
 
 ## 3. Authentication & Authorization
 
-- **JWT Bearer** in the `Authorization: Bearer <token>` header. Access tokens are
-  short-lived (`JwtSettings:ExpiryMinutes`, default 15 min); refresh tokens rotate on
-  use (`JwtSettings:RefreshTokenExpiryDays`, default 7 days).
+- **JWT, carried by an httpOnly cookie** — `cf_access` (default 15 min,
+  `JwtSettings:ExpiryMinutes`) and `cf_refresh` (default 7 days,
+  `JwtSettings:RefreshTokenExpiryDays`), both `Secure`, `SameSite=Lax`, host-only (no
+  `Domain=`), set by `AuthCookieWriter` on login/refresh/change-password. `JwtBearer`
+  reads the token from `cf_access` via `OnMessageReceived`
+  (`Program.cs`); the `Authorization: Bearer <token>` header still works as a fallback
+  when the cookie is absent (Swagger, a non-browser client), but the frontend never
+  sends it — cookies ride along automatically. **Response bodies never carry tokens**
+  — `POST /auth/login`, `POST /auth/refresh-token`, and `POST /auth/change-password`
+  all return `CurrentUserResponse` (the same shape as `GET /auth/me`), not a token
+  pair; the tokens exist only in `Set-Cookie`. `POST /auth/refresh-token` reads the
+  refresh token from `cf_refresh`, not a request body. `POST /auth/logout`
+  (`[AllowAnonymous]` — see below) clears all three auth cookies and revokes the
+  refresh token; call it on sign-out since a client can't clear an httpOnly cookie
+  itself.
+- **CSRF**: any unsafe (non-GET/HEAD/OPTIONS) request that carries `cf_access` or
+  `cf_refresh` must echo the non-httpOnly `cf_csrf` cookie's value in an
+  `X-CSRF-Token` header, enforced globally by `CsrfProtectionFilter`
+  (`src/CodeForge.Api/Filters/`). No auth cookie present → not checked, so anonymous
+  public POSTs (enrollment requests, leads) are unaffected. See §4 for the error
+  shape.
 - Named policies: `AdminOnly` (role `admin`), `InstructorOnly` (role `instructor`).
   Apply with `[Authorize(Policy = "AdminOnly")]`.
 - Ad-hoc multi-role checks use `[Authorize(Roles = "admin,instructor")]` (see
@@ -57,9 +75,9 @@ JSON body (`NoContent()`, raw file downloads via `File(...)`).
   regardless of `[Authorize]`/policy/role — fail-closed, so a newly added endpoint is
   covered automatically. Opt an endpoint out with `[AllowPendingPasswordChange]`
   (currently only `POST /auth/change-password` and `GET /auth/me`); `[AllowAnonymous]`
-  endpoints are always exempt. `POST /auth/change-password` mints a fresh token pair
-  after clearing the flag, so the caller resumes normal access without a second login —
-  see `ChangePasswordCommandHandler`.
+  endpoints are always exempt. `POST /auth/change-password` clears the flag and sets
+  fresh cookies, so the caller resumes normal access without a second login — see
+  `ChangePasswordCommandHandler`.
 
 ## 4. Error Envelope
 
@@ -75,6 +93,9 @@ All errors go through `ExceptionHandlingMiddleware` and come back as
 
 // 403 — PasswordChangeRequiredException (authenticated, but must change password first)
 { "title": "Forbidden", "status": 403, "detail": "...", "code": "password_change_required" }
+
+// 403 — CsrfValidationException (unsafe request with an auth cookie but no/mismatched X-CSRF-Token)
+{ "title": "Forbidden", "status": 403, "detail": "...", "code": "csrf_validation_failed" }
 
 // 404 — KeyNotFoundException
 { "title": "Not Found", "status": 404, "detail": "Course not found." }
@@ -95,8 +116,9 @@ is the one dedicated custom exception in the repo, reserved for "authenticated b
 permitted until a specific action is taken" (maps to 403) — see `ARCHITECTURE.md` §3.
 
 **The `code` extension field** appears only on errors the frontend must branch on
-programmatically (not just display) — currently only `password_change_required`. Most
-errors have no `code`; the frontend falls back to `title`/`detail` for display.
+programmatically (not just display) — `password_change_required` and
+`csrf_validation_failed`. Most errors have no `code`; the frontend falls back to
+`title`/`detail` for display.
 
 ## 5. Validation
 
@@ -164,6 +186,12 @@ translation is added incrementally — see `ARCHITECTURE.md` §3). The frontend'
 
 Allowed origins are config-driven (`Cors:AllowedOrigins`), not hardcoded. Add a new
 frontend origin (e.g. a staging domain) there, never in code.
+
+Since the frontend proxies `/api/*` through its own Next.js server (`ARCHITECTURE.md`
+§6), the browser never makes a cross-origin call to this API — CORS only matters for
+direct/dev access (Swagger, `curl`, a future non-proxied client). `AllowCredentials()`
+is deliberately **not** enabled: cookie auth working cross-origin isn't something this
+config should permit.
 
 ## 11. Response Shape for Success
 
