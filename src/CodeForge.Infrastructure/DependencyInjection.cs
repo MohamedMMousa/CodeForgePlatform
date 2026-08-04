@@ -70,7 +70,21 @@ namespace CodeForge.Infrastructure
             services.AddScoped<IRefreshTokenRotationStore, RefreshTokenRotationStore>();
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
-            services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+
+            // File storage provider: "Local" (default, dev) writes to the container's own
+            // disk; "R2" is required in production on a host with no persistent volume
+            // (e.g. Render free tier) — see R2FileStorageService for why.
+            services.Configure<StorageSettings>(configuration.GetSection(StorageSettings.SectionName));
+            var storageProvider = configuration.GetSection(StorageSettings.SectionName)["Provider"];
+            if (string.Equals(storageProvider, "R2", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddSingleton<IFileStorageService, R2FileStorageService>();
+            }
+            else
+            {
+                services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+            }
+
             services.AddSingleton<ITemporaryPasswordGenerator, TemporaryPasswordGenerator>();
 
             // Auto-grader: Piston's public API (emkc.org) went whitelist-only on
