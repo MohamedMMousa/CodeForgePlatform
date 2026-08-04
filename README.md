@@ -44,7 +44,8 @@ docs/                        Governing reference docs — read these before maki
 ### Prerequisites
 
 - .NET 8 SDK
-- Node.js 18+
+- Node.js 24 (LTS) — pinned in `frontend/package.json` `engines` and in CI; see `docs/DEPLOY.md`
+  for why 24 rather than a newer Current release
 - PostgreSQL running locally (or reachable), with an empty database created (e.g. `codeforge_db`)
 
 ### 1. Backend
