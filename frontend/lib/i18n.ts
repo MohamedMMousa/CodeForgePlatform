@@ -506,6 +506,14 @@ export interface Dictionary {
     pageOf: string;
     showingCount: string;
   };
+  sentryTest: {
+    title: string;
+    description: string;
+    clientButton: string;
+    clientSent: string;
+    serverButton: string;
+    serverSent: string;
+  };
 }
 
 const dictionaries: Record<Locale, Dictionary> = {
@@ -1002,6 +1010,15 @@ const dictionaries: Record<Locale, Dictionary> = {
       next: "Next",
       pageOf: "Page {page} of {totalPages}",
       showingCount: "Showing {count} of {total}"
+    },
+    sentryTest: {
+      title: "Sentry test page",
+      description:
+        "Temporary ops page for confirming error monitoring is wired up. Only reachable while SENTRY_TEST_ENABLED is set — turn it off once you're done.",
+      clientButton: "Send test error (client)",
+      clientSent: "Client-side test event sent to Sentry.",
+      serverButton: "Send test error (server)",
+      serverSent: "Server-side test event sent to Sentry."
     }
   },
   ar: {
@@ -1496,6 +1513,15 @@ const dictionaries: Record<Locale, Dictionary> = {
       next: "التالي",
       pageOf: "صفحة {page} من {totalPages}",
       showingCount: "عرض {count} من {total}"
+    },
+    sentryTest: {
+      title: "صفحة اختبار Sentry",
+      description:
+        "صفحة تشغيلية مؤقتة للتأكد من عمل مراقبة الأخطاء. لا يمكن الوصول إليها إلا عند تفعيل SENTRY_TEST_ENABLED — عطّلها بعد الانتهاء.",
+      clientButton: "إرسال خطأ اختباري (العميل)",
+      clientSent: "تم إرسال حدث اختباري من جهة العميل إلى Sentry.",
+      serverButton: "إرسال خطأ اختباري (الخادم)",
+      serverSent: "تم إرسال حدث اختباري من جهة الخادم إلى Sentry."
     }
   }
 };
