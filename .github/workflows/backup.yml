@@ -1,0 +1,94 @@
+name: Backup
+
+# Neon (free tier) has no built-in scheduled export, and Render/Vercel free tiers have
+# no cron primitive at all. GitHub Actions gives real cron, a secret store, an on-demand
+# workflow_dispatch trigger, and its own log/alert trail, at zero additional cost — see
+# docs/DEPLOY.md for the fuller comparison.
+on:
+  schedule:
+    # 02:17 UTC daily. Off-the-hour deliberately, to land away from the crowd of jobs
+    # scheduled for exactly :00 across all of GitHub Actions.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: pg_dump Neon -> R2
+    runs-on: ubuntu-latest
+    steps:
+      # ubuntu-latest's bundled postgresql-client trails Neon's server version, and an
+      # older pg_dump can refuse to dump a newer server outright. Install straight from
+      # PostgreSQL's own apt repo instead of trusting Ubuntu's default. Bump the "18"
+      # below if Neon's default major version moves again (it moved 17 -> 18 in 2026 —
+      # see docs/DEPLOY.md's restore procedure for how this was chosen and verified).
+      - name: Install PostgreSQL 18 client tools
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+
+      - name: Dump database
+        run: |
+          set -euo pipefail
+          timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          filename="codeforge-${timestamp}.dump"
+          pg_dump --format=custom --compress=9 --file="/tmp/${filename}" "${NEON_DATABASE_URL}"
+
+          # A near-empty dump is the classic silent backup failure — catch it here
+          # rather than discovering it during an actual restore. 10 KiB comfortably
+          # clears an empty-schema dump; a real dump with data is far larger.
+          size="$(stat -c%s "/tmp/${filename}")"
+          echo "Dump size: ${size} bytes"
+          if [ "${size}" -lt 10240 ]; then
+            echo "::error::Dump is suspiciously small (${size} bytes) — refusing to upload a likely-broken backup."
+            exit 1
+          fi
+
+          echo "FILENAME=${filename}" >> "$GITHUB_ENV"
+        env:
+          # Direct (non-pooled) Neon connection string — pg_dump wants a direct
+          # connection, not the pgbouncer-fronted pooled one used for app traffic.
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+
+      - name: Upload to R2
+        run: |
+          set -euo pipefail
+          aws s3 cp "/tmp/${FILENAME}" "s3://${R2_BUCKET}/${FILENAME}" --endpoint-url "${R2_ENDPOINT}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+      - name: Prune backups older than 30 days
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '30 days ago' +%Y%m%dT%H%M%SZ)"
+
+          # Empty bucket / nothing matched yet isn't a failure — only a genuine `aws`
+          # error further up (credentials, endpoint) would be, and those already had a
+          # chance to surface in the upload step above.
+          aws s3 ls "s3://${R2_BUCKET}/" --endpoint-url "${R2_ENDPOINT}" \
+            | awk '{print $4}' | grep '^codeforge-.*\.dump$' > /tmp/existing-backups.txt || true
+
+          while IFS= read -r key; do
+            [ -z "${key}" ] && continue
+            key_ts="$(echo "${key}" | sed -E 's/^codeforge-([0-9TZ]+)\.dump$/\1/')"
+            if [[ "${key_ts}" < "${cutoff}" ]]; then
+              echo "Pruning ${key} (older than 30 days)"
+              aws s3 rm "s3://${R2_BUCKET}/${key}" --endpoint-url "${R2_ENDPOINT}"
+            fi
+          done < /tmp/existing-backups.txt
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
