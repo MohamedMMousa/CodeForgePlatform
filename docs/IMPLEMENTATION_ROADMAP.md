@@ -686,6 +686,116 @@ the session (the post-rotation token stops working too, not just the stale one);
 directions. 101/101 backend unit tests pass throughout (9 new: `AuthCookieWriterTests`,
 `CsrfProtectionFilterTests`, `RefreshTokenRotationPolicyTests`).
 
+## Go-Live (post-Phase 6) — Vercel + Render + Neon, free tier
+
+The platform was feature-complete through Phase 6 and operationally hardened
+(health checks, CI, pagination, httpOnly cookies) but had never been deployed —
+`ARCHITECTURE.md` §7 still listed the hosting target as an open decision. Nine
+independently-revertable commits, each landed `node scripts/verify.mjs` green.
+
+**Node 24 LTS.** CI and `frontend/package.json`'s `engines.node` bumped 20 → 24 —
+Node 22 was already Maintenance LTS (EOL Apr 2027), the same category being left
+behind, so skipping straight to Active LTS (EOL Apr 2028) made more sense than
+landing on 22 only to bump again soon. Verified for real: fetched a portable Node
+24.11.0 Windows build, ran the full `verify.mjs` suite (`next build` and the test
+suite specifically, since a Node major is where a native binding or subtle API
+change would surface) and a clean `npm ci`, before touching CI.
+
+**R2 file storage — a launch blocker found during planning, not in the original
+brief.** `LocalFileStorageService` writes payment proofs and course materials to the
+container's own disk; Render's free tier has no persistent volume, so every
+deploy/restart/spin-down would wipe that directory while the DB rows referencing the
+files survived — admins reviewing payment proofs would 404 on the platform's core
+revenue flow. Added `R2FileStorageService`, a second `IFileStorageService`
+implementation against Cloudflare R2 (S3-compatible), selected via
+`Storage:Provider=R2` and left as `Local` everywhere else. Needed disabling the AWS
+SDK's default request/response checksum validation and chunked payload signing —
+both unsupported by R2's S3 compatibility layer and otherwise a hard failure on
+every upload. See `ARCHITECTURE.md` §3.
+
+**Rate-limit partition key fix.** The audit that scoped this phase flagged `/leads`
+and `/enrollment-requests` as public, writable, spam-prone — and verification found
+the limiter itself was *already* correctly applied to both, at the right thresholds.
+The actual defect: partitioning on `Connection.RemoteIpAddress`, which behind
+Vercel → Render is always Vercel's shared egress IP, collapsing every user on the
+platform into one bucket — the sixth enrollment submission of the minute, from an
+unrelated person, would get a false `429` on the flow that must not break at
+launch. `ClientIpResolver` reads `X-Forwarded-For` from the right end (the entry
+appended by the hop closest to the API) rather than the left (the value the
+original caller claims, forgeable by anyone hitting the public origin directly),
+gated behind `Proxy:TrustForwardedFor` (off by default) with a hop count that's
+measured against the real deployment via a gated diagnostic endpoint rather than
+guessed. `scripts/check-rate-limit.mjs` demonstrates all of it end-to-end,
+including the negative case: run against the default (untrusted) config, its
+`--distinct-ips` check correctly *fails*, reproducing the exact bucket-collapse bug
+being fixed. See `ARCHITECTURE.md` §3 and §7.
+
+**Sentry, both sides, DSN-gated.** `Sentry.AspNetCore` on the API rides the existing
+`ExceptionHandlingMiddleware`'s `_logger.LogError` call (that middleware never
+rethrows, so Sentry's own exception middleware would never see anything directly).
+`@sentry/nextjs` on the frontend via the Next 15 `instrumentation.ts`/
+`instrumentation-client.ts` convention, with `tunnelRoute` deliberately left unset
+so it can't add a second rewrite competing with the `/api/*` auth proxy. Both sides
+scrub cookie/auth/CSRF headers explicitly. Each side got a gated test-emission
+endpoint for deploy verification. One real bug caught during this work: the
+frontend's test-page gate was originally `NEXT_PUBLIC_SENTRY_TEST` — verified
+empirically that `NEXT_PUBLIC_` vars get inlined as literal values into the Next.js
+bundle at **build** time regardless of `export const dynamic = "force-dynamic"`
+(built with it set, started that same build with it unset, page still served);
+switched to a plain server-only `SENTRY_TEST_ENABLED`, which is read live from
+`process.env` on every request instead. See `ARCHITECTURE.md` §3.
+
+**Scheduled backups, restored for real before trusting the schedule.** Neon free
+has no built-in scheduled export and neither Render nor Vercel free tiers have a
+cron primitive; a GitHub Actions workflow does daily `pg_dump` (custom format,
+size-sanity-checked before upload — a near-empty dump is the classic silent backup
+failure) to R2, pruning objects older than 30 days. The restore procedure was
+actually rehearsed, not just documented: dumped the local dev database, restored
+into a fresh scratch database with `pg_restore --clean --if-exists --no-owner
+--no-privileges`, confirmed row counts and real row data matched exactly before
+dropping the scratch database — using real Postgres 18 client binaries, not guessed
+syntax.
+
+**Deploy config.** Dockerfile's entrypoint now binds `${PORT:-8080}` (Render injects
+its own `$PORT`; docker-compose leaves it unset and keeps the `:8080` default) via a
+shell-form `exec` entrypoint so `dotnet` becomes PID 1 for correct signal handling.
+`render.yaml` blueprint: Docker runtime, free plan, Frankfurt region,
+`healthCheckPath: /health` (liveness — never `/health/ready`, which would restart
+the container on a transient Neon cold start rather than an actual outage),
+non-secret deployment decisions inlined, every real secret `sync: false`.
+
+**`docs/DEPLOY.md`** — the full human-executed runbook: account creation order,
+the Neon URI → Npgsql key/value connection-string conversion, the complete
+production env-var reference, the production migration as an explicit manual step,
+and a post-deploy verification checklist (including using the new diagnostic
+endpoint to measure the real `X-Forwarded-For` chain rather than guessing at
+`Proxy:TrustedProxyHopCount`).
+
+**Two honest gaps, not glossed over.** The GitHub Actions PGDG apt-repo install
+step and the Dockerfile's shell-form entrypoint change could not be executed
+end-to-end in the development environment — no real GitHub Actions runner
+available, and Docker Desktop's daemon would not come up after several minutes of
+attempting to start it (nested-virtualization restrictions, most likely). Both
+follow standard, currently-documented syntax and were reviewed carefully, but their
+first real execution is the first scheduled backup run and the first Render deploy,
+respectively — flagged explicitly in their commits rather than claimed as verified.
+
+**Verified:** `node scripts/verify.mjs` green at every commit (Node 24 additionally
+verified on a real portable binary). Rate limiting proved live against a running
+API: 5 requests through, the 6th `429` with `Retry-After: 60`, logged; the
+demonstration script's negative case reproduces the original bug when run against
+the untrusted default config. Sentry test buttons fired without console errors on
+both sides (real event delivery deferred to post-deploy verification — no DSN
+available in development). The `sentry-test` page confirmed correct in both English
+and Arabic (`dir=rtl`, `lang=ar`), and confirmed absent from the production
+prerender manifest in the default (flag-unset) build via
+`scripts/check-token-leak.mjs --build-only`. The backup/restore round trip was
+proved against real data (11 users, 28 leads round-tripped exactly) with real
+Postgres 18 client tools. What remains genuinely unverified until the user
+provisions the real accounts: the actual GitHub Actions run, the actual Docker
+image build/deploy, and real Sentry event delivery — all called out explicitly
+above and in `docs/DEPLOY.md` rather than assumed.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

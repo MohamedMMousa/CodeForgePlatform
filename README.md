@@ -154,10 +154,25 @@ provider yet — `WhatsAppSettings:Enabled` stays `false` until that's built (se
 | Certificates (two-tier) + admin/instructor analytics | ✅ |
 | Notifications (event catalog, email live, WhatsApp stubbed) | ✅ |
 | Admin console (courses/tracks/cohorts/coupons/requests/users) | ✅ |
-| Self-hosted auto-grader, recording storage, load testing, hosting decision | ⏳ deferred |
+| Deployed: Vercel (frontend) + Render (API) + Neon (Postgres) + R2 (storage/backups) | ✅ |
+| Self-hosted auto-grader, recording storage, load testing | ⏳ deferred |
 
 See `docs/IMPLEMENTATION_ROADMAP.md` for the full phase-by-phase breakdown and
 `handoff_phase*.md` files at the repo root for detailed session-by-session notes.
+
+## Deployment
+
+Free-tier stack: **Vercel** (frontend) + **Render**, Docker (API) + **Neon**
+(Postgres) + **Cloudflare R2** (uploads and scheduled backups). Cold starts are
+accepted, not fixed, on Render's free plan.
+
+`docs/DEPLOY.md` is the full provisioning runbook — account creation order, every
+environment variable and which host it goes on, the production database migration
+(always a manual step, never automatic), and post-deploy verification. Two things
+worth knowing before you start: `API_INTERNAL_URL` must be set on Vercel pointing at
+the Render API, or every `/api/*` call 500s; and `Database:AutoMigrate` stays `false`
+in production on purpose, so `dotnet ef database update` against the real database is
+something you run deliberately, not something a deploy does for you.
 
 ## Documentation map
 
@@ -172,6 +187,7 @@ Read these, in this order, before making non-trivial changes:
 5. **`docs/CODING_STANDARDS.md`** — the CQRS-triplet pattern, i18n rules, testing
    philosophy, and other conventions to match.
 6. **`docs/IMPLEMENTATION_ROADMAP.md`** — phase plan, what's done, what's next.
+7. **`docs/DEPLOY.md`** — provisioning and deploy runbook for Vercel/Render/Neon/R2.
 
 `handoff_*.md` files at the repo root are point-in-time session notes (bugs found,
 decisions made, verification performed) — useful for context on *why* something

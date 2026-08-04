@@ -126,14 +126,37 @@
   but no-ops while `WhatsAppSettings:Enabled` is false (the default — WhatsApp
   Business Cloud API needs a Meta-verified business, dedicated number, and
   pre-approved templates that don't exist here).
-- **Private file storage** (Phase 5) — `IFileStorageService` stores payment proofs and
-  course materials under `PrivateStorage/` outside `wwwroot`; there is **no**
-  `app.UseStaticFiles()` in `Program.cs`. Files are served exclusively through
+- **Private file storage** (Phase 5, R2 backend added at go-live) — `IFileStorageService`
+  abstracts payment proofs and course materials behind an opaque storage key; there is
+  **no** `app.UseStaticFiles()` in `Program.cs`. Files are served exclusively through
   authenticated endpoints (`GET /materials/{id}/file` — enrollment-gated via
   `CourseContentAuthorization.EnsureCanView`; `GET /enrollment-requests/{id}/payment-proof`
   — admin only) that stream the content back after checking authorization, never via
   a public link. (Prior to Phase 5, these were served as plain static files with no
-  auth at all — found and fixed while scoping the phase.)
+  auth at all — found and fixed while scoping the phase.) Two implementations:
+  `LocalFileStorageService` (default, `Storage:Provider=Local`) writes under
+  `PrivateStorage/` on the container's own disk — fine for dev, but destroyed on every
+  deploy/restart on a host with no persistent volume. `R2FileStorageService`
+  (`Storage:Provider=R2`, what production actually runs — see `DEPLOY.md`) is the
+  S3-compatible Cloudflare R2 equivalent, chosen specifically because Render's free
+  tier has no persistent disk. Selecting R2 needed no repository/model changes,
+  exactly the point of the interface boundary — see §1.
+- **Error monitoring** — Sentry, both sides, each behind its own DSN-presence gate so
+  an unset DSN (local dev, CI) leaves the SDK fully inert rather than partially
+  initialized. `TracesSampleRate: 0` on both — the free plan's quota goes to errors,
+  not performance traces. API: `Sentry.AspNetCore`, capture rides the existing
+  `ExceptionHandlingMiddleware`'s `_logger.LogError(exception, ...)` call via Sentry's
+  logging integration, because that middleware catches every exception and never
+  rethrows — Sentry's own exception middleware would never see anything. Frontend:
+  `@sentry/nextjs` via `instrumentation-client.ts` (browser) and `instrumentation.ts`
+  (server/edge, `register()` + the `onRequestError` hook Next 15 needs for route
+  handler/server component/action errors); `next.config.mjs`'s `withSentryConfig`
+  wrapper leaves `tunnelRoute` unset so it can't add a second rewrite competing with
+  the `/api/*` auth proxy. Both sides scrub `Cookie`/`Authorization`/`X-CSRF-Token`
+  from outgoing events explicitly, on top of `sendDefaultPii: false`. Each side has a
+  gated test-emission endpoint (API: `POST /diagnostics/sentry-test`; frontend:
+  `/[locale]/sentry-test`), off by default, meant to be flipped on for a few minutes
+  during deploy verification and back off — see `DEPLOY.md`.
 - **Admin bootstrap** — `DatabaseSeeder.SeedAsync` runs at startup, idempotently
   seeding one super-admin from `AdminSeed:Email`/`Password`/`FullName` config. No-op if
   those aren't configured; never overwrites an existing account.
@@ -148,11 +171,28 @@
   database outage — pointing the restart trigger at DB connectivity turns a transient
   Postgres blip into a restart storm. `/health/ready` is for `docker compose`
   `depends_on: condition: service_healthy` and for humans/monitoring.
-- **Rate limiting** — ASP.NET Core's built-in limiter. A generous global per-IP window
-  (100 req/min) plus two named policies: `RateLimitPolicies.Auth` (10/min, applied to
-  login/refresh/forgot-password/reset-password) and `RateLimitPolicies.PublicSubmit`
-  (5/min, applied to anonymous public submissions like enrollment requests and the lead
-  form).
+- **Rate limiting** — ASP.NET Core's built-in limiter, windows now config-driven
+  (`RateLimiting` section) rather than hardcoded, defaulting to a generous global
+  per-IP window (100 req/min) plus two named policies: `RateLimitPolicies.Auth`
+  (10/min, login/refresh/forgot-password/reset-password) and
+  `RateLimitPolicies.PublicSubmit` (5/min, anonymous public submissions like
+  enrollment requests and the lead form). Partition key is
+  `ClientIpResolver.Resolve`, not the raw socket address: behind the production
+  Vercel → Render topology, `Connection.RemoteIpAddress` is always Vercel's shared
+  egress IP, which would collapse every user on the platform into one bucket. When
+  `Proxy:TrustForwardedFor` is on (production only — off by default, matching local
+  dev/CI/compose), the resolver reads `X-Forwarded-For` from the **right** end (the
+  entry the trusted hop closest to us appended) rather than the left (the value the
+  original caller claims, forgeable by anyone hitting the public origin directly);
+  `Proxy:TrustedProxyHopCount` controls how many entries to skip, and is measured
+  against the real deployment rather than assumed — see `DEPLOY.md`. Fails closed to
+  the socket peer whenever the header is absent, malformed, or shorter than the
+  claimed hop count. `OnRejected` now sets `Retry-After` and logs the resolved
+  partition key — previously a 429 was invisible. Accepted gap: a caller hitting the
+  public `*.onrender.com` origin directly (bypassing Vercel) can still forge the
+  trusted position, since no positional header-parsing scheme can close that
+  entirely — the limiter is spam friction, not a security boundary. See §7 and
+  `CodeForge.Api/RateLimiting/ClientIpResolver.cs`.
 - **Localization** — `AddLocalization` + `UseRequestLocalization`, resolving `en`/`ar`
   from the `Accept-Language` header. Resource files are added incrementally as
   API-returned messages need translation; the pipeline is ready now.
@@ -164,23 +204,32 @@
   under the same migration id (no schema or data change). Do not hand-edit generated
   migration files except to add raw SQL EF cannot express (e.g. the GIN index on
   `activity_logs.metadata` — see `DATABASE.md`).
-- **Containerization** (`Dockerfile`, `docker-compose.yml`, `Caddyfile`) — multi-stage
-  build (`sdk:8.0` → `aspnet:8.0-jammy`; not Alpine, since the `CultureInfo("ar")`/
-  `("en")` localization pipeline needs full ICU), runs as the non-root `app` user
-  (uid 1654) the base image ships. Migrations are **not** baked into the image or run
-  automatically in every environment: `Database:AutoMigrate` (`Program.cs`, off by
-  default) gates a `Database.MigrateAsync()` call at startup, and only
-  `docker-compose.yml` turns it on — a real deployment should keep it false and run
-  migrations as its own release step, the same way CI's `drift-check` job does via the
-  `dotnet ef` CLI. Compose brings up Postgres → the API (`depends_on: condition:
+- **Containerization** (`Dockerfile`, `docker-compose.yml`, `Caddyfile`, `render.yaml`)
+  — multi-stage build (`sdk:8.0` → `aspnet:8.0-jammy`; not Alpine, since the
+  `CultureInfo("ar")`/`("en")` localization pipeline needs full ICU), runs as the
+  non-root `app` user (uid 1654) the base image ships. The entrypoint binds
+  `${PORT:-8080}` (shell-form + `exec`, so `dotnet` becomes PID 1 for correct SIGTERM
+  handling) — Render injects its own `$PORT`; `docker-compose.yml` leaves it unset and
+  gets the `:8080` default unchanged. Migrations are **not** baked into the image or
+  run automatically in any environment except local compose:
+  `Database:AutoMigrate` (`Program.cs`, off by default) gates a
+  `Database.MigrateAsync()` call at startup, and only `docker-compose.yml` turns it
+  on — production (Render) keeps it false and runs migrations as its own manual
+  release step, the same way CI's `drift-check` job does via the `dotnet ef` CLI. See
+  `DEPLOY.md` for the production migration step and the full Render/Vercel/Neon/R2
+  provisioning sequence. Compose brings up Postgres → the API (`depends_on: condition:
   service_healthy`, gated on `/health`) → Caddy (same gate on the API), terminating TLS
-  with Caddy's internal CA for local HTTPS testing. `app.UseForwardedHeaders(...)`
-  (with `KnownNetworks`/`KnownProxies` cleared — safe because the `api` service isn't
-  reachable except through `caddy` on the compose network) restores the real client IP/
-  scheme from Caddy before HTTPS redirection or the rate limiter see the request;
-  without it every request would collapse onto Caddy's container IP and share one
-  rate-limit bucket. All credentials come from `.env` (gitignored; `.env.example` is
-  the committed template) — never baked into the image or `docker-compose.yml` itself.
+  with Caddy's internal CA for local HTTPS testing — Caddy is **local dev only**;
+  Render terminates TLS for the API and Vercel for the frontend in production, and
+  neither runs Caddy. `app.UseForwardedHeaders(...)` (proto only — see the rate
+  limiting bullet above for why `X-Forwarded-For` handling moved out of this
+  middleware and into `ClientIpResolver`; `KnownNetworks`/`KnownProxies` stay cleared,
+  safe because the container is never reachable except through the platform edge in
+  front of it — Caddy locally, Render's edge in production) restores the real
+  scheme from the proxy before HTTPS redirection sees the request. All local
+  credentials come from `.env` (gitignored; `.env.example` is the committed template)
+  — never baked into the image or `docker-compose.yml` itself; production secrets are
+  set directly on Render/Vercel, never in this repo.
 - **CI** (`.github/workflows/ci.yml`, two jobs) — **`verify`** installs frontend deps
   then runs `node scripts/verify.mjs` directly: CI does not restate build/test/lint/
   typecheck steps, it invokes the same script the pre-commit hook and a human run, so
@@ -348,20 +397,28 @@ file uploads, rate limiting, versioning stance).
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.
-- **Hosting/deployment target** — still not chosen. Local containerization (`Dockerfile`
-  + `docker-compose.yml`, §3) proves the API runs correctly as a container against a
-  real Postgres, which is a prerequisite for choosing a host — but *where* it runs in
-  production (Render, Fly.io, a VPS, …) is a separate decision this doesn't make.
-  Blocks load testing (no target environment to test against yet). The `/api/*` proxy
-  (§6) was chosen specifically so this decision doesn't gate the auth model: it works
-  whether the frontend and API end up on the same registrable domain or, as currently
-  planned (Vercel + Render), different ones — `*.vercel.app` and `*.onrender.com` are
-  both on the Public Suffix List and are cross-site to each other by definition, which
-  would otherwise force `SameSite=None` cookies and a materially weaker CSRF posture.
-  **Deploy-time requirement:** `API_INTERNAL_URL` must be set on whatever host runs the
-  frontend, pointing at the API's real URL — it has a `localhost:5205` fallback that
-  is correct for local dev only and will silently point the proxy nowhere useful (500s
-  on every `/api/*` call) if left unset in production.
+- **Hosting/deployment target** — decided and deployed: frontend on Vercel, API on
+  Render (Docker), Postgres on Neon, object storage on Cloudflare R2 — all free tier,
+  cold starts accepted. See `DEPLOY.md` for the full provisioning runbook. The
+  `/api/*` proxy (§6) was chosen specifically so this decision didn't gate the auth
+  model: it works whether the frontend and API end up on the same registrable domain
+  or, as it turned out, different ones — `*.vercel.app` and `*.onrender.com` are both
+  on the Public Suffix List and are cross-site to each other by definition, which
+  would otherwise have forced `SameSite=None` cookies and a materially weaker CSRF
+  posture. **Deploy-time requirement:** `API_INTERNAL_URL` must be set on Vercel,
+  pointing at the Render API's real URL — it has a `localhost:5205` fallback that is
+  correct for local dev only and will silently point the proxy nowhere useful (500s
+  on every `/api/*` call) if left unset. This is the single most likely deploy
+  mistake — see the top of `DEPLOY.md`.
+- **Rate limiter's direct-to-origin gap** (accepted, not a bug) — `ClientIpResolver`
+  (§3) can only trust a fixed position counted from the right of `X-Forwarded-For`; a
+  caller who bypasses Vercel and hits the public `*.onrender.com` origin directly can
+  still forge whatever sits at that position, since Render doesn't publish stable
+  inbound-edge IP ranges to validate against and Vercel's egress ranges are only
+  pinnable via Static IPs/Secure Compute (Pro/Enterprise-only, $100/mo). Accepted:
+  this limiter is spam friction on a public write endpoint, not a security boundary.
+  Cheap closer if it becomes a real problem: put Cloudflare (free) in front of the
+  Render origin and reject non-Cloudflare traffic — not done now.
 - **Integration test coverage for the auth pipeline** — near-term backlog, not
   someday. `tests/CodeForge.UnitTests` is pure-unit (no `WebApplicationFactory`), so
   nothing exercises the real cookie/CSRF/`JwtBearer` pipeline end-to-end — cookie
