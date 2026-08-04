@@ -114,6 +114,27 @@ CHECK_EMAIL=admin@codeforge.academy CHECK_PASSWORD=<pw> node scripts/check-token
 
 `--build-only` runs just the prerender assertions against `.next`, with no server needed.
 
+### Optional: rate-limit demonstration check
+
+`scripts/check-rate-limit.mjs` proves the `/leads` public-submit limiter fires at its
+configured limit, that a caller can't dodge it by stuffing extra entries into
+`X-Forwarded-For`, and that distinct real clients get distinct buckets instead of
+collapsing into one — the failure mode that matters behind the Vercel → Render proxy.
+Needs a running API with proxy trust turned on:
+
+```bash
+Proxy__TrustForwardedFor=true Proxy__TrustedProxyHopCount=1 dotnet run --project src/CodeForge.Api
+```
+
+```bash
+node scripts/check-rate-limit.mjs
+```
+
+Against the default (`Proxy:TrustForwardedFor=false`), `X-Forwarded-For` is ignored
+entirely and every request in the script resolves to the same loopback address —
+`--distinct-ips` will correctly fail, since that's the same bucket-collapse bug this
+script exists to catch. `--help` documents `--limit`/`--hops` for a non-default config.
+
 ### Optional: real email / WhatsApp
 
 By default the API logs outgoing notifications instead of sending them

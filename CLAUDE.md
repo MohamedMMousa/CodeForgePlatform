@@ -28,6 +28,9 @@ node scripts/generate-api-types.mjs         # regenerate frontend/lib/api-schema
 
 node scripts/check-token-leak.mjs --build-only   # auth token-leak + cache-posture guard
 # full run needs a running stack + CHECK_EMAIL/CHECK_PASSWORD, against a PROD build (see README)
+
+node scripts/check-rate-limit.mjs                # proves /leads rate limiting fires + partitions correctly
+# needs a running API with Proxy__TrustForwardedFor=true (see README)
 ```
 
 Backend secrets come from .NET User Secrets, never `appsettings.json`. The API fails fast at
