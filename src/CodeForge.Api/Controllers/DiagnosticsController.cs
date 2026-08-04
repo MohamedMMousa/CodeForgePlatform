@@ -1,3 +1,4 @@
+using CodeForge.Api.Observability;
 using CodeForge.Api.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,8 +9,8 @@ namespace CodeForge.Api.Controllers
     /// <summary>
     /// Ops-only endpoints, each gated by its own config flag that stays off in normal
     /// operation — see docs/DEPLOY.md. Bypasses the usual MediatR/CQRS-triplet
-    /// convention deliberately: this inspects the request pipeline itself (headers,
-    /// connection info), not domain state, so it sits in the same category as the
+    /// convention deliberately: these inspect the request pipeline and error-reporting
+    /// wiring itself, not domain state, so they sit in the same category as the
     /// /health endpoints in Program.cs rather than a business use case.
     /// </summary>
     [ApiController]
@@ -18,10 +19,12 @@ namespace CodeForge.Api.Controllers
     public class DiagnosticsController : ControllerBase
     {
         private readonly ProxySettings _proxySettings;
+        private readonly SentrySettings _sentrySettings;
 
-        public DiagnosticsController(IOptions<ProxySettings> proxySettings)
+        public DiagnosticsController(IOptions<ProxySettings> proxySettings, IOptions<SentrySettings> sentrySettings)
         {
             _proxySettings = proxySettings.Value;
+            _sentrySettings = sentrySettings.Value;
         }
 
         /// <summary>
@@ -53,5 +56,25 @@ namespace CodeForge.Api.Controllers
         }
 
         public record ClientIpDiagnosticsDto(string? ForwardedFor, string? SocketPeer, string ResolvedClientIp);
+
+        /// <summary>
+        /// Throws a plain exception so it falls to ExceptionHandlingMiddleware's 500
+        /// branch — the only branch that calls _logger.LogError(exception, ...), which
+        /// is what the Sentry logging integration captures. Gated on
+        /// Sentry:EnableTestEndpoint; 404s when that's off, same pattern as
+        /// GetClientIp.
+        /// </summary>
+        [HttpPost("sentry-test")]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult TriggerSentryTest()
+        {
+            if (!_sentrySettings.EnableTestEndpoint)
+            {
+                return NotFound();
+            }
+
+            throw new Exception("Sentry test error triggered via POST /diagnostics/sentry-test.");
+        }
     }
 }

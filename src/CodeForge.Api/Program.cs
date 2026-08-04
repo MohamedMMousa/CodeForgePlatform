@@ -17,11 +17,46 @@ using CodeForge.Application.Common.Models;
 using CodeForge.Api.Authentication;
 using CodeForge.Api.Filters;
 using CodeForge.Api.Middleware;
+using CodeForge.Api.Observability;
 using CodeForge.Api.RateLimiting;
 using CodeForge.Api.Swagger;
 using CodeForge.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Error monitoring: only initialized when a DSN is configured, so local dev and CI
+// (which set neither) never talk to Sentry at all. TracesSampleRate=0 — the free plan's
+// quota is spent on errors, not performance traces. SendDefaultPii=false (also the SDK
+// default, restated for clarity) keeps cookies out entirely; SetBeforeSend strips the
+// specific headers that could still carry a session identifier or CSRF token even
+// without full PII capture. See DiagnosticsController for how a test event gets
+// emitted, and ExceptionHandlingMiddleware for why capture rides the ILogger
+// integration rather than Sentry's own exception middleware: that middleware catches
+// and never rethrows, so nothing ever reaches Sentry's exception handler directly.
+var sentryDsn = builder.Configuration["Sentry:Dsn"];
+if (!string.IsNullOrWhiteSpace(sentryDsn))
+{
+    builder.WebHost.UseSentry(options =>
+    {
+        options.Dsn = sentryDsn;
+        options.Environment = builder.Configuration["Sentry:Environment"] ?? builder.Environment.EnvironmentName;
+        options.SendDefaultPii = false;
+        options.TracesSampleRate = 0;
+        options.SetBeforeSend((sentryEvent, _) =>
+        {
+            if (sentryEvent.Request is not null)
+            {
+                sentryEvent.Request.Cookies = null;
+                foreach (var headerName in new[] { "Cookie", "Authorization", "X-CSRF-Token" })
+                {
+                    sentryEvent.Request.Headers.Remove(headerName);
+                }
+            }
+            return sentryEvent;
+        });
+    });
+}
+builder.Services.Configure<SentrySettings>(builder.Configuration.GetSection(SentrySettings.SectionName));
 
 // Add services to the container.
 // PasswordChangeRequiredFilter is global (fail-closed): it blocks every authenticated
