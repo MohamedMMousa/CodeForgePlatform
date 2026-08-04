@@ -26,7 +26,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
 COPY --from=build /app .
@@ -34,4 +33,10 @@ COPY --from=build /app .
 # "app" is the non-root user Microsoft's .NET 8+ runtime images create by default.
 USER app
 
-ENTRYPOINT ["dotnet", "CodeForge.Api.dll"]
+# Render injects $PORT and routes external traffic to whatever this container actually
+# listens on; docker-compose and any other local run leave it unset, so ${PORT:-8080}
+# keeps both working from the same image. Shell form (not the usual JSON-array
+# ENTRYPOINT) so ${PORT} actually expands, and `exec` so dotnet becomes PID 1 and
+# receives SIGTERM directly on deploy/restart instead of running as a child of a
+# lingering shell that never forwards it.
+ENTRYPOINT exec dotnet CodeForge.Api.dll --urls http://0.0.0.0:${PORT:-8080}

@@ -1,0 +1,72 @@
+# Render Blueprint for the CodeForge Academy API. Deploy via Render's "New Blueprint"
+# flow pointed at this repo — see docs/DEPLOY.md for the full provisioning sequence.
+#
+# Everything below is either a fixed, non-secret deployment decision (inlined) or a
+# real secret (sync: false, so Render prompts for it in the dashboard and it never
+# lands in this file / git history). Nothing here runs a database migration — that
+# stays a deliberate, manual `dotnet ef database update` step; see docs/DEPLOY.md.
+services:
+  - type: web
+    name: codeforge-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt # nearest free Render region to Egypt/MENA
+    healthCheckPath: /health # liveness only — never /health/ready, see Program.cs
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Migrations are never run automatically in production — see Program.cs and
+      # docs/DEPLOY.md's migration step.
+      - key: Database__AutoMigrate
+        value: "false"
+      # Vercel -> Render is a fixed two-hop topology, not a secret. Without this the
+      # rate limiter partitions every user behind Vercel's shared egress IP into one
+      # bucket — see CodeForge.Api/RateLimiting/ClientIpResolver.cs.
+      - key: Proxy__TrustForwardedFor
+        value: "true"
+      # Starting value; measure the real proxy chain post-deploy via the gated
+      # GET /diagnostics/client-ip (flip Proxy__EnableDiagnostics on below to reach
+      # it) and update this to match. See docs/DEPLOY.md.
+      - key: Proxy__TrustedProxyHopCount
+        value: "0"
+      # Off by default; flip to "true" temporarily to reach GET /diagnostics/client-ip
+      # during post-deploy verification, then back to "false".
+      - key: Proxy__EnableDiagnostics
+        value: "false"
+      # Uploads must go to R2, not local disk — Render's free tier has no persistent
+      # volume, so anything written locally is destroyed on every deploy/restart. See
+      # CodeForge.Infrastructure/EnrollmentRequests/R2FileStorageService.cs.
+      - key: Storage__Provider
+        value: "R2"
+      - key: Sentry__Environment
+        value: production
+      # Off by default; flip to "true" temporarily to reach POST /diagnostics/sentry-test
+      # during post-deploy verification, then back to "false".
+      - key: Sentry__EnableTestEndpoint
+        value: "false"
+
+      # --- Secrets: set in the Render dashboard, never committed ---
+      - key: ConnectionStrings__DefaultConnection
+        sync: false # Neon, key/value form — see docs/DEPLOY.md for the URI conversion
+      - key: JwtSettings__Secret
+        sync: false # real, rotated signing key — never the CI throwaway
+      - key: AdminSeed__Email
+        sync: false
+      - key: AdminSeed__Password
+        sync: false
+      - key: Cors__AllowedOrigins__0
+        sync: false # https://<your-app>.vercel.app — known only once Vercel exists
+      - key: EmailSettings__FrontendBaseUrl
+        sync: false # same Vercel URL — builds the password-reset link
+      - key: Storage__R2AccountId
+        sync: false
+      - key: Storage__R2Bucket
+        sync: false
+      - key: Storage__R2AccessKeyId
+        sync: false
+      - key: Storage__R2SecretAccessKey
+        sync: false
+      - key: Sentry__Dsn
+        sync: false
