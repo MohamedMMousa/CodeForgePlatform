@@ -3253,6 +3253,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/diagnostics/client-ip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientIpDiagnosticsDto"];
+                        "application/json": components["schemas"]["ClientIpDiagnosticsDto"];
+                        "text/json": components["schemas"]["ClientIpDiagnosticsDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/enrollment-requests": {
         parameters: {
             query?: never;
@@ -3834,6 +3882,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["LeadDto"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -5424,6 +5481,11 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        ClientIpDiagnosticsDto: {
+            forwardedFor?: string | null;
+            socketPeer?: string | null;
+            resolvedClientIp: string;
         };
         CohortListDto: {
             /** Format: uuid */

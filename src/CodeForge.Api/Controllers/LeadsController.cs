@@ -31,6 +31,7 @@ namespace CodeForge.Api.Controllers
         [EnableRateLimiting(RateLimitPolicies.PublicSubmit)]
         [HttpPost]
         [ProducesResponseType(typeof(LeadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Submit(SubmitLeadRequest request, CancellationToken cancellationToken)
         {
             var response = await _sender.Send(

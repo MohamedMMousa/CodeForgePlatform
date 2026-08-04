@@ -3432,6 +3432,55 @@
         }
       }
     },
+    "/diagnostics/client-ip": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientIpDiagnosticsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientIpDiagnosticsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientIpDiagnosticsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/enrollment-requests": {
       "post": {
         "tags": [
@@ -4056,6 +4105,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LeadDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -6724,6 +6783,26 @@
             "type": "string"
           },
           "newPassword": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientIpDiagnosticsDto": {
+        "required": [
+          "resolvedClientIp"
+        ],
+        "type": "object",
+        "properties": {
+          "forwardedFor": {
+            "type": "string",
+            "nullable": true
+          },
+          "socketPeer": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedClientIp": {
             "type": "string"
           }
         },

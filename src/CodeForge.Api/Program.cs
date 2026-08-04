@@ -111,38 +111,71 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
+// Proxy trust + rate-limit windows: bound once here (not IOptionsMonitor — same
+// bind-once-at-startup pattern as jwtSettings/corsOrigins below) since both are read
+// from the partition-key lambdas below and from DiagnosticsController.
+var proxySettings = builder.Configuration.GetSection(ProxySettings.SectionName).Get<ProxySettings>()
+    ?? new ProxySettings();
+builder.Services.Configure<ProxySettings>(builder.Configuration.GetSection(ProxySettings.SectionName));
+
+var rateLimitSettings = builder.Configuration.GetSection(RateLimitSettings.SectionName).Get<RateLimitSettings>()
+    ?? new RateLimitSettings();
+
 // Rate limiting: a generous global per-IP limiter, plus stricter named policies
-// for brute-force-sensitive auth and anonymous public submissions.
+// for brute-force-sensitive auth and anonymous public submissions. Partition key is
+// ClientIpResolver.Resolve, not the raw socket address — see ProxySettings for why.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: ClientIpResolver.Resolve(context, proxySettings),
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1)
+                PermitLimit = rateLimitSettings.Global.PermitLimit,
+                Window = TimeSpan.FromSeconds(rateLimitSettings.Global.WindowSeconds)
             }));
 
     options.AddPolicy(RateLimitPolicies.Auth, context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: ClientIpResolver.Resolve(context, proxySettings),
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(1)
+                PermitLimit = rateLimitSettings.Auth.PermitLimit,
+                Window = TimeSpan.FromSeconds(rateLimitSettings.Auth.WindowSeconds)
             }));
 
     options.AddPolicy(RateLimitPolicies.PublicSubmit, context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: ClientIpResolver.Resolve(context, proxySettings),
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1)
+                PermitLimit = rateLimitSettings.PublicSubmit.PermitLimit,
+                Window = TimeSpan.FromSeconds(rateLimitSettings.PublicSubmit.WindowSeconds)
             }));
+
+    // A rejection was previously silent: no Retry-After, no log line, so a spike of
+    // 429s was invisible until someone reported it. Both come from the rejecting
+    // limiter's own lease metadata / the same partition-key resolution used above.
+    options.OnRejected = (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        var partitionKey = ClientIpResolver.Resolve(context.HttpContext, proxySettings);
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("CodeForge.Api.RateLimiting");
+        logger.LogWarning(
+            "Rate limit exceeded for {PartitionKey} on {Path}.",
+            partitionKey, context.HttpContext.Request.Path);
+
+        return ValueTask.CompletedTask;
+    };
 });
 builder.Services.AddAuthorization(options =>
 {
@@ -244,16 +277,26 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
 app.UseHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
 
-// Behind the compose Caddy reverse proxy, requests arrive from the proxy's container
-// IP, not the real client — this restores the real client IP/scheme from
-// X-Forwarded-For/-Proto before HTTPS redirection or the rate limiter (both of which
-// key off RemoteIpAddress/Scheme) see the request. KnownNetworks/KnownProxies are
-// cleared because the proxy's address is a private compose-network IP, not loopback —
-// safe here because the api service isn't reachable except through Caddy.
+// Proto only — restores the real scheme (https) from X-Forwarded-Proto before HTTPS
+// redirection sees the request, behind both the compose Caddy proxy and, in
+// production, Render's edge. Deliberately NOT XForwardedFor: this middleware's default
+// ForwardLimit of 1 would overwrite Connection.RemoteIpAddress with a single header
+// entry and then strip it, leaving nothing for ClientIpResolver to read and no reliable
+// untrusted fallback either. Instead RemoteIpAddress is left alone as the true socket
+// peer — the fail-closed fallback ClientIpResolver uses when Proxy:TrustForwardedFor is
+// off, or when the header doesn't have the hop count Proxy:TrustedProxyHopCount claims
+// — and ClientIpResolver reads the untouched raw header itself. See ProxySettings.
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto
 };
+// The middleware only trusts X-Forwarded-Proto from a RemoteIpAddress it recognizes as
+// a proxy; default KnownNetworks/KnownProxies wouldn't match Caddy's private
+// compose-network IP or Render's edge IP, so proto forwarding would silently do
+// nothing. Cleared so it's trusted from whichever address is connecting — safe because
+// the container is never reachable except through that platform edge (Caddy in
+// compose, Render's edge in production), so the immediate TCP peer is always the
+// platform itself, never an arbitrary internet client.
 forwardedHeadersOptions.KnownNetworks.Clear();
 forwardedHeadersOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
