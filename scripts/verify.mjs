@@ -15,6 +15,10 @@ const STEPS = [
   { id: 'eslint', scope: 'frontend', cwd: frontendDir, cmd: 'npx eslint .' },
   { id: 'tsc --noEmit', scope: 'frontend', cwd: frontendDir, cmd: 'npx tsc --noEmit' },
   { id: 'next build', scope: 'frontend', cwd: frontendDir, cmd: 'npm run build', slow: true },
+  // Needs the build next build just produced — grouped with it under `slow` so
+  // --quick (which skips next build) doesn't run this against a stale or absent
+  // .next/server output. See scripts/check-middleware-edge-safety.mjs.
+  { id: 'middleware edge safety', scope: 'frontend', cwd: repoRoot, cmd: 'node scripts/check-middleware-edge-safety.mjs', slow: true },
 ];
 
 const HELP = `Usage: node scripts/verify.mjs [options]
