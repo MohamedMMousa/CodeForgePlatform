@@ -148,15 +148,42 @@
   `ExceptionHandlingMiddleware`'s `_logger.LogError(exception, ...)` call via Sentry's
   logging integration, because that middleware catches every exception and never
   rethrows — Sentry's own exception middleware would never see anything. Frontend:
-  `@sentry/nextjs` via `instrumentation-client.ts` (browser) and `instrumentation.ts`
-  (server/edge, `register()` + the `onRequestError` hook Next 15 needs for route
-  handler/server component/action errors); `next.config.mjs`'s `withSentryConfig`
-  wrapper leaves `tunnelRoute` unset so it can't add a second rewrite competing with
-  the `/api/*` auth proxy. Both sides scrub `Cookie`/`Authorization`/`X-CSRF-Token`
-  from outgoing events explicitly, on top of `sendDefaultPii: false`. Each side has a
-  gated test-emission endpoint (API: `POST /diagnostics/sentry-test`; frontend:
-  `/[locale]/sentry-test`), off by default, meant to be flipped on for a few minutes
-  during deploy verification and back off — see `DEPLOY.md`.
+  `@sentry/nextjs` via `instrumentation-client.ts` for the browser, and
+  `lib/sentry-node.ts` (imported once, for its side effect, from the root
+  `app/[locale]/layout.tsx`) for the Node server runtime — **deliberately not** the
+  conventional `instrumentation.ts` hook, and there is no edge/middleware-context
+  Sentry coverage at all. This was forced by a production incident: any reference to
+  `@sentry/nextjs` anywhere in `instrumentation.ts`, even behind a `NEXT_RUNTIME`
+  runtime check, even via a dynamic `import()` inside that check, still ended up
+  present in the compiled edge bundle `middleware.ts` invokes (confirmed by rebuilding
+  and grepping the output — Sentry SDK content was there either way), and it broke
+  production with `ReferenceError: __dirname is not defined` on every request, twice,
+  before the file was removed entirely. `lib/sentry-node.ts` is a structural
+  guarantee instead: it's only ever imported by a Server Component this app never
+  compiles for the edge runtime (nothing here opts into `export const runtime =
+  "edge"` except the framework-forced `middleware.ts`, which does not import it), so
+  nothing in its import graph can reach an edge compilation, full stop — not "probably
+  tree-shaken." Route handlers, server components, and server actions are still
+  covered (`withSentryConfig`'s `autoInstrumentAppDirectory`/
+  `autoInstrumentServerFunctions`, both still on, wrap them to call
+  `Sentry.captureException` directly and only need `Sentry.init()` to have already
+  run, which the root layout guarantees on every request); browser errors are
+  unaffected. `next.config.mjs`'s `withSentryConfig` wrapper also sets
+  `webpack.autoInstrumentMiddleware: false` — its default (`true`) was the *other*
+  half of the same incident, silently rewriting `middleware.ts`'s compiled output to
+  import `@sentry/nextjs` and wrap the handler — and leaves `tunnelRoute` unset so it
+  can't add a second rewrite competing with the `/api/*` auth proxy. Both sides scrub
+  `Cookie`/`Authorization`/`X-CSRF-Token` from outgoing events explicitly, on top of
+  `sendDefaultPii: false`. Each side has a gated test-emission endpoint (API:
+  `POST /diagnostics/sentry-test`; frontend: `/[locale]/sentry-test`, gated on a
+  plain server-only `SENTRY_TEST_ENABLED` — deliberately not `NEXT_PUBLIC_`-prefixed,
+  since those get inlined as literal values into the bundle at build time regardless
+  of `export const dynamic = "force-dynamic"`, confirmed the same way), off by
+  default, meant to be flipped on for a few minutes during deploy verification and
+  back off — see `DEPLOY.md`. `scripts/check-middleware-edge-safety.mjs` (wired into
+  `verify.mjs`) greps the compiled edge bundles for Sentry SDK markers and Node-only
+  globals after every `next build`, specifically so this class of regression fails
+  locally instead of reaching production a fourth time.
 - **Admin bootstrap** — `DatabaseSeeder.SeedAsync` runs at startup, idempotently
   seeding one super-admin from `AdminSeed:Email`/`Password`/`FullName` config. No-op if
   those aren't configured; never overwrites an existing account.

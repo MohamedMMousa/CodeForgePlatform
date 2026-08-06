@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "../globals.css";
+import "@/lib/sentry-node";
 import { AuthProvider } from "@/lib/auth";
 import { toSession } from "@/lib/session-mapping";
 import { dir, getDictionary, isLocale, locales, defaultLocale } from "@/lib/i18n";
