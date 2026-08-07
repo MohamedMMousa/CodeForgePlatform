@@ -1,5 +1,3 @@
-import { withSentryConfig } from "@sentry/nextjs";
-
 // Server-only — never NEXT_PUBLIC_, so it's never bundled into browser JS. The
 // browser only ever calls the relative /api/* prefix (see lib/api.ts); Next's own
 // server rewrites that to the real API so auth cookies stay first-party. Dev and
@@ -14,27 +12,22 @@ const nextConfig = {
   }
 };
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  silent: true,
-  widenClientFileUpload: true,
-  // tunnelRoute intentionally NOT set: this app already proxies /api/* through Next
-  // for the auth-cookie topology above, and a tunnel route would add a second,
-  // competing rewrite through the same origin. Source-map upload is a no-op without
-  // SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT set (all optional, unset in dev/CI).
-  webpack: {
-    // Default true. Sentry rewrites middleware.ts's compiled output to import
-    // @sentry/nextjs and wrap the handler (Sentry.wrapMiddlewareWithSentry) — none of
-    // which appears in middleware.ts's own source. That injected code pulled real
-    // @sentry/core (withIsolationScope, startSpan, its logger) into the edge-runtime
-    // middleware bundle and broke production with "ReferenceError: __dirname is not
-    // defined" (confirmed by inspecting the compiled .next/server/middleware.js).
-    // Not a functional loss: instrumentation.ts already exports
-    // onRequestError = Sentry.captureRequestError, which Next.js's own hook fires for
-    // middleware errors too, and the tracing spans this wrap adds are dead weight
-    // anyway (tracesSampleRate: 0 everywhere in this app's Sentry config).
-    autoInstrumentMiddleware: false
-  }
-});
+export default nextConfig;
+
+// No withSentryConfig wrapper here — deliberately. It broke production three times
+// over (auto-wrapping middleware.ts, then instrumentation.ts's unconditional import
+// even behind a runtime-gated dynamic import), and reading further into the
+// installed package (node_modules/@sentry/nextjs/build/cjs/config/webpack.js) showed
+// why a fourth attempt at gating it wasn't worth trying: its webpack function pushes
+// a DefinePlugin (__SENTRY_SERVER_MODULES__) and, in any non-dev build, the full
+// @sentry/webpack-plugin instance onto EVERY webpack pass it runs, including edge —
+// unconditionally, with no dependency on autoInstrumentMiddleware or any other flag
+// this app controls. That's the only thing left in this codebase that touched the
+// edge compilation regardless of what app source files contained.
+//
+// Sentry itself is not gone: instrumentation-client.ts (browser) and
+// lib/sentry-node.ts (Node, imported from the root layout) both call the SDK
+// directly — Sentry.init()/Sentry.captureException() have never depended on this
+// webpack wrapper, only the automatic route-handler/server-component wrapping and
+// source-map upload did. Losing those is an accepted, explicit trade for the site
+// working at all; see docs/ARCHITECTURE.md's Error monitoring section.

@@ -1,30 +1,39 @@
 #!/usr/bin/env node
-// Guards against the bug that took production down -- three times, before landing on
-// a fix that could actually be verified rather than hoped for. @sentry/nextjs's SDK
-// code ended up loaded into the Edge Runtime bundle Vercel builds for middleware.ts,
-// which has no Node globals at all, and it died at module load with
-// "ReferenceError: __dirname is not defined" on every request. Three separate
-// injection paths, found and fixed one at a time:
+// Guards against the bug that took production down. @sentry/nextjs's SDK code ended
+// up loaded into the Edge Runtime bundle Vercel builds for middleware.ts, which has
+// no Node globals at all, and it died at module load with
+// "ReferenceError: __dirname is not defined" on every request. Found and fixed in
+// stages -- note that Vercel was connected to the wrong repo for rounds 1-3, so the
+// error persisted in production through all of them regardless of what the code
+// actually said; round 4 is the first fix verified against a real deployed build:
 //   1. `autoInstrumentMiddleware` (default true) silently rewrote middleware.ts's
 //      compiled output to import @sentry/nextjs and wrap the handler
-//      (Sentry.wrapMiddlewareWithSentry) -- fixed via
-//      `webpack.autoInstrumentMiddleware: false` in next.config.mjs.
+//      (Sentry.wrapMiddlewareWithSentry). Fixed by setting it false.
 //   2. instrumentation.ts's unconditional, top-level `import * as Sentry from
 //      "@sentry/nextjs"` plus `export const onRequestError = Sentry.captureRequestError`
 //      referenced Sentry outside any runtime guard, so the edge compilation of that
 //      file could never treat the import as dead code regardless of what was inside
 //      register()'s `if` check.
 //   3. Moving to a dynamic `import()` inside a `NEXT_RUNTIME !== "nodejs"` early
-//      return did NOT fix it either -- rebuilt and grepped the compiled
-//      edge-instrumentation.js, Sentry SDK content was still present. Whether
-//      webpack actually dead-code-eliminates that guard for the edge compilation
-//      pass could not be confirmed one way or the other from the minified output.
-//      Rather than keep guessing at *how* to gate a Sentry reference inside a
-//      dual-compiled file, instrumentation.ts was deleted entirely and Node-runtime
-//      Sentry init moved to frontend/lib/sentry-node.ts, imported only from the root
-//      layout (a Server Component this app never compiles for the edge runtime) --
-//      a structural guarantee instead of a hoped-for optimization. See
-//      lib/sentry-node.ts for the full reasoning.
+//      return did not visibly fix it either -- rebuilt and grepped the compiled
+//      edge-instrumentation.js, Sentry SDK content was still present. instrumentation.ts
+//      was deleted entirely instead; Node-runtime Sentry init moved to
+//      frontend/lib/sentry-node.ts, imported only from the root layout (a Server
+//      Component this app never compiles for the edge runtime) -- a structural
+//      guarantee instead of a hoped-for optimization.
+//   4. Even with 1-3 applied, reading further into
+//      node_modules/@sentry/nextjs/build/cjs/config/webpack.js showed
+//      `withSentryConfig`'s webpack function pushes a DefinePlugin
+//      (__SENTRY_SERVER_MODULES__) and, in any non-dev build, the full
+//      @sentry/webpack-plugin instance onto EVERY webpack pass it runs, including
+//      edge -- unconditionally, independent of autoInstrumentMiddleware or any other
+//      app-controlled flag. This was the one thing in the codebase still touching
+//      the edge compilation regardless of 1-3. Fixed by removing the
+//      withSentryConfig wrapper from next.config.mjs entirely -- the frontend build
+//      no longer runs any Sentry webpack integration. Sentry itself still works
+//      (instrumentation-client.ts, lib/sentry-node.ts, both plain SDK calls that
+//      never depended on the build wrapper); only the automatic route-handler/
+//      server-component wrapping and source-map upload are gone, an accepted trade.
 //
 // Three kinds of checks below, and they are NOT equally reliable -- said plainly so a
 // future reader trusts the right ones:
