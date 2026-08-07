@@ -91,9 +91,11 @@
   `ExecuteUpdateAsync` — that API lives in the Relational package, which Application
   doesn't reference, hence the interface) exist to make concurrent refreshes safe.
   Tokens rotate on every use; without a grace window, two same-origin requests racing
-  to refresh the same expired access token (Next.js prefetch fan-out is the concrete
-  trigger, and is exactly what `middleware.ts`'s refresh-on-expiry does) would have
-  the loser present an already-superseded token and get logged out. Within 30 seconds
+  to refresh the same expired access token would have the loser present an
+  already-superseded token and get logged out — Next.js prefetch fan-out was the
+  concrete trigger this was built for, via `middleware.ts`'s former refresh-on-expiry
+  (removed — see §6 below); the policy itself is still live infrastructure protecting
+  any other concurrent refresh path (e.g. two browser tabs). Within 30 seconds
   of a rotation, presenting the just-superseded token returns the same already-rotated
   pair instead of rotating again — concurrent requests converge on one token rather
   than racing. Outside the window, presenting a superseded token is treated as reuse
@@ -319,16 +321,33 @@ file uploads, rate limiting, versioning stance).
 ## 6. Frontend Architecture
 
 - **Next.js App Router**, locale-prefixed routes under `frontend/app/[locale]/...`.
-  `middleware.ts` redirects any un-prefixed path to the default locale (`en`), then
-  resolves auth for the request: `cf_access` present → continue; absent but
-  `cf_refresh` present → refresh server-side (leaning on the rotation grace window
-  above for concurrency safety), **patch the forwarded request's `Cookie` header**
-  (not just set a response cookie — `Set-Cookie` only updates the browser for its
-  *next* request, and the whole point is that *this* render already reflects the
-  refreshed session) then continue; neither cookie, on a route in `PROTECTED_PREFIXES`
-  → redirect to `/{locale}/login`; neither cookie, on a public route → continue
-  signed-out, no redirect. This is UX routing only — the API remains the actual
-  authorization boundary regardless of what middleware decides.
+  `middleware.ts` redirects any un-prefixed path to the default locale (`en`) and
+  does **nothing else** — no auth resolution, no protected-route redirect, no
+  server-side token refresh. It used to (see git history / the RefreshTokenRotationPolicy
+  bullet above for what it did and why), until a production incident: Vercel's Edge
+  Runtime (which all Next.js middleware runs under, unconditionally) crashed every
+  request with `ReferenceError: __dirname is not defined` at module load. Five rounds
+  of investigation eliminated, in order and each independently verified: `@sentry/nextjs`'s
+  middleware auto-wrap; `instrumentation.ts`'s Sentry import (even dynamically
+  imported behind a runtime check); `withSentryConfig` itself, which was found to push
+  build plugins onto every webpack pass including edge regardless of any app-level
+  Sentry config. With every Sentry code path removed from the edge bundle and the
+  crash still reproducing identically, middleware was stripped to this locale-only
+  form to isolate whether *any* remaining app logic was responsible — ruling out
+  `middleware.ts` itself as decisively as everything already ruled out, or (if the
+  crash somehow persists against code this trivial) pointing at Next.js/the build
+  config itself, outside this app's remaining surface. This is **not** a security
+  regression: the API is and was always the real authorization boundary regardless of
+  what middleware decided, and every protected page already guards on `!session`
+  client-side (e.g. `app/[locale]/dashboard/page.tsx`, `app/[locale]/admin/layout.tsx`)
+  and renders a sign-in prompt instead of protected content or data. The real cost:
+  without middleware refreshing an expired access token before the server render,
+  `getServerSession()` (`lib/session.ts`) has nothing to read and returns `null`, and
+  nothing client-side automatically recovers it (see the `lib/auth.tsx` bullet below)
+  — a protected page shows its signed-out fallback for the rest of that session
+  rather than momentarily, until the user explicitly logs in again. Accepted for now;
+  not being re-solved here on purpose, to avoid reintroducing the exact
+  server-side-refresh-in-middleware complexity that's implicated in the incident.
 - **Proxy** — `frontend/next.config.mjs` rewrites `/api/:path*` to `API_INTERNAL_URL`
   (server-only env var, never bundled into browser JS; defaults to
   `http://localhost:5205`). The browser only ever talks to one origin; this is what
@@ -361,14 +380,20 @@ file uploads, rate limiting, versioning stance).
   tokens; those live only in the httpOnly cookies the server manages. Seeded from a
   server-resolved `initialSession` prop (see `frontend/lib/session.ts`, wrapped in
   React `cache()`) so the first client render already matches what the server
-  rendered — no hydration effect, no flash. `toSession()`/the `Session` type live in
-  `frontend/lib/session-mapping.ts` rather than `auth.tsx` itself, deliberately
-  without a `"use client"`/`"use server"` directive: a function exported from a `"use
-  client"` module can't be called from the Server Component layout that also needs it.
-  `refreshSession()` (re-derives from `GET /auth/me`, then `router.refresh()` so
-  server components see it too) replaces the old `applySession`; `signOut()` is now
-  async (`POST /auth/logout`, then `router.refresh()` — middleware then redirects if
-  the current page is protected).
+  rendered — deliberately no hydration effect. That design assumed middleware had
+  already refreshed an expired access token before this render happened; now that
+  middleware no longer does that (see the §6 middleware bullet above), an expired
+  access token means `initialSession` is `null` and stays `null` for the rest of that
+  page load — the "no flash" property held only while middleware's refresh existed.
+  `toSession()`/the `Session` type live in `frontend/lib/session-mapping.ts` rather
+  than `auth.tsx` itself, deliberately without a `"use client"`/`"use server"`
+  directive: a function exported from a `"use client"` module can't be called from
+  the Server Component layout that also needs it. `refreshSession()` (re-derives from
+  `GET /auth/me`, then `router.refresh()` so server components see it too) replaces
+  the old `applySession`; `signOut()` is async (`POST /auth/logout`, then
+  `router.refresh()`) — the comment this used to carry about middleware redirecting
+  a now-protected page is no longer accurate and has been removed; a protected page
+  falls back to its own `!session` UI instead.
 - **Cookie values in the dev RSC payload — dev-only, verified absent in production.**
   View-source on a protected page under `npm run dev` shows `cf_access`/`cf_refresh`
   values inside a `__next_f.push` block. This is **not** the app serializing them:

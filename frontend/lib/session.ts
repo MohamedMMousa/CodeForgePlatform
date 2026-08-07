@@ -1,8 +1,13 @@
 // Server-only: resolves the signed-in user before first paint, from the httpOnly
-// cf_access cookie, so protected pages render correctly on the very first paint
-// instead of flashing a signed-out state and swapping in afterward. Only usable
-// from Server Components/layouts — next/headers' cookies() throws if called from a
-// Client Component.
+// cf_access cookie. Only usable from Server Components/layouts — next/headers'
+// cookies() throws if called from a Client Component.
+//
+// Reads cf_access as-is; does not refresh it. middleware.ts used to refresh an
+// expired access token before this ran, which is what let a protected page render
+// correctly on first paint even right after token expiry. middleware no longer does
+// that (see docs/ARCHITECTURE.md §6 for why — a production Edge Runtime incident),
+// so an expired cf_access now means this returns null and the page renders
+// signed-out for the rest of that session, not just flashes and recovers.
 
 import { cache } from "react";
 import { cookies } from "next/headers";

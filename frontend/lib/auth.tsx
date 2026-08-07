@@ -1,10 +1,14 @@
 "use client";
 
 // Auth context for the shell: holds the signed-in user's profile (not tokens — those
-// live only in httpOnly cookies the server manages; see lib/session.ts and
-// middleware.ts). Seeded from a server-resolved initialSession so the first client
-// render already matches what the server rendered, which is what avoids the
-// sign-in flash — there is no hydration effect here on purpose.
+// live only in httpOnly cookies the server manages; see lib/session.ts). Seeded from
+// a server-resolved initialSession so the first client render already matches what
+// the server rendered — there is no hydration effect here on purpose. That avoided
+// the sign-in flash back when middleware.ts refreshed an expired access token before
+// the server render happened; middleware no longer does that (see
+// docs/ARCHITECTURE.md §6), so initialSession is simply whatever lib/session.ts read
+// from cf_access as-is. No effect has been added to compensate — see the ARCHITECTURE.md
+// note on why not, for now.
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
