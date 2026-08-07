@@ -156,23 +156,24 @@
   `app/[locale]/layout.tsx`) for the Node server runtime. Both are plain SDK
   calls — `Sentry.init()`/`Sentry.captureException()` — with **no build-time Sentry
   webpack integration at all**: `next.config.mjs` does not wrap its config in
-  `withSentryConfig`. This was forced by a production incident that took several
-  rounds to fully diagnose: `withSentryConfig`'s webpack function pushes a
-  `DefinePlugin` and, in any non-dev build, the full `@sentry/webpack-plugin`
-  instance onto *every* webpack pass it runs, including edge — unconditionally, with
-  no dependency on `autoInstrumentMiddleware` or any other flag this app could set.
-  Narrower fixes were tried first and each looked reasonable but didn't hold:
-  disabling `autoInstrumentMiddleware` (which had been auto-wrapping
-  `middleware.ts`'s compiled output with `Sentry.wrapMiddlewareWithSentry`); then
-  moving `instrumentation.ts`'s Sentry reference behind a `NEXT_RUNTIME`-gated
-  dynamic `import()` (confirmed via rebuild-and-grep that Sentry SDK content was
-  *still* present in the compiled edge bundle regardless); then deleting
-  `instrumentation.ts` entirely in favor of `lib/sentry-node.ts`'s
-  root-layout-only import (a structural guarantee — that file is only ever compiled
-  for the Node runtime, since nothing in this app opts into `export const runtime =
-  "edge"` except the framework-forced `middleware.ts`, which doesn't import it).
-  Every one of those still left `withSentryConfig` itself touching the edge
-  compilation. Removing the wrapper is the fix that finally held.
+  `withSentryConfig`. **Read this in full before "restoring" any of it**, because the
+  shape is counter-intuitive: this teardown happened while chasing an edge-runtime
+  production crash that Sentry turned out **not** to have caused (it was
+  `next/server` pulling in `ua-parser-js` — see the `middleware.ts` bullet in §6).
+  Each removal was nonetheless a real edge-unsafe mechanism, verified by
+  rebuild-and-grep at the time, and none is worth reinstating blind:
+  `autoInstrumentMiddleware` had been auto-wrapping `middleware.ts`'s compiled output
+  with `Sentry.wrapMiddlewareWithSentry`; `instrumentation.ts`'s Sentry reference
+  stayed in the compiled edge bundle even behind a `NEXT_RUNTIME`-gated dynamic
+  `import()`, so the file was deleted in favor of `lib/sentry-node.ts`'s
+  root-layout-only import (a structural guarantee — only ever compiled for the Node
+  runtime, since nothing in this app opts into `export const runtime = "edge"` except
+  the framework-forced `middleware.ts`, which doesn't import it); and
+  `withSentryConfig`'s webpack function pushes a `DefinePlugin` and, in any non-dev
+  build, the full `@sentry/webpack-plugin` instance onto *every* webpack pass
+  including edge, unconditionally, with no dependency on `autoInstrumentMiddleware` or
+  any other flag this app could set. Reinstating build-time Sentry is a deliberate
+  decision to make later with fresh verification, not a revert.
 
   **Cost, accepted explicitly:** no edge/middleware-context Sentry coverage (already
   true after the `instrumentation.ts` removal), and no more automatic
@@ -194,9 +195,13 @@
   same way), off by default, meant to be flipped on for a few minutes during deploy
   verification and back off — see `DEPLOY.md`.
   `scripts/check-middleware-edge-safety.mjs` (wired into `verify.mjs`) greps the
-  compiled edge bundles for Sentry SDK markers and Node-only globals after every
-  `next build`, specifically so this class of regression fails locally instead of
-  reaching production again.
+  compiled edge bundles after every `next build` for ua-parser-js markers, Sentry SDK
+  markers, and Node-only globals, so this class of regression fails locally instead of
+  reaching production again. Its own header comment is the fullest write-up of the
+  incident and, importantly, ranks how much each check can be trusted — the
+  ua-parser-js and Sentry markers have both been observed to flip on a local rebuild;
+  the `__dirname` check never caught the real bug and should not be read as proof of
+  edge-safety.
 - **Admin bootstrap** — `DatabaseSeeder.SeedAsync` runs at startup, idempotently
   seeding one super-admin from `AdminSeed:Email`/`Password`/`FullName` config. No-op if
   those aren't configured; never overwrites an existing account.
@@ -323,24 +328,37 @@ file uploads, rate limiting, versioning stance).
 - **Next.js App Router**, locale-prefixed routes under `frontend/app/[locale]/...`.
   `middleware.ts` redirects any un-prefixed path to the default locale (`en`) and
   does **nothing else** — no auth resolution, no protected-route redirect, no
-  server-side token refresh. It used to (see git history / the RefreshTokenRotationPolicy
-  bullet above for what it did and why), until a production incident: Vercel's Edge
-  Runtime (which all Next.js middleware runs under, unconditionally) crashed every
-  request with `ReferenceError: __dirname is not defined` at module load. Five rounds
-  of investigation eliminated, in order and each independently verified: `@sentry/nextjs`'s
-  middleware auto-wrap; `instrumentation.ts`'s Sentry import (even dynamically
-  imported behind a runtime check); `withSentryConfig` itself, which was found to push
-  build plugins onto every webpack pass including edge regardless of any app-level
-  Sentry config. With every Sentry code path removed from the edge bundle and the
-  crash still reproducing identically, middleware was stripped to this locale-only
-  form to isolate whether *any* remaining app logic was responsible — ruling out
-  `middleware.ts` itself as decisively as everything already ruled out, or (if the
-  crash somehow persists against code this trivial) pointing at Next.js/the build
-  config itself, outside this app's remaining surface. This is **not** a security
-  regression: the API is and was always the real authorization boundary regardless of
-  what middleware decided, and every protected page already guards on `!session`
-  client-side (e.g. `app/[locale]/dashboard/page.tsx`, `app/[locale]/admin/layout.tsx`)
-  and renders a sign-in prompt instead of protected content or data. The real cost:
+  server-side token refresh. It is also written against plain Web `Request`/`Response`
+  and **must not import from `next/server`** — that constraint is load-bearing, not
+  style. Both properties come out of a production incident where Vercel's Edge Runtime
+  (which all Next.js middleware runs under, unconditionally) crashed every request with
+  `ReferenceError: __dirname is not defined` at module load.
+  **Root cause, confirmed by reading `next@15.5.22` itself:** for the edge compilation
+  Next resolves `next/server` to `dist/server/web/exports/index.js`, which re-exports
+  `userAgent` from `spec-extension/user-agent`, which requires
+  `dist/compiled/ua-parser-js` — whose one Node-global use is
+  `__nccwpck_require__.ab = __dirname + "/"`. That barrel is the *only* path by which
+  ua-parser-js reaches a middleware bundle (nothing else under `dist/server/web`
+  requires it, and `adapter.js` — in every middleware bundle — never touches it), so
+  importing nothing from `next/server` removes it from the graph. Returning plain
+  `Response` objects is supported by Next's own adapter, which accepts anything
+  `instanceof Response` and treats a falsy return as "continue"; `NextResponse.redirect`
+  is itself literally `new Response(null, { status: 307, headers: { Location } })`.
+  **Why it took six rounds:** webpack folds `__dirname` to a literal locally (the local
+  bundle reads `g.ab = "//"`) while Vercel's build does not, so five consecutive
+  locally-green fixes shipped broken. Those rounds wrongly blamed `@sentry/nextjs` and
+  removed, each independently verified as a real edge-unsafe mechanism but none of them
+  the cause: the middleware auto-wrap; `instrumentation.ts`'s Sentry import (even
+  dynamically imported behind a runtime check); and `withSentryConfig`, which pushes
+  build plugins onto every webpack pass including edge. Rounds 1-3 additionally never
+  reached production — Vercel was connected to the wrong repo — which kept the false
+  lead alive. The auth logic was stripped in round 5 while isolating the crash; it
+  turned out to be innocent, but the simplification stands.
+  Dropping the auth logic is **not** a security regression: the API is and was always
+  the real authorization boundary regardless of what middleware decided, and every
+  protected page already guards on `!session` client-side (e.g.
+  `app/[locale]/dashboard/page.tsx`, `app/[locale]/admin/layout.tsx`) and renders a
+  sign-in prompt instead of protected content or data. The real cost:
   without middleware refreshing an expired access token before the server render,
   `getServerSession()` (`lib/session.ts`) has nothing to read and returns `null`, and
   nothing client-side automatically recovers it (see the `lib/auth.tsx` bullet below)

@@ -8,6 +8,12 @@
       "port": 3000
     },
     {
+      "name": "frontend-start",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "start"],
+      "port": 3000
+    },
+    {
       "name": "api-dev",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/CodeForge.Api"],

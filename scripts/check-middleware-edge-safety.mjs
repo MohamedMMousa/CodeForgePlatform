@@ -1,60 +1,53 @@
 #!/usr/bin/env node
-// Guards against the bug that took production down. @sentry/nextjs's SDK code ended
-// up loaded into the Edge Runtime bundle Vercel builds for middleware.ts, which has
-// no Node globals at all, and it died at module load with
-// "ReferenceError: __dirname is not defined" on every request. Found and fixed in
-// stages -- note that Vercel was connected to the wrong repo for rounds 1-3, so the
-// error persisted in production through all of them regardless of what the code
-// actually said; round 4 is the first fix verified against a real deployed build:
-//   1. `autoInstrumentMiddleware` (default true) silently rewrote middleware.ts's
-//      compiled output to import @sentry/nextjs and wrap the handler
-//      (Sentry.wrapMiddlewareWithSentry). Fixed by setting it false.
-//   2. instrumentation.ts's unconditional, top-level `import * as Sentry from
-//      "@sentry/nextjs"` plus `export const onRequestError = Sentry.captureRequestError`
-//      referenced Sentry outside any runtime guard, so the edge compilation of that
-//      file could never treat the import as dead code regardless of what was inside
-//      register()'s `if` check.
-//   3. Moving to a dynamic `import()` inside a `NEXT_RUNTIME !== "nodejs"` early
-//      return did not visibly fix it either -- rebuilt and grepped the compiled
-//      edge-instrumentation.js, Sentry SDK content was still present. instrumentation.ts
-//      was deleted entirely instead; Node-runtime Sentry init moved to
-//      frontend/lib/sentry-node.ts, imported only from the root layout (a Server
-//      Component this app never compiles for the edge runtime) -- a structural
-//      guarantee instead of a hoped-for optimization.
-//   4. Even with 1-3 applied, reading further into
-//      node_modules/@sentry/nextjs/build/cjs/config/webpack.js showed
-//      `withSentryConfig`'s webpack function pushes a DefinePlugin
-//      (__SENTRY_SERVER_MODULES__) and, in any non-dev build, the full
-//      @sentry/webpack-plugin instance onto EVERY webpack pass it runs, including
-//      edge -- unconditionally, independent of autoInstrumentMiddleware or any other
-//      app-controlled flag. This was the one thing in the codebase still touching
-//      the edge compilation regardless of 1-3. Fixed by removing the
-//      withSentryConfig wrapper from next.config.mjs entirely -- the frontend build
-//      no longer runs any Sentry webpack integration. Sentry itself still works
-//      (instrumentation-client.ts, lib/sentry-node.ts, both plain SDK calls that
-//      never depended on the build wrapper); only the automatic route-handler/
-//      server-component wrapping and source-map upload are gone, an accepted trade.
+// Guards the Edge Runtime bundle Vercel builds for middleware.ts. It has no Node
+// globals at all, so anything reaching it that touches `__dirname` kills the site:
+// every request returns 500 MIDDLEWARE_INVOCATION_FAILED with
+// "ReferenceError: __dirname is not defined", thrown at module load.
 //
-// Three kinds of checks below, and they are NOT equally reliable -- said plainly so a
-// future reader trusts the right ones:
+// THE ACTUAL CAUSE, found in round 6 after five wrong turns. Recorded in full
+// because the wrong turns are what make the check list below make sense:
 //
-//   1. Sentry SDK markers on middleware.js (and edge-instrumentation.js, if it still
-//      exists -- see below). This is what actually caught both round-1 and round-2's
-//      regressions: toggling either fix off/on and rebuilding locally flipped these
-//      markers present/absent every time, for both bundles.
-//   2. Generic Node-only globals (__dirname/__filename) on the same bundles. Kept as
-//      a defense-in-depth net for a *different* future regression of this shape, but
-//      be honest about its limits: rebuilding locally with either bug deliberately
-//      reintroduced did NOT reproduce a literal __dirname string in this environment,
-//      even though the injected Sentry code was directly confirmed present via check
-//      #1 both times, and production demonstrably crashed on it both times. Local
-//      `next build` isn't byte-identical to Vercel's edge bundling pipeline for this
-//      failure mode -- treat a pass here as "no known Node-global leak," not
-//      "definitely edge-safe."
-//   3. edge-instrumentation.js existing at all. Since instrumentation.ts was deleted,
-//      this file should NOT be produced by a clean build -- if it reappears, someone
-//      re-added an instrumentation.ts, and its content needs the same scrutiny this
-//      script already gives middleware.js.
+//   next/server -> (edge alias) next/dist/server/web/exports/index.js
+//               -> ../spec-extension/user-agent
+//               -> next/dist/compiled/ua-parser-js
+//
+// and that last file's single Node-global use is `__nccwpck_require__.ab =
+// __dirname + "/"`. Importing ANYTHING from `next/server` in middleware.ts drags
+// ua-parser-js into the edge bundle. That barrel is the only path: nothing else
+// under next/dist/server/web requires spec-extension/user-agent, and adapter.js —
+// present in every middleware bundle — never touches it. Fixed by writing
+// middleware.ts against plain Web Request/Response with no `next/server` import at
+// all; see its header comment for why that's supported rather than a hack.
+//
+// Rounds 1-5 blamed @sentry/nextjs and were wrong, though each found a real
+// edge-unsafe Sentry mechanism worth keeping fixed: the `autoInstrumentMiddleware`
+// loader rewriting middleware.ts's output; instrumentation.ts's unconditional
+// top-level `import * as Sentry` (deleted, Node init moved to
+// frontend/lib/sentry-node.ts); and `withSentryConfig` pushing a DefinePlugin plus
+// the webpack plugin onto every pass including edge (wrapper removed from
+// next.config.mjs entirely). Rounds 1-3 additionally never reached production —
+// Vercel was connected to the wrong repo — which is what kept the false lead alive.
+// The Sentry markers below are retained as regression cover for all of that.
+//
+// The checks are NOT equally reliable. Said plainly so a future reader trusts the
+// right ones:
+//
+//   1. ua-parser-js markers on middleware.js. THE trustworthy check for this
+//      failure. Unlike everything below it, this one has been observed to flip on
+//      the real cause in a local build: before the round-6 fix the local bundle
+//      contained UAParser, after it, it does not.
+//   2. Sentry SDK markers. Also empirically verified — toggling round 1's and round
+//      2's fixes off/on flipped these present/absent every time. Guards a genuine,
+//      if ultimately unrelated, class of edge-unsafe injection.
+//   3. Generic Node-only globals (__dirname/__filename). Defense in depth, and the
+//      weakest of the three — do not read a pass here as "edge-safe." It never once
+//      caught this bug despite the offending module sitting in the local bundle the
+//      whole time, because webpack folds `__dirname` to a literal here (the local
+//      bundle reads `g.ab = "//"`) while Vercel's build does not. That single
+//      difference is why five consecutive locally-green fixes shipped broken.
+//   4. edge-instrumentation.js existing at all. instrumentation.ts was deleted on
+//      purpose, so a clean build should not produce this; if it reappears, someone
+//      re-added the source file and its content needs the same scrutiny.
 //
 // Needs a build to already exist (`npm run build`), same as
 // check-token-leak.mjs --build-only — not part of `--quick` verify for the same
@@ -80,18 +73,34 @@ const NODE_ONLY_MARKERS = [
   { name: '__filename', pattern: /\b__filename\b/ },
 ];
 
+// The round-6 cause. `UAParser` is the library's own exported constructor name
+// (assigned as a property: `f.UAParser = aa`), and 'Chromium' is a literal from its
+// browser regex table — both survive minification, since only local variable names
+// get shortened. Either present in middleware.js means something has imported from
+// `next/server` again; see this file's header.
+//
+// Deliberately NOT matching ncc's `__nccwpck_require__` runtime, even though it is
+// the thing that reads __dirname inside ua-parser: tested it against a known-clean
+// build and it cries wolf. Next vendors its `cookie` parser through ncc too, that one
+// IS in every clean middleware bundle via the adapter, and it is edge-safe precisely
+// because it guards the access (`"undefined" != typeof __nccwpck_require__ && ...`)
+// where ua-parser does not.
+const UA_PARSER_MARKERS = [
+  { name: 'ua-parser-js (UAParser)', pattern: /\bUAParser\b/ },
+  { name: 'ua-parser-js (Chromium regex table)', pattern: /\bChromium\b/ },
+];
+
 // Distinctive @sentry/core / @sentry/nextjs property-access names and literal strings
-// that survive minification (only local variable names get shortened) and don't
-// appear anywhere in this app's own source. Present in EITHER bundle means Sentry's
-// SDK — and whatever inside it produces __dirname on Vercel's real edge runtime — is
-// reachable from the middleware invocation again.
+// that survive minification and don't appear anywhere in this app's own source.
+// Present in EITHER bundle means Sentry's SDK is reachable from the middleware
+// invocation again.
 const SENTRY_SDK_MARKERS = [
   { name: 'Sentry.withIsolationScope', pattern: /withIsolationScope/ },
   { name: 'Sentry console logger banner', pattern: /Sentry Logger \[/ },
   { name: 'Sentry template-string marker', pattern: /__sentry_template_string__/ },
 ];
 
-const EDGE_BUNDLE_MARKERS = [...SENTRY_SDK_MARKERS, ...NODE_ONLY_MARKERS];
+const EDGE_BUNDLE_MARKERS = [...UA_PARSER_MARKERS, ...SENTRY_SDK_MARKERS, ...NODE_ONLY_MARKERS];
 
 const results = [];
 const check = (name, ok, detail = '') => {
