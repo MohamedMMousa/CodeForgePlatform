@@ -194,26 +194,30 @@ Work through this in order; each step assumes the previous one passed.
    on Render and redeploy. While logged in as admin, hit
    `GET https://<your-api>.onrender.com/diagnostics/client-ip` — it returns the raw
    `X-Forwarded-For` header, the socket peer, and what the rate limiter currently
-   resolves. **`ResolvedClientIp` must equal your own real public IP.** On this
-   deployment that comes from `X-Real-IP` (`Proxy__ClientIpHeader`), not from
-   `X-Forwarded-For`: measurement against the live chain showed Vercel puts the real
-   client in `X-Real-IP` and never appends it to `X-Forwarded-For`, so
-   `Proxy__TrustedProxyHopCount` cannot reach it at any value and tuning it does
-   nothing. If `ResolvedClientIp` is Vercel's egress address instead of yours, check
-   `Proxy__ClientIpHeader` is set (or left at its `X-Real-IP` default) rather than
-   adjusting the hop count. Set `Proxy__EnableDiagnostics` back to `false` once done.
+   resolves. **`ResolvedClientIp` must equal your own real public IP, and must be the
+   same on every call.** Call it 4-5 times, not once — a key that *rotates* between
+   calls is the failure this check exists to catch, and a single call cannot show it.
 
-   While diagnostics is on, also send one request with a **forged** `X-Real-IP` header
-   straight at the Render origin (bypassing Vercel). If `ResolvedClientIp` comes back
-   as your forged value, the header is caller-settable on this deployment and the
-   limiter can be dodged per-request — blank `Proxy__ClientIpHeader` to fall back to
-   the right-anchored `X-Forwarded-For` read, which cannot be shifted that way. See
-   `ProxySettings.ClientIpHeader`.
+   The measured chain is four entries (Cloudflare fronts Render, in front of Vercel):
+   `<real client>, <vercel egress 3.x>, <cloudflare 172.x/162.x>, <render internal 10.x>`
+   Only the first is stable. `Proxy__TrustedProxyHopCount=3` (`1 + 3` from the right)
+   lands on it. **If `ResolvedClientIp` is a private address (`10.x`, `172.16-31.x`,
+   `192.168.x`) or `127.0.0.1`, the hop count is wrong** — that was the original
+   production bug, and it doesn't merely mis-attribute traffic, it disables rate
+   limiting entirely, because a rotating key hands every request a fresh bucket. Adjust
+   the hop count so the resolved value is your real IP, then re-run this check.
+
+   `Proxy__ClientIpHeader` is empty here on purpose: no usable `X-Real-IP` reaches this
+   API. Set it only if you move to a proxy that genuinely provides one, and read
+   `ProxySettings.ClientIpHeader` first — a single-value header can be forged by anyone
+   able to reach the origin directly, whereas the right-anchored `X-Forwarded-For` read
+   cannot be shifted by prepending entries.
+
+   Set `Proxy__EnableDiagnostics` back to `false` once done.
 5. **Rate limit fires.** `node scripts/check-rate-limit.mjs --base-url=https://<your-api>.onrender.com`
-   (needs `Proxy__TrustForwardedFor=true`, already the render.yaml default, and
-   `--client-ip-header` matching `Proxy__ClientIpHeader` — both default to
-   `X-Real-IP`, so usually no flag needed). Note this proves partitioning, not
-   unforgeability; that's what the forged-header check in step 4 is for.
+   (needs `Proxy__TrustForwardedFor=true`, already the render.yaml default; the
+   script's `--hops` and `--client-ip-header` defaults already match production's `3`
+   and empty). Note this proves partitioning, not unforgeability.
 6. **Sentry receives a test error from both.**
    - API: temporarily set `Sentry__EnableTestEndpoint=true`, redeploy, `POST` to
      `https://<your-api>.onrender.com/diagnostics/sentry-test` while logged in as
@@ -257,8 +261,8 @@ Report what passed and what didn't — don't mark this done from documentation a
 | `ASPNETCORE_ENVIRONMENT` | render.yaml | `Production` — also what keeps Swagger UI off |
 | `Database__AutoMigrate` | render.yaml | `false`, explicit — migrations are always a manual step (Step 3) |
 | `Proxy__TrustForwardedFor` | render.yaml | `true` — makes per-IP rate limiting real behind Vercel's proxy |
-| `Proxy__ClientIpHeader` | render.yaml | `X-Real-IP` — the header this deployment actually gets the real client IP from, and what the rate limiter partitions on. Blank it to fall back to `X-Forwarded-For` only |
-| `Proxy__TrustedProxyHopCount` | render.yaml | `0`, and inert here — `X-Forwarded-For` fallback only, unused while `Proxy__ClientIpHeader` is populated |
+| `Proxy__ClientIpHeader` | render.yaml | Empty — no usable `X-Real-IP` reaches this API. Opt-in only, for a proxy that genuinely sets one |
+| `Proxy__TrustedProxyHopCount` | render.yaml | `3` — measured, not assumed. The load-bearing setting: at `0` the key was a rotating Render-internal `10.x` and rate limiting never fired |
 | `Proxy__EnableDiagnostics` | render.yaml, you toggle | Temporarily `true` to reach `/diagnostics/client-ip`, then `false` |
 | `Storage__Provider` | render.yaml | `R2` — Render's free tier has no persistent disk |
 | `Sentry__Environment` | render.yaml | `production` |

@@ -15,11 +15,12 @@ that distinct real clients get distinct buckets instead of collapsing into one.
   --base-url=<url>          API origin to test (default http://localhost:5205)
   --limit=<n>               expected RateLimiting:PublicSubmit:PermitLimit (default 5)
   --client-ip-header=<name> identity source; must match the server's
-                            Proxy:ClientIpHeader (default X-Real-IP). Pass an empty
-                            value (--client-ip-header=) to exercise the X-Forwarded-For
-                            positional fallback instead.
+                            Proxy:ClientIpHeader. Defaults to empty, i.e. the
+                            X-Forwarded-For positional path, which is what production
+                            uses — no single-value header reaches this API.
   --hops=<n>                X-Forwarded-For mode only; must match the server's
-                            Proxy:TrustedProxyHopCount (default 1)
+                            Proxy:TrustedProxyHopCount (default 3, the measured
+                            production value)
   --help                    this message
 
 REQUIRES the target API running with:
@@ -55,10 +56,10 @@ if (args.includes('--help')) {
 
 const baseUrl = (argValue('base-url') ?? 'http://localhost:5205').replace(/\/$/, '');
 const limit = Number(argValue('limit') ?? 5);
-const hops = Number(argValue('hops') ?? 1);
-// Defaults to the server's own ProxySettings.ClientIpHeader default. Empty string
-// selects the X-Forwarded-For positional fallback instead.
-const clientIpHeader = argValue('client-ip-header') ?? 'X-Real-IP';
+// Both default to what production actually runs: no single-value header, and a
+// four-entry X-Forwarded-For chain whose real client sits 1 + 3 from the right.
+const hops = Number(argValue('hops') ?? 3);
+const clientIpHeader = argValue('client-ip-header') ?? '';
 const useHeaderMode = clientIpHeader.length > 0;
 
 const results = [];

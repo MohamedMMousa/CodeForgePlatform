@@ -26,18 +26,23 @@ services:
       # bucket — see CodeForge.Api/RateLimiting/ClientIpResolver.cs.
       - key: Proxy__TrustForwardedFor
         value: "true"
-      # The load-bearing one in production. Measured post-deploy: Vercel reports the
-      # real client IP in X-Real-IP and never appends it to X-Forwarded-For, so the
-      # positional hop count below can't reach it at any value. Same as the code
-      # default, restated here so it's visible and so blanking it is an available
-      # kill switch. See ProxySettings.ClientIpHeader for the trust caveat.
+      # Empty on purpose: X-Real-IP does NOT reach this API usably. Measured against
+      # the live deployment via GET /diagnostics/client-ip, the resolver fell straight
+      # through to X-Forwarded-For on every request. Setting a header name here only
+      # makes sense for a proxy that genuinely sets one — this chain doesn't.
       - key: Proxy__ClientIpHeader
-        value: "X-Real-IP"
-      # Fallback only, for a proxy that sets X-Forwarded-For but no X-Real-IP — not
-      # what this deployment does. Left at 0; it has no effect while the header above
-      # is populated. See docs/DEPLOY.md.
+        value: ""
+      # 3, and measured rather than assumed. The real chain reaching this API is four
+      # entries, Cloudflare fronting Render in front of Vercel:
+      #   <real client>, <vercel egress 3.x>, <cloudflare 172.x/162.x>, <render internal 10.x>
+      # Only the first is stable — the other three rotate per request, so the previous
+      # value of 0 (rightmost) partitioned on a rotating 10.x address, handed every
+      # request a fresh bucket and stopped the limiter from ever firing. 1 + 3 = 4 from
+      # the right lands on the real client. Still forgery-resistant: a prepended fake
+      # entry makes the chain five long and position-4-from-right is unchanged.
+      # Re-measure with /diagnostics/client-ip if Vercel or Render change topology.
       - key: Proxy__TrustedProxyHopCount
-        value: "0"
+        value: "3"
       # Off by default; flip to "true" temporarily to reach GET /diagnostics/client-ip
       # during post-deploy verification, then back to "false".
       - key: Proxy__EnableDiagnostics

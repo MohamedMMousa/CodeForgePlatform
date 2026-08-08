@@ -10,9 +10,10 @@ namespace CodeForge.Api.RateLimiting
     /// the RIGHT end (the entry contributed by the hop we control) rather than the left
     /// (the entry the caller itself claims, which anyone can forge).
     ///
-    /// Two sources, in order: ProxySettings.ClientIpHeader (X-Real-IP by default — what
-    /// the live Vercel → Render chain actually populates, measured post-deploy) first,
-    /// then the X-Forwarded-For positional fallback. Both are gated behind
+    /// Two sources, in order: ProxySettings.ClientIpHeader (off by default — this
+    /// deployment gets no usable single-value header, measured, see ProxySettings)
+    /// first, then the X-Forwarded-For positional read, which is what production
+    /// actually runs on at TrustedProxyHopCount=3. Both are gated behind
     /// TrustForwardedFor, so local dev and CI still partition on the socket peer.
     ///
     /// Not registered in DI — this is a pure function over inputs already on
@@ -33,13 +34,11 @@ namespace CodeForge.Api.RateLimiting
                 return socketPeer ?? "unknown";
             }
 
-            // Preferred source, tried before X-Forwarded-For: the single-value header
-            // the immediate proxy sets to the real client address. Measured against the
-            // live Vercel -> Render deployment, Vercel reports the real client IP in
-            // X-Real-IP and does NOT append it to X-Forwarded-For, so the positional
-            // hop-count logic below has no client entry to count to and would partition
-            // on the wrong address entirely. A named single-value header also has no
-            // position to get wrong, which is why it's preferred where it exists.
+            // Opt-in source, tried before X-Forwarded-For: a single-value header the
+            // immediate proxy sets to the real client address. Off by default and NOT
+            // used by this deployment — measurement showed no usable X-Real-IP arrives
+            // here (see ProxySettings.ClientIpHeader). Kept because a named header has
+            // no position to get wrong, which is genuinely better where one exists.
             if (!string.IsNullOrWhiteSpace(settings.ClientIpHeader)
                 && context.Request.Headers.TryGetValue(settings.ClientIpHeader, out var clientIpValues))
             {

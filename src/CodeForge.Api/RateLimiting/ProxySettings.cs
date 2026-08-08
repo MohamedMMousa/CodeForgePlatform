@@ -22,22 +22,21 @@ namespace CodeForge.Api.RateLimiting
         /// address. Tried BEFORE the X-Forwarded-For positional logic below, and only
         /// when TrustForwardedFor is on — so local dev and CI are unaffected by it.
         ///
-        /// Defaults to "X-Real-IP" because that is what the live Vercel → Render chain
-        /// was measured to populate: Vercel reports the real client there and does not
-        /// append it to X-Forwarded-For, which leaves TrustedProxyHopCount with no
-        /// client entry to count to no matter what it's set to. Defaulting it here
-        /// rather than requiring a new Render env var means an existing deployment
-        /// picks up the fix on redeploy.
+        /// Empty by default — opt in only for a proxy that genuinely sets such a header.
+        /// It briefly defaulted to "X-Real-IP" on the belief that the Vercel → Render
+        /// chain reported the real client there and omitted it from X-Forwarded-For.
+        /// Measuring the live deployment through GET /diagnostics/client-ip disproved
+        /// both halves: X-Forwarded-For carries the real client as its leftmost entry,
+        /// and no usable X-Real-IP arrives at all (the resolver fell through to the
+        /// X-Forwarded-For branch on every sampled request). See TrustedProxyHopCount.
         ///
-        /// Caveat worth knowing before relying on this: unlike the right-anchored
-        /// X-Forwarded-For read, a single-value header carries no evidence of WHO set
-        /// it. It is only as trustworthy as the guarantee that every path into this API
-        /// passes through a proxy that OVERWRITES it. If the API is also reachable
-        /// directly (e.g. its raw Render URL) by a caller who sets X-Real-IP themselves,
-        /// that caller controls their own rate-limit partition key. Set this to empty to
-        /// disable the header entirely and fall back to X-Forwarded-For only.
+        /// Caveat if you do enable it: unlike the right-anchored X-Forwarded-For read, a
+        /// single-value header carries no evidence of WHO set it. It is only as
+        /// trustworthy as the guarantee that every path into this API passes through a
+        /// proxy that OVERWRITES it. A caller who can reach the origin directly and set
+        /// the header themselves would control their own rate-limit partition key.
         /// </summary>
-        public string ClientIpHeader { get; set; } = "X-Real-IP";
+        public string ClientIpHeader { get; set; } = string.Empty;
 
         /// <summary>
         /// How many entries to discard from the RIGHT end of X-Forwarded-For — i.e. how
@@ -51,11 +50,19 @@ namespace CodeForge.Api.RateLimiting
         /// since it also depends on Render's edge and on whether the Next.js rewrite
         /// double-proxies the request.
         ///
-        /// That measurement has since been made, and on the live Vercel → Render chain
-        /// this knob turned out not to apply at all: the real client IP arrives in
-        /// X-Real-IP and is never appended to X-Forwarded-For, so no hop count reaches
-        /// it. ClientIpHeader above is what's load-bearing in production now; this
-        /// remains the fallback for a proxy that only sets X-Forwarded-For.
+        /// That measurement has been made, and production runs at 3. The live chain is
+        /// four entries — Cloudflare fronts Render, in front of Vercel:
+        ///   &lt;real client&gt;, &lt;vercel egress 3.x&gt;, &lt;cloudflare 172.x/162.x&gt;, &lt;render 10.x&gt;
+        /// Only the first is stable; the other three rotate per request. At 0 the
+        /// resolver therefore partitioned on a rotating private 10.x address, giving
+        /// every request its own bucket and silently disabling rate limiting entirely —
+        /// 12 consecutive public submissions passed against a 5/minute policy before
+        /// this was caught. 1 + 3 = 4 from the right lands on the real client, and stays
+        /// forgery-resistant: a prepended entry lengthens the chain without moving the
+        /// counted-from-the-right position.
+        ///
+        /// A resolved key in a private range (10.x, 172.16-31.x, 192.168.x) or 127.0.0.1
+        /// is the signature of this being wrong — re-measure if the topology changes.
         /// </summary>
         public int TrustedProxyHopCount { get; set; }
 

@@ -68,9 +68,9 @@ namespace CodeForge.UnitTests.RateLimiting
         [Fact]
         public void Resolve_WithHopCountOne_SkipsPastTheNearestHop_ToTheEntryBeforeIt()
         {
-            // The production shape: [real-client, vercel-egress] — TrustedProxyHopCount=1
-            // is what skips past the Render-edge-appended "vercel-egress" entry to reach
-            // the one Vercel itself wrote for the real client.
+            // Generic two-hop shape. NOT the production one — that was assumed to be
+            // [real-client, vercel-egress] and measurement later showed four entries;
+            // see Resolve_ForTheMeasuredProductionChain_* below for the real thing.
             var context = CreateContext("10.0.0.1", forwardedFor: "198.51.100.5, 203.0.113.77");
             var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 1 };
 
@@ -168,8 +168,71 @@ namespace CodeForge.UnitTests.RateLimiting
                 .Should().NotBe(ClientIpResolver.Resolve(userB, settingsForVercel));
         }
 
-        // --- ClientIpHeader (X-Real-IP): the source the live Vercel -> Render chain
-        // actually populates. See ProxySettings.ClientIpHeader.
+        // --- The real production chain, as measured through GET /diagnostics/client-ip.
+
+        /// <summary>
+        /// Cloudflare fronts Render, in front of Vercel, so four entries arrive and only
+        /// the leftmost (the real client) is stable — the rest rotate per request. This
+        /// is the case the whole feature exists to get right, and the case that was
+        /// silently broken in production at TrustedProxyHopCount=0.
+        /// </summary>
+        [Fact]
+        public void Resolve_ForTheMeasuredProductionChain_LandsOnTheRealClient()
+        {
+            var context = CreateContext(
+                "127.0.0.1",
+                forwardedFor: "41.44.94.175,3.68.89.111, 172.70.243.46, 10.30.34.239");
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 3 };
+
+            ClientIpResolver.Resolve(context, settings).Should().Be("41.44.94.175");
+        }
+
+        [Fact]
+        public void Resolve_ForTheMeasuredProductionChain_AtHopCountZero_PicksARotatingPrivateAddress()
+        {
+            // Regression guard for the actual outage: at 0 the resolver returned the
+            // rightmost entry, a Render-internal 10.x that differs between requests, so
+            // every request got its own bucket and rate limiting never fired at all.
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 0 };
+
+            var first = CreateContext("127.0.0.1", forwardedFor: "41.44.94.175,3.68.89.111, 172.70.243.46, 10.30.34.239");
+            var second = CreateContext("127.0.0.1", forwardedFor: "41.44.94.175,3.70.131.168, 172.71.172.44, 10.24.202.146");
+
+            ClientIpResolver.Resolve(first, settings)
+                .Should().NotBe(ClientIpResolver.Resolve(second, settings),
+                    "hop count 0 partitions on the rotating Render-internal entry — this is the bug, asserted so it can't come back unnoticed");
+        }
+
+        [Fact]
+        public void Resolve_ForTheMeasuredProductionChain_IsStableForOneClientAcrossRotatingInfrastructure()
+        {
+            // The property that makes rate limiting work: same client, different
+            // infrastructure entries, same bucket.
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 3 };
+
+            var first = CreateContext("127.0.0.1", forwardedFor: "41.44.94.175,3.68.89.111, 172.70.243.46, 10.30.34.239");
+            var second = CreateContext("127.0.0.1", forwardedFor: "41.44.94.175,3.70.131.168, 172.71.172.44, 10.24.202.146");
+
+            ClientIpResolver.Resolve(first, settings)
+                .Should().Be(ClientIpResolver.Resolve(second, settings)).And.Be("41.44.94.175");
+        }
+
+        [Fact]
+        public void Resolve_ForTheMeasuredProductionChain_IgnoresAPrependedForgedEntry()
+        {
+            // Counting from the right is what keeps this safe: a caller stuffing an
+            // entry in front lengthens the chain without moving the trusted position.
+            var context = CreateContext(
+                "127.0.0.1",
+                forwardedFor: "1.2.3.4, 41.44.94.175, 3.68.89.111, 172.70.243.46, 10.30.34.239");
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 3 };
+
+            ClientIpResolver.Resolve(context, settings).Should().Be("41.44.94.175");
+        }
+
+        // --- ClientIpHeader: opt-in only, and NOT used by this deployment. Every test
+        // below sets it explicitly, because the default is now empty (see
+        // ProxySettings.ClientIpHeader for why that belief was reversed).
 
         [Fact]
         public void Resolve_WhenNotTrustingForwardedFor_IgnoresRealIpHeaderToo()
@@ -189,7 +252,7 @@ namespace CodeForge.UnitTests.RateLimiting
             // X-Real-IP and leaves it out of X-Forwarded-For entirely, so the XFF chain
             // holds only infrastructure addresses.
             var context = CreateContext("10.0.0.1", forwardedFor: "203.0.113.77", realIp: "198.51.100.5");
-            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 0 };
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 0, ClientIpHeader = "X-Real-IP" };
 
             ClientIpResolver.Resolve(context, settings).Should().Be("198.51.100.5");
         }
@@ -199,7 +262,7 @@ namespace CodeForge.UnitTests.RateLimiting
         {
             // The property the whole change is for, restated for the X-Real-IP path:
             // two users behind the same Vercel egress must not share a bucket.
-            var settings = new ProxySettings { TrustForwardedFor = true };
+            var settings = new ProxySettings { TrustForwardedFor = true, ClientIpHeader = "X-Real-IP" };
 
             var userA = CreateContext("10.0.0.1", forwardedFor: "203.0.113.77", realIp: "198.51.100.5");
             var userB = CreateContext("10.0.0.1", forwardedFor: "203.0.113.77", realIp: "198.51.100.9");
@@ -221,7 +284,7 @@ namespace CodeForge.UnitTests.RateLimiting
         public void Resolve_WhenRealIpHeaderUnparseable_FallsBackToForwardedFor()
         {
             var context = CreateContext("10.0.0.1", forwardedFor: "198.51.100.5", realIp: "not-an-ip");
-            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 0 };
+            var settings = new ProxySettings { TrustForwardedFor = true, TrustedProxyHopCount = 0, ClientIpHeader = "X-Real-IP" };
 
             ClientIpResolver.Resolve(context, settings).Should().Be("198.51.100.5");
         }
@@ -230,7 +293,7 @@ namespace CodeForge.UnitTests.RateLimiting
         public void Resolve_WhenRealIpHeaderUnparseableAndNoForwardedFor_FailsClosedToSocketPeer()
         {
             var context = CreateContext("10.0.0.1", realIp: "not-an-ip");
-            var settings = new ProxySettings { TrustForwardedFor = true };
+            var settings = new ProxySettings { TrustForwardedFor = true, ClientIpHeader = "X-Real-IP" };
 
             ClientIpResolver.Resolve(context, settings).Should().Be("10.0.0.1");
         }
@@ -260,7 +323,7 @@ namespace CodeForge.UnitTests.RateLimiting
             var context = CreateContext("10.0.0.1");
             context.Request.Headers.Append("X-Real-IP", "1.2.3.4");
             context.Request.Headers.Append("X-Real-IP", "198.51.100.5");
-            var settings = new ProxySettings { TrustForwardedFor = true };
+            var settings = new ProxySettings { TrustForwardedFor = true, ClientIpHeader = "X-Real-IP" };
 
             ClientIpResolver.Resolve(context, settings).Should().Be("198.51.100.5");
         }
@@ -269,7 +332,7 @@ namespace CodeForge.UnitTests.RateLimiting
         public void Resolve_StripsPortsFromRealIpHeader()
         {
             var context = CreateContext("10.0.0.1", realIp: "198.51.100.5:54321");
-            var settings = new ProxySettings { TrustForwardedFor = true };
+            var settings = new ProxySettings { TrustForwardedFor = true, ClientIpHeader = "X-Real-IP" };
 
             ClientIpResolver.Resolve(context, settings).Should().Be("198.51.100.5");
         }

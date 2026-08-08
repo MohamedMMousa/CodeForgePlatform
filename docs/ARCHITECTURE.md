@@ -226,20 +226,24 @@
   Vercel → Render topology, `Connection.RemoteIpAddress` is always Vercel's shared
   egress IP, which would collapse every user on the platform into one bucket. When
   `Proxy:TrustForwardedFor` is on (production only — off by default, matching local
-  dev/CI/compose), the resolver consults two sources in order. First
-  `Proxy:ClientIpHeader` (default `X-Real-IP`): the post-deploy measurement against
-  the live chain showed Vercel reports the real client there and never appends it to
-  `X-Forwarded-For`, so the positional scheme below could not reach it at any hop
-  count — this is what's load-bearing in production. Second, as a fallback for a proxy
-  that only sets `X-Forwarded-For`, the original positional read, taken from the
-  **right** end (the entry the trusted hop closest to us appended) rather than the left
-  (the value the original caller claims), with `Proxy:TrustedProxyHopCount` controlling
-  how many entries to skip. Fails closed to the socket peer whenever both are absent,
-  malformed, or shorter than the claimed hop count. Note the trust asymmetry: the
-  right-anchored `X-Forwarded-For` read carries evidence of *who* set the entry,
-  whereas a single-value header is only as trustworthy as the guarantee that every
-  path in overwrites it — blanking `Proxy:ClientIpHeader` reverts to the positional
-  read if that guarantee ever fails. `OnRejected` now sets `Retry-After` and logs the resolved
+  dev/CI/compose), the resolver reads `X-Forwarded-For` from the **right** end (the
+  entry the trusted hop closest to us appended) rather than the left (the value the
+  original caller claims, forgeable by anyone), with `Proxy:TrustedProxyHopCount`
+  controlling how many entries to skip. **Production runs at 3, measured rather than
+  assumed** via `GET /diagnostics/client-ip`: Cloudflare fronts Render in front of
+  Vercel, so four entries arrive —
+  `<real client>, <vercel egress 3.x>, <cloudflare 172.x/162.x>, <render internal 10.x>`
+  — and only the first is stable, the rest rotating per request. At the previous value
+  of `0` the partition key was a rotating private `10.x`, which gave every request its
+  own bucket and **silently disabled rate limiting altogether** (12 consecutive public
+  submissions passed against a 5/min policy). A resolved key in a private range or
+  `127.0.0.1` is the signature of this being misconfigured. `Proxy:ClientIpHeader` is a
+  second, opt-in source tried first when set — a named single-value header has no
+  position to get wrong — but it is **empty by default and unused here**: measurement
+  showed no usable `X-Real-IP` reaches this API. It also carries no evidence of *who*
+  set it, so it is only as good as the guarantee that every path in overwrites it.
+  Fails closed to the socket peer whenever the header is absent, malformed, or shorter
+  than the claimed hop count. `OnRejected` now sets `Retry-After` and logs the resolved
   partition key — previously a 429 was invisible. Accepted gap: a caller hitting the
   public `*.onrender.com` origin directly (bypassing Vercel) can still forge whatever
   the resolver trusts — the header value now, the trusted position before — since no
