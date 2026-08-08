@@ -28,7 +28,23 @@ export type { Session } from "./session-mapping";
  * premature signed-out prompt. */
 export type AuthStatus = "authenticated" | "recovering" | "unauthenticated";
 
-const RECOVERY_TIMEOUT_MS = 10_000;
+// Render's free tier spins the API down after 15 min idle; a cold GET /auth/me stacks
+// three cold starts — Render's own boot, Neon's scale-to-zero resume, then the EF Core
+// query itself — not just Render's. Measured 23.47s for a bare /health (cheapest
+// possible request, no DB) against this deployment while investigating a production
+// report of exactly this timeout firing too early; 60s covers the compounded path with
+// margin and stays well under Vercel's 120s external-rewrite proxy ceiling (the client
+// fetch goes through the /api/* rewrite, not directly to the API — see next.config.mjs).
+// The SSR-rendered "recovering" state (components/SessionGuard.tsx) covers the wait, so
+// this is a bounded spinner, not a blank page.
+//
+// attemptRefresh()'s own fetch (lib/api.ts) has no timeout of its own — deliberately
+// left alone here. It isn't reached in the cold-start failure this constant fixes: the
+// initial GET /auth/me is what hits the cold instance and what this bound covers: for
+// it to matter, the *retry* after a successful refresh would have to be the slow one
+// (i.e. the instance was already warm enough to complete a login attempt), which isn't
+// the failure mode this was measured against. Revisit only if that changes.
+const RECOVERY_TIMEOUT_MS = 60_000;
 
 interface AuthContextValue {
   session: Session | null;
