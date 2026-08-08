@@ -190,18 +190,30 @@ Work through this in order; each step assumes the previous one passed.
 3. **Full auth flow.** Login → forced change-password on the first admin login
    (`mustChangePassword`) → logout → let the access token expire and reload a
    protected page (confirms the refresh-on-expiry path, not just cookie presence).
-4. **Measure the real proxy chain.** Temporarily set `Proxy__EnableDiagnostics=true`
+4. **Confirm the resolved client IP.** Temporarily set `Proxy__EnableDiagnostics=true`
    on Render and redeploy. While logged in as admin, hit
    `GET https://<your-api>.onrender.com/diagnostics/client-ip` — it returns the raw
    `X-Forwarded-For` header, the socket peer, and what the rate limiter currently
-   resolves. Compare the header's entry count to what `Proxy__TrustedProxyHopCount`
-   currently skips (default `0`, meaning "trust the rightmost entry only"). If the
-   resolved IP isn't your own real IP, adjust `Proxy__TrustedProxyHopCount` until it
-   is — see `CodeForge.Api/RateLimiting/ClientIpResolver.cs` for the exact
-   right-to-left counting. Set `Proxy__EnableDiagnostics` back to `false` once done.
+   resolves. **`ResolvedClientIp` must equal your own real public IP.** On this
+   deployment that comes from `X-Real-IP` (`Proxy__ClientIpHeader`), not from
+   `X-Forwarded-For`: measurement against the live chain showed Vercel puts the real
+   client in `X-Real-IP` and never appends it to `X-Forwarded-For`, so
+   `Proxy__TrustedProxyHopCount` cannot reach it at any value and tuning it does
+   nothing. If `ResolvedClientIp` is Vercel's egress address instead of yours, check
+   `Proxy__ClientIpHeader` is set (or left at its `X-Real-IP` default) rather than
+   adjusting the hop count. Set `Proxy__EnableDiagnostics` back to `false` once done.
+
+   While diagnostics is on, also send one request with a **forged** `X-Real-IP` header
+   straight at the Render origin (bypassing Vercel). If `ResolvedClientIp` comes back
+   as your forged value, the header is caller-settable on this deployment and the
+   limiter can be dodged per-request — blank `Proxy__ClientIpHeader` to fall back to
+   the right-anchored `X-Forwarded-For` read, which cannot be shifted that way. See
+   `ProxySettings.ClientIpHeader`.
 5. **Rate limit fires.** `node scripts/check-rate-limit.mjs --base-url=https://<your-api>.onrender.com`
    (needs `Proxy__TrustForwardedFor=true`, already the render.yaml default, and
-   `--hops` matching whatever you set `Proxy__TrustedProxyHopCount` to in step 4).
+   `--client-ip-header` matching `Proxy__ClientIpHeader` — both default to
+   `X-Real-IP`, so usually no flag needed). Note this proves partitioning, not
+   unforgeability; that's what the forged-header check in step 4 is for.
 6. **Sentry receives a test error from both.**
    - API: temporarily set `Sentry__EnableTestEndpoint=true`, redeploy, `POST` to
      `https://<your-api>.onrender.com/diagnostics/sentry-test` while logged in as
@@ -245,7 +257,8 @@ Report what passed and what didn't — don't mark this done from documentation a
 | `ASPNETCORE_ENVIRONMENT` | render.yaml | `Production` — also what keeps Swagger UI off |
 | `Database__AutoMigrate` | render.yaml | `false`, explicit — migrations are always a manual step (Step 3) |
 | `Proxy__TrustForwardedFor` | render.yaml | `true` — makes per-IP rate limiting real behind Vercel's proxy |
-| `Proxy__TrustedProxyHopCount` | render.yaml, you tune | Starts at `0`; set from the Step-4 diagnostic measurement |
+| `Proxy__ClientIpHeader` | render.yaml | `X-Real-IP` — the header this deployment actually gets the real client IP from, and what the rate limiter partitions on. Blank it to fall back to `X-Forwarded-For` only |
+| `Proxy__TrustedProxyHopCount` | render.yaml | `0`, and inert here — `X-Forwarded-For` fallback only, unused while `Proxy__ClientIpHeader` is populated |
 | `Proxy__EnableDiagnostics` | render.yaml, you toggle | Temporarily `true` to reach `/diagnostics/client-ip`, then `false` |
 | `Storage__Provider` | render.yaml | `R2` — Render's free tier has no persistent disk |
 | `Sentry__Environment` | render.yaml | `production` |

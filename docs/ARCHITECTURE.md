@@ -226,17 +226,25 @@
   Vercel → Render topology, `Connection.RemoteIpAddress` is always Vercel's shared
   egress IP, which would collapse every user on the platform into one bucket. When
   `Proxy:TrustForwardedFor` is on (production only — off by default, matching local
-  dev/CI/compose), the resolver reads `X-Forwarded-For` from the **right** end (the
-  entry the trusted hop closest to us appended) rather than the left (the value the
-  original caller claims, forgeable by anyone hitting the public origin directly);
-  `Proxy:TrustedProxyHopCount` controls how many entries to skip, and is measured
-  against the real deployment rather than assumed — see `DEPLOY.md`. Fails closed to
-  the socket peer whenever the header is absent, malformed, or shorter than the
-  claimed hop count. `OnRejected` now sets `Retry-After` and logs the resolved
+  dev/CI/compose), the resolver consults two sources in order. First
+  `Proxy:ClientIpHeader` (default `X-Real-IP`): the post-deploy measurement against
+  the live chain showed Vercel reports the real client there and never appends it to
+  `X-Forwarded-For`, so the positional scheme below could not reach it at any hop
+  count — this is what's load-bearing in production. Second, as a fallback for a proxy
+  that only sets `X-Forwarded-For`, the original positional read, taken from the
+  **right** end (the entry the trusted hop closest to us appended) rather than the left
+  (the value the original caller claims), with `Proxy:TrustedProxyHopCount` controlling
+  how many entries to skip. Fails closed to the socket peer whenever both are absent,
+  malformed, or shorter than the claimed hop count. Note the trust asymmetry: the
+  right-anchored `X-Forwarded-For` read carries evidence of *who* set the entry,
+  whereas a single-value header is only as trustworthy as the guarantee that every
+  path in overwrites it — blanking `Proxy:ClientIpHeader` reverts to the positional
+  read if that guarantee ever fails. `OnRejected` now sets `Retry-After` and logs the resolved
   partition key — previously a 429 was invisible. Accepted gap: a caller hitting the
-  public `*.onrender.com` origin directly (bypassing Vercel) can still forge the
-  trusted position, since no positional header-parsing scheme can close that
-  entirely — the limiter is spam friction, not a security boundary. See §7 and
+  public `*.onrender.com` origin directly (bypassing Vercel) can still forge whatever
+  the resolver trusts — the header value now, the trusted position before — since no
+  header-parsing scheme can close that entirely; the limiter is spam friction, not a
+  security boundary. See §7 and
   `CodeForge.Api/RateLimiting/ClientIpResolver.cs`.
 - **Localization** — `AddLocalization` + `UseRequestLocalization`, resolving `en`/`ar`
   from the `Accept-Language` header. Resource files are added incrementally as
@@ -492,9 +500,12 @@ file uploads, rate limiting, versioning stance).
   on every `/api/*` call) if left unset. This is the single most likely deploy
   mistake — see the top of `DEPLOY.md`.
 - **Rate limiter's direct-to-origin gap** (accepted, not a bug) — `ClientIpResolver`
-  (§3) can only trust a fixed position counted from the right of `X-Forwarded-For`; a
-  caller who bypasses Vercel and hits the public `*.onrender.com` origin directly can
-  still forge whatever sits at that position, since Render doesn't publish stable
+  (§3) trusts a proxy-set header (`X-Real-IP` in production, else a fixed position
+  counted from the right of `X-Forwarded-For`); a caller who bypasses Vercel and hits
+  the public `*.onrender.com` origin directly can still forge whichever of those the
+  resolver reads — and the single-value header is the weaker of the two here, since it
+  carries no positional evidence of who set it. Unchanged in kind, since Render doesn't
+  publish stable
   inbound-edge IP ranges to validate against and Vercel's egress ranges are only
   pinnable via Static IPs/Secure Compute (Pro/Enterprise-only, $100/mo). Accepted:
   this limiter is spam friction on a public write endpoint, not a security boundary.

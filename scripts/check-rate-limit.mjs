@@ -9,24 +9,34 @@
 
 const HELP = `Usage: node scripts/check-rate-limit.mjs [options]
 
-Demonstrates the /leads public-submit rate limiter fires at the configured limit,
-that a caller can't dodge it by stuffing extra entries into X-Forwarded-For, and that
-distinct real clients get distinct buckets instead of collapsing into one.
+Demonstrates the /leads public-submit rate limiter fires at the configured limit, and
+that distinct real clients get distinct buckets instead of collapsing into one.
 
-  --base-url=<url>   API origin to test (default http://localhost:5205)
-  --limit=<n>        expected RateLimiting:PublicSubmit:PermitLimit (default 5)
-  --hops=<n>         must match the server's Proxy:TrustedProxyHopCount (default 1)
-  --help             this message
+  --base-url=<url>          API origin to test (default http://localhost:5205)
+  --limit=<n>               expected RateLimiting:PublicSubmit:PermitLimit (default 5)
+  --client-ip-header=<name> identity source; must match the server's
+                            Proxy:ClientIpHeader (default X-Real-IP). Pass an empty
+                            value (--client-ip-header=) to exercise the X-Forwarded-For
+                            positional fallback instead.
+  --hops=<n>                X-Forwarded-For mode only; must match the server's
+                            Proxy:TrustedProxyHopCount (default 1)
+  --help                    this message
 
 REQUIRES the target API running with:
   Proxy__TrustForwardedFor=true
-  Proxy__TrustedProxyHopCount=<same value as --hops>
-Against the default (TrustForwardedFor=false), the resolver ignores X-Forwarded-For
+  Proxy__ClientIpHeader=<same value as --client-ip-header>
+  Proxy__TrustedProxyHopCount=<same value as --hops>   (X-Forwarded-For mode only)
+Against the default (TrustForwardedFor=false), the resolver ignores both headers
 entirely and every request in this script — all from the same machine — resolves to
 this process's own loopback address regardless of what's sent, which would make every
 assertion below trivially pass without proving anything about production behavior.
 
-The three checks use disjoint synthetic identities (203.0.113.10/20/30+) so they don't
+Scope note: this script connects directly, so it can always set these headers itself.
+It proves the resolver PARTITIONS correctly through the real ASP.NET pipeline; it
+cannot prove the headers are unforgeable in production — that depends on the deployed
+proxy overwriting them, which only a request through the real chain can show.
+
+The checks use disjoint synthetic identities (203.0.113.10/20/30+) so they don't
 interfere with each other or need to wait out the rate-limit window between checks.
 
 Exit 0 when every check passed, 1 otherwise.
@@ -46,6 +56,10 @@ if (args.includes('--help')) {
 const baseUrl = (argValue('base-url') ?? 'http://localhost:5205').replace(/\/$/, '');
 const limit = Number(argValue('limit') ?? 5);
 const hops = Number(argValue('hops') ?? 1);
+// Defaults to the server's own ProxySettings.ClientIpHeader default. Empty string
+// selects the X-Forwarded-For positional fallback instead.
+const clientIpHeader = argValue('client-ip-header') ?? 'X-Real-IP';
+const useHeaderMode = clientIpHeader.length > 0;
 
 const results = [];
 const check = (name, ok, detail = '') => {
@@ -76,54 +90,73 @@ function chainFor(trustedIp, extraLeftPadding = 0) {
   return [...leftPadding, ...trustedAndAfter];
 }
 
-async function submitLead(forwardedForChain) {
-  return fetch(`${baseUrl}/leads`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Forwarded-For': forwardedForChain.join(', '),
-    },
-    body: leadBody(),
-  });
+// `identity` is the address the server should end up partitioning on. How it's carried
+// depends on the mode: a single named header (production), or a positional
+// X-Forwarded-For chain (fallback). `extraLeftPadding` applies to the chain only;
+// `decoyForwardedFor` is used in header mode to prove the header wins over the chain.
+async function submitLead(identity, { extraLeftPadding = 0, decoyForwardedFor = null } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+
+  if (useHeaderMode) {
+    headers[clientIpHeader] = identity;
+    if (decoyForwardedFor) {
+      headers['X-Forwarded-For'] = decoyForwardedFor;
+    }
+  } else {
+    headers['X-Forwarded-For'] = chainFor(identity, extraLeftPadding).join(', ');
+  }
+
+  return fetch(`${baseUrl}/leads`, { method: 'POST', headers, body: leadBody() });
 }
 
 async function checkLimitFires() {
   process.stdout.write(`\nLimit fires at ${limit}/window (single identity)\n`);
-  const chain = chainFor('203.0.113.10');
+  const identity = '203.0.113.10';
 
   for (let i = 0; i < limit; i++) {
-    const res = await submitLead(chain);
+    const res = await submitLead(identity);
     check(`request ${i + 1}/${limit} succeeds`, res.status === 200, `got HTTP ${res.status}`);
   }
 
-  const rejected = await submitLead(chain);
+  const rejected = await submitLead(identity);
   check(`request ${limit + 1} (over limit) is rejected`, rejected.status === 429, `got HTTP ${rejected.status}`);
   check('rejection carries Retry-After', rejected.headers.has('retry-after'));
 }
 
-async function checkPrependedPaddingIgnored() {
-  process.stdout.write('\nEntries prepended to the left don\'t change the resolved bucket\n');
+async function checkOtherHeaderCannotShiftTheBucket() {
   const identity = '203.0.113.20';
 
-  // Exhaust the bucket for this identity with the "clean" chain first.
+  process.stdout.write(
+    useHeaderMode
+      ? `\n${clientIpHeader} wins over X-Forwarded-For, so a decoy chain can't shift the bucket\n`
+      : '\nEntries prepended to the left don\'t change the resolved bucket\n',
+  );
+
+  // Exhaust the bucket for this identity the plain way first.
   for (let i = 0; i < limit; i++) {
-    await submitLead(chainFor(identity));
+    await submitLead(identity);
   }
 
-  // Same identity, but with junk entries stuffed in front — the position an attacker
-  // actually controls when connecting through the trusted hop(s), as opposed to the
-  // position the resolver trusts.
-  const res = await submitLead(chainFor(identity, 3));
+  // Same identity, plus content in the header the resolver is supposed to be ignoring
+  // (header mode), or junk entries stuffed into the position a caller actually
+  // controls rather than the trusted one (X-Forwarded-For mode). Either way the
+  // resolved bucket must not move, so the request stays rejected.
+  const res = useHeaderMode
+    ? await submitLead(identity, { decoyForwardedFor: '198.51.100.1, 198.51.100.2, 198.51.100.3' })
+    : await submitLead(identity, { extraLeftPadding: 3 });
+
   check(
-    'still rejected with forged entries prepended',
+    useHeaderMode
+      ? 'still rejected with a decoy X-Forwarded-For chain attached'
+      : 'still rejected with forged entries prepended',
     res.status === 429,
-    `got HTTP ${res.status} — if this succeeded, the resolver read a position the ` +
-      'caller controls instead of the trusted one, and partitioning is not real protection',
+    `got HTTP ${res.status} — if this succeeded, the resolver read a value the caller ` +
+      'controls instead of the trusted one, and partitioning is not real protection',
   );
 }
 
 async function checkDistinctIpsGetDistinctBuckets() {
-  process.stdout.write('\n--distinct-ips: different trusted-position values get separate buckets\n');
+  process.stdout.write('\nDifferent client identities get separate buckets\n');
   // One request each from (limit + 1) distinct identities. If partitioning were
   // broken — e.g. every request resolving to this process's own address, the original
   // bug this script exists to catch — the last of these would collide with the first
@@ -131,7 +164,7 @@ async function checkDistinctIpsGetDistinctBuckets() {
   let allSucceeded = true;
   for (let i = 0; i < limit + 1; i++) {
     const identity = `203.0.113.${30 + i}`;
-    const res = await submitLead(chainFor(identity));
+    const res = await submitLead(identity);
     if (res.status !== 200) {
       allSucceeded = false;
       check(`distinct identity ${i + 1}/${limit + 1} succeeds`, false, `got HTTP ${res.status} for ${identity}`);
@@ -143,7 +176,9 @@ async function checkDistinctIpsGetDistinctBuckets() {
 }
 
 async function run() {
-  process.stdout.write(`Target: ${baseUrl}  limit=${limit}  hops=${hops}\n`);
+  process.stdout.write(
+    `Target: ${baseUrl}  limit=${limit}  identity=${useHeaderMode ? clientIpHeader : `X-Forwarded-For (hops=${hops})`}\n`,
+  );
 
   try {
     await fetch(`${baseUrl}/health`);
@@ -153,7 +188,7 @@ async function run() {
   }
 
   await checkLimitFires();
-  await checkPrependedPaddingIgnored();
+  await checkOtherHeaderCannotShiftTheBucket();
   await checkDistinctIpsGetDistinctBuckets();
 }
 

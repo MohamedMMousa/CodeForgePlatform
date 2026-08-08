@@ -26,9 +26,16 @@ services:
       # bucket — see CodeForge.Api/RateLimiting/ClientIpResolver.cs.
       - key: Proxy__TrustForwardedFor
         value: "true"
-      # Starting value; measure the real proxy chain post-deploy via the gated
-      # GET /diagnostics/client-ip (flip Proxy__EnableDiagnostics on below to reach
-      # it) and update this to match. See docs/DEPLOY.md.
+      # The load-bearing one in production. Measured post-deploy: Vercel reports the
+      # real client IP in X-Real-IP and never appends it to X-Forwarded-For, so the
+      # positional hop count below can't reach it at any value. Same as the code
+      # default, restated here so it's visible and so blanking it is an available
+      # kill switch. See ProxySettings.ClientIpHeader for the trust caveat.
+      - key: Proxy__ClientIpHeader
+        value: "X-Real-IP"
+      # Fallback only, for a proxy that sets X-Forwarded-For but no X-Real-IP — not
+      # what this deployment does. Left at 0; it has no effect while the header above
+      # is populated. See docs/DEPLOY.md.
       - key: Proxy__TrustedProxyHopCount
         value: "0"
       # Off by default; flip to "true" temporarily to reach GET /diagnostics/client-ip
