@@ -51,6 +51,13 @@ function csrfHeader(): Record<string, string> {
   return match ? { [CSRF_HEADER_NAME]: decodeURIComponent(match[1]) } : {};
 }
 
+/** Dispatched on `window` when a refresh attempt gets an explicit non-OK response from
+ * the server — a genuinely dead refresh token (revoked, or past its 7-day expiry), not
+ * a transient network failure. lib/auth.tsx listens for this to clear the client-side
+ * session in place rather than leaving it stale after a refresh that will never
+ * succeed. */
+export const SESSION_EXPIRED_EVENT = "codeforge:session-expired";
+
 // Concurrent 401s share one in-flight refresh instead of each firing their own —
 // the refresh endpoint itself only lets the first request through unscathed (see
 // RefreshTokenRotationPolicy on the backend); this just avoids the redundant calls.
@@ -63,7 +70,14 @@ function attemptRefresh(): Promise<boolean> {
       credentials: "include",
       headers: csrfHeader()
     })
-      .then((response) => response.ok)
+      .then((response) => {
+        if (!response.ok && typeof window !== "undefined") {
+          window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+        }
+        return response.ok;
+      })
+      // A thrown network error (offline, DNS, etc.) is not proof the refresh token is
+      // dead — leave the session alone so a reconnect can recover it on its own.
       .catch(() => false)
       .finally(() => {
         refreshPromise = null;
@@ -81,7 +95,13 @@ function canRetryOn401(path: string): boolean {
 async function fetchWithAuthRetry(path: string, init: RequestInit): Promise<Response> {
   const response = await fetch(`${BASE_URL}${path}`, init);
   if (response.status === 401 && canRetryOn401(path) && (await attemptRefresh())) {
-    return fetch(`${BASE_URL}${path}`, init);
+    // A successful refresh rotates cf_csrf (AuthCookieWriter), so the X-CSRF-Token
+    // baked into `init` by the original caller is now stale for unsafe methods —
+    // recompute it from the freshly-rotated cookie, or the retry itself 403s against
+    // CsrfProtectionFilter instead of succeeding.
+    const method = (init.method ?? "GET").toUpperCase();
+    const headers = SAFE_METHODS.has(method) ? init.headers : { ...init.headers, ...csrfHeader() };
+    return fetch(`${BASE_URL}${path}`, { ...init, headers });
   }
   return response;
 }
@@ -234,9 +254,10 @@ export function changePassword(
 
 /** Re-derives the session from the server (e.g. to pick up a mustChangePassword
  * flip, or after change-password rotates the cookies). Throws ApiRequestError on
- * 401 — callers treat that as "not signed in". */
-export function getCurrentUser(locale?: string): Promise<CurrentUserResponse> {
-  return apiFetch<CurrentUserResponse>("/auth/me", { locale });
+ * 401 — callers treat that as "not signed in". `signal` lets a caller bound how long
+ * it's willing to wait (e.g. AuthProvider's post-expiry recovery attempt). */
+export function getCurrentUser(locale?: string, signal?: AbortSignal): Promise<CurrentUserResponse> {
+  return apiFetch<CurrentUserResponse>("/auth/me", { locale, signal });
 }
 
 /** Clears the session cookies server-side and revokes the refresh token. Never

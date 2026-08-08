@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   MaterialItem,
@@ -64,15 +65,8 @@ export default function MyCoursePage({
     }
   }
 
-  if (!session) {
-    return (
-      <main className="container">
-        <p className="notice err">
-          <Link href={`/${locale}/login`}>{getDictionary(locale).home.signIn}</Link>
-        </p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale });
+  if (!gate.ok) return gate.fallback;
 
   return (
     <main className="container">

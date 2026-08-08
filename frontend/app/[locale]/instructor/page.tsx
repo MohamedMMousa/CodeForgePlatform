@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   CourseListItem,
@@ -27,7 +28,7 @@ export default function InstructorCoursesPage({
   const t = dictionary.instructor;
   const ta = dictionary.analytics;
 
-  const { session } = useAuth();
+  const { session: authSession } = useAuth();
   const [courses, setCourses] = useState<CourseListItem[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -35,26 +36,22 @@ export default function InstructorCoursesPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session) return;
-    const load = session.role === "admin" ? getAllCourses : getAssignedCourses;
+    if (!authSession) return;
+    const load = authSession.role === "admin" ? getAllCourses : getAssignedCourses;
     load({ page, pageSize: PAGE_SIZE })
       .then((result) => {
         setCourses(result.items);
         setTotalCount(result.totalCount);
       })
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
-    if (session.role === "instructor") {
+    if (authSession.role === "instructor") {
       getInstructorDashboard().then(setDashboard).catch(() => {});
     }
-  }, [session, page, t.loadError]);
+  }, [authSession, page, t.loadError]);
 
-  if (!session || (session.role !== "admin" && session.role !== "instructor")) {
-    return (
-      <main className="container">
-        <p className="notice err">{t.signInRequired}</p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale, roles: ["admin", "instructor"] });
+  if (!gate.ok) return gate.fallback;
+  const { session } = gate;
 
   return (
     <main className="container">

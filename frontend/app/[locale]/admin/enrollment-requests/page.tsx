@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import { ApiRequestError, EnrollmentRequestResult, getEnrollmentRequests } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
 import { Pagination } from "@/components/Pagination";
@@ -43,9 +44,8 @@ export default function AdminEnrollmentRequestsPage({
 
   useEffect(() => setPage(1), [statusFilter]);
 
-  if (!session || session.role !== "admin") {
-    return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
-  }
+  const gate = useSessionGate({ locale, roles: ["admin"], bare: true });
+  if (!gate.ok) return gate.fallback;
 
   const statusLabel = (s: string) =>
     s === "pending" ? t.requestStatusPending : s === "approved" ? t.requestStatusApproved : t.requestStatusRejected;

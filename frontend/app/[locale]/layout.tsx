@@ -31,13 +31,13 @@ export default async function LocaleLayout({
   const { locale: rawLocale } = await params;
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
   const t = getDictionary(locale);
-  const serverSession = await getServerSession();
+  const { session: serverSession, canRecover } = await getServerSession();
   const initialSession = serverSession ? toSession(serverSession) : null;
 
   return (
     <html lang={locale} dir={dir(locale)}>
       <body>
-        <AuthProvider initialSession={initialSession}>
+        <AuthProvider initialSession={initialSession} canRecover={canRecover}>
           <PasswordChangeGate locale={locale} />
           <header className="topbar">
             <Link className="brand" href={`/${locale}`}>

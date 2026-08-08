@@ -3,7 +3,7 @@
 import { use } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
 
 export default function AdminLayout({
@@ -18,15 +18,8 @@ export default function AdminLayout({
   const t = getDictionary(locale).admin;
   const pathname = usePathname();
 
-  const { session } = useAuth();
-
-  if (!session || session.role !== "admin") {
-    return (
-      <main className="container">
-        <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale, roles: ["admin"] });
+  if (!gate.ok) return gate.fallback;
 
   const tabs: { href: string; label: string }[] = [
     { href: `/${locale}/admin/courses`, label: t.navCourses },

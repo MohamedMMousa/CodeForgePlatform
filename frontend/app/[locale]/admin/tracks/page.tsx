@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   TrackListItem,
@@ -60,9 +61,8 @@ export default function AdminTracksPage({
   useEffect(load, [session, statusFilter, page]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [statusFilter]);
 
-  if (!session || session.role !== "admin") {
-    return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
-  }
+  const gate = useSessionGate({ locale, roles: ["admin"], bare: true });
+  if (!gate.ok) return gate.fallback;
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();

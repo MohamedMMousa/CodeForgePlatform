@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   AssessmentInput,
@@ -153,13 +154,8 @@ export default function InstructorModulePage({
     }
   }
 
-  if (!session || (session.role !== "admin" && session.role !== "instructor")) {
-    return (
-      <main className="container">
-        <p className="notice err">{t.signInRequired}</p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale, roles: ["admin", "instructor"] });
+  if (!gate.ok) return gate.fallback;
 
   return (
     <main className="container">

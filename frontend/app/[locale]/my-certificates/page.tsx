@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import { ApiRequestError, Certificate, getMyCertificates } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
 import { Pagination } from "@/components/Pagination";
@@ -35,15 +36,8 @@ export default function MyCertificatesPage({
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : tc.loadError));
   }, [session, page, tc.loadError]);
 
-  if (!session) {
-    return (
-      <main className="container">
-        <p className="notice err">
-          <Link href={`/${locale}/login`}>{getDictionary(locale).home.signIn}</Link>
-        </p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale });
+  if (!gate.ok) return gate.fallback;
 
   const tierLabel = (tier: string) => (tier === "completion" ? tc.completion : tc.participation);
 

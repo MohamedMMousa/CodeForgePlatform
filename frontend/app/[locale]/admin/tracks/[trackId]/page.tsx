@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   CourseListItem,
@@ -65,9 +66,8 @@ export default function AdminTrackDetailPage({
 
   useEffect(load, [session, trackId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!session || session.role !== "admin") {
-    return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
-  }
+  const gate = useSessionGate({ locale, roles: ["admin"], bare: true });
+  if (!gate.ok) return gate.fallback;
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();

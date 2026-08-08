@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import {
   AdminCoupon,
   ApiRequestError,
@@ -58,9 +59,8 @@ export default function AdminCouponsPage({
 
   useEffect(load, [session, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!session || session.role !== "admin") {
-    return <p className="notice err">{getDictionary(locale).instructor.signInRequired}</p>;
-  }
+  const gate = useSessionGate({ locale, roles: ["admin"], bare: true });
+  if (!gate.ok) return gate.fallback;
 
   function resetForm() {
     setEditingId(null);

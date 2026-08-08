@@ -368,16 +368,16 @@ file uploads, rate limiting, versioning stance).
   turned out to be innocent, but the simplification stands.
   Dropping the auth logic is **not** a security regression: the API is and was always
   the real authorization boundary regardless of what middleware decided, and every
-  protected page already guards on `!session` client-side (e.g.
-  `app/[locale]/dashboard/page.tsx`, `app/[locale]/admin/layout.tsx`) and renders a
-  sign-in prompt instead of protected content or data. The real cost:
-  without middleware refreshing an expired access token before the server render,
-  `getServerSession()` (`lib/session.ts`) has nothing to read and returns `null`, and
-  nothing client-side automatically recovers it (see the `lib/auth.tsx` bullet below)
-  — a protected page shows its signed-out fallback for the rest of that session
-  rather than momentarily, until the user explicitly logs in again. Accepted for now;
-  not being re-solved here on purpose, to avoid reintroducing the exact
-  server-side-refresh-in-middleware complexity that's implicated in the incident.
+  protected page already gates through `useSessionGate()` (see the
+  `components/SessionGuard.tsx` bullet below) instead of rendering protected content or
+  data. The real cost: without middleware refreshing an expired access token before the
+  server render, `getServerSession()` (`lib/session.ts`) has nothing to read and returns
+  `session: null` — but it also reports whether `cf_refresh` outlived `cf_access`
+  (`canRecover`), which is what lets the client recover on its own instead of staying
+  signed-out for the rest of the page load. See the `lib/auth.tsx` bullet below. A
+  Server Component still can't do this refresh itself: it can't persist the
+  `Set-Cookie` a refresh would mint, so doing it there would just rotate the refresh
+  token out from under the browser.
 - **Proxy** — `frontend/next.config.mjs` rewrites `/api/:path*` to `API_INTERNAL_URL`
   (server-only env var, never bundled into browser JS; defaults to
   `http://localhost:5205`). The browser only ever talks to one origin; this is what
@@ -410,20 +410,38 @@ file uploads, rate limiting, versioning stance).
   tokens; those live only in the httpOnly cookies the server manages. Seeded from a
   server-resolved `initialSession` prop (see `frontend/lib/session.ts`, wrapped in
   React `cache()`) so the first client render already matches what the server
-  rendered — deliberately no hydration effect. That design assumed middleware had
-  already refreshed an expired access token before this render happened; now that
-  middleware no longer does that (see the §6 middleware bullet above), an expired
-  access token means `initialSession` is `null` and stays `null` for the rest of that
-  page load — the "no flash" property held only while middleware's refresh existed.
-  `toSession()`/the `Session` type live in `frontend/lib/session-mapping.ts` rather
-  than `auth.tsx` itself, deliberately without a `"use client"`/`"use server"`
-  directive: a function exported from a `"use client"` module can't be called from
-  the Server Component layout that also needs it. `refreshSession()` (re-derives from
-  `GET /auth/me`, then `router.refresh()` so server components see it too) replaces
-  the old `applySession`; `signOut()` is async (`POST /auth/logout`, then
-  `router.refresh()`) — the comment this used to carry about middleware redirecting
-  a now-protected page is no longer accurate and has been removed; a protected page
-  falls back to its own `!session` UI instead.
+  rendered — no hydration mismatch. Exposes `status: "authenticated" | "recovering" |
+  "unauthenticated"` alongside `session`. `status` seeds to `"recovering"` when
+  `initialSession` is `null` but `canRecover` says `cf_refresh` outlived `cf_access` —
+  a mount effect then calls `getCurrentUser()` (bounded by a 10s
+  `AbortSignal.timeout`, so an unreachable API degrades to `"unauthenticated"` instead
+  of hanging) to silently restore the session without a manual re-login. That call
+  flows through `lib/api.ts`'s existing `fetchWithAuthRetry`/`attemptRefresh` (401 →
+  refresh → retry, already serialized behind one in-flight promise — see the
+  `lib/api.ts` bullet), so this effect doesn't add any refresh logic of its own, only
+  the trigger that was missing. On success it also calls `router.refresh()` so server
+  components pick up the newly-set cookies. A second effect listens for the
+  `codeforge:session-expired` window event (dispatched by `lib/api.ts` when a refresh
+  attempt gets an explicit non-OK response — a genuinely dead refresh token, not a
+  network blip) and clears the session in place. `toSession()`/the `Session` type live
+  in `frontend/lib/session-mapping.ts` rather than `auth.tsx` itself, deliberately
+  without a `"use client"`/`"use server"` directive: a function exported from a
+  `"use client"` module can't be called from the Server Component layout that also
+  needs it. `refreshSession()` (re-derives from `GET /auth/me`, then `router.refresh()`
+  so server components see it too) is unchanged, still used by
+  `change-password/page.tsx` after a cookie-rotating request.
+- `frontend/components/SessionGuard.tsx` — `useSessionGate()`, the single place every
+  protected page/layout gates rendering. A hook rather than a wrapper component: several
+  pages read `session.role` in their own JSX, so the check has to be an inline
+  early-return in the page's own render (keeping TypeScript's narrowing of `session`
+  intact) rather than inside a wrapper whose `children` would already be constructed —
+  and would throw — before the wrapper could block them. Renders one of three shapes
+  depending on `status`/role match: the page's real content (`ok: true`), a neutral
+  "restoring your session" notice while `status === "recovering"`, or the original
+  sign-in fallback (role-restricted pages get the instructor/admin notice; open-to-any-
+  signed-in-user pages get a link straight to `/login`) once resolved to
+  `"unauthenticated"`. `components/RoleNav.tsx` reads `status` the same way, so the
+  header doesn't flash a "Sign in" link during recovery either.
 - **Cookie values in the dev RSC payload — dev-only, verified absent in production.**
   View-source on a protected page under `npm run dev` shows `cf_access`/`cf_refresh`
   values inside a `__next_f.push` block. This is **not** the app serializing them:

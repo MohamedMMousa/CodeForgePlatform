@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useSessionGate } from "@/components/SessionGuard";
 import { ApiRequestError, UpcomingItems, getUpcomingItems } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
 
@@ -26,15 +27,8 @@ export default function DashboardPage({
       .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
   }, [session, t.loadError]);
 
-  if (!session) {
-    return (
-      <main className="container">
-        <p className="notice err">
-          <Link href={`/${locale}/login`}>{getDictionary(locale).home.signIn}</Link>
-        </p>
-      </main>
-    );
-  }
+  const gate = useSessionGate({ locale });
+  if (!gate.ok) return gate.fallback;
 
   function typeLabel(type: string) {
     if (type === "live") return t.live;

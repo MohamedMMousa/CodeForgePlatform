@@ -51,6 +51,7 @@ export interface Dictionary {
     signOut: string;
     catalog: string;
     contact: string;
+    restoringSession: string;
   };
   catalog: {
     title: string;
@@ -555,7 +556,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       switchTo: "العربية",
       signOut: "Sign out",
       catalog: "Courses",
-      contact: "Contact us"
+      contact: "Contact us",
+      restoringSession: "Restoring your session…"
     },
     catalog: {
       title: "Course Catalog",
@@ -1058,7 +1060,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       switchTo: "English",
       signOut: "تسجيل الخروج",
       catalog: "الدورات",
-      contact: "تواصل معنا"
+      contact: "تواصل معنا",
+      restoringSession: "جارٍ استعادة جلستك…"
     },
     catalog: {
       title: "دليل الدورات",

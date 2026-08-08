@@ -40,14 +40,12 @@ import { defaultLocale, locales } from "./lib/i18n";
 //    was stripped while hunting the crash above (it turned out to be innocent, but
 //    the simplification stands). Not a security regression: the API enforces auth on
 //    every request regardless of what the frontend does, and each protected page
-//    already guards on `!session` client-side (e.g. app/[locale]/dashboard/page.tsx,
-//    app/[locale]/admin/layout.tsx) and renders a sign-in prompt instead of
-//    protected content. The real behavioural cost, stated honestly: with no
-//    middleware refresh ahead of the server render, getServerSession()
-//    (lib/session.ts) has nothing to read once the access token expires, and there
-//    is no automatic client-side recovery (lib/auth.tsx's AuthProvider has no
-//    hydration effect, by design), so a protected page shows its signed-out
-//    fallback for the rest of that session rather than momentarily. Accepted; see
+//    already gates through useSessionGate() (components/SessionGuard.tsx) instead of
+//    rendering protected content. With no middleware refresh ahead of the server
+//    render, getServerSession() (lib/session.ts) has nothing to read once the access
+//    token expires — but it now also reports whether the refresh cookie is still
+//    live, which lets lib/auth.tsx's AuthProvider silently refresh the session
+//    client-side on mount instead of leaving the page signed-out. See
 //    docs/ARCHITECTURE.md §6.
 export function middleware(request: Request) {
   // Carries the query string already — only the pathname is overwritten below.
