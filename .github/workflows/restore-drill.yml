@@ -1,0 +1,126 @@
+name: Restore drill
+
+# TEMPORARY, on-demand only. Proves docs/DEPLOY.md's restore procedure actually works
+# against a real dump produced by backup.yml, rather than trusting that a file of
+# plausible size exists in R2. Runs entirely on the Actions runner because the dump and
+# the target are both reachable from there and from nowhere local.
+#
+# Restores into a Neon BRANCH (secrets.NEON_BRANCH_URL), never the primary database.
+# Nothing here ever touches NEON_DATABASE_URL — that is deliberate: a restore uses
+# --clean --if-exists, which drops objects before recreating them, so pointing it at
+# production would destroy live data. Delete this workflow, and the branch, once the
+# drill has passed.
+on:
+  workflow_dispatch:
+
+jobs:
+  restore-drill:
+    name: Restore latest R2 dump into a Neon branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL 18 client tools
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+          # Same PATH trap as backup.yml — see the comment there.
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Guard against pointing the drill at production
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_BRANCH_URL}" ]; then
+            echo "::error::NEON_BRANCH_URL is not set. Add it as a repository secret — see docs/DEPLOY.md."
+            exit 1
+          fi
+          # A restore runs --clean --if-exists. If the branch URL were ever pasted as
+          # the primary URL, this drill would drop and recreate live tables. Refuse.
+          if [ "${NEON_BRANCH_URL}" = "${NEON_DATABASE_URL}" ]; then
+            echo "::error::NEON_BRANCH_URL is identical to NEON_DATABASE_URL — that is the PRIMARY database. Point it at a Neon branch instead."
+            exit 1
+          fi
+        env:
+          NEON_BRANCH_URL: ${{ secrets.NEON_BRANCH_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+
+      - name: Download the most recent dump from R2
+        run: |
+          set -euo pipefail
+          latest="$(aws s3 ls "s3://${R2_BUCKET}/" --endpoint-url "${R2_ENDPOINT}" \
+            | awk '{print $4}' | grep '^codeforge-.*\.dump$' | sort | tail -n 1)"
+
+          if [ -z "${latest}" ]; then
+            echo "::error::No codeforge-*.dump objects in the bucket — run backup.yml first."
+            exit 1
+          fi
+
+          echo "Restoring from: ${latest}"
+          aws s3 cp "s3://${R2_BUCKET}/${latest}" "/tmp/${latest}" --endpoint-url "${R2_ENDPOINT}"
+          echo "DUMP_FILE=/tmp/${latest}" >> "$GITHUB_ENV"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+      - name: Restore into the Neon branch
+        run: |
+          set -euo pipefail
+          # The exact command documented in docs/DEPLOY.md step 7 — this drill exists to
+          # prove that command, so it must not drift from it.
+          pg_restore --clean --if-exists --no-owner --no-privileges \
+            --dbname="${NEON_BRANCH_URL}" "${DUMP_FILE}"
+        env:
+          NEON_BRANCH_URL: ${{ secrets.NEON_BRANCH_URL }}
+
+      - name: Verify schema and row counts
+        run: |
+          set -euo pipefail
+
+          # Exact counts, not pg_stat_user_tables' n_live_tup — that's an estimator and
+          # reads 0 on a freshly restored table until ANALYZE runs, which would make an
+          # empty restore look identical to a good one.
+          read -r -d '' COUNT_SQL <<'SQL' || true
+          SELECT table_name,
+                 (xpath('/row/c/text()',
+                        query_to_xml(format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+                                     false, true, '')))[1]::text::bigint AS row_count
+          FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+          ORDER BY row_count DESC, table_name;
+          SQL
+
+          echo "=== Restored tables and row counts ==="
+          psql "${NEON_BRANCH_URL}" -v ON_ERROR_STOP=1 -c "${COUNT_SQL}"
+
+          tables="$(psql "${NEON_BRANCH_URL}" -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")"
+
+          # __EFMigrationsHistory is the one table guaranteed non-empty in any real
+          # CodeForge database — if migrations were applied, it has rows. Checking it
+          # specifically means a dump that restored structure but no data still fails.
+          migrations="$(psql "${NEON_BRANCH_URL}" -tAc \
+            'SELECT count(*) FROM "__EFMigrationsHistory";' || echo 0)"
+
+          echo "Tables restored: ${tables}"
+          echo "__EFMigrationsHistory rows: ${migrations}"
+
+          if [ "${tables}" -lt 5 ]; then
+            echo "::error::Only ${tables} tables restored — the dump did not carry the schema."
+            exit 1
+          fi
+          if [ "${migrations}" -lt 1 ]; then
+            echo "::error::__EFMigrationsHistory is empty — the dump restored structure but no data."
+            exit 1
+          fi
+
+          echo "Restore drill passed: schema and data both present."
+        env:
+          NEON_BRANCH_URL: ${{ secrets.NEON_BRANCH_URL }}

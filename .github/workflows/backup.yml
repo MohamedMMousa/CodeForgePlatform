@@ -33,6 +33,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client-18
 
+          # Installing the package is NOT enough: ubuntu-latest ships its own
+          # postgresql-client-16, and /usr/bin/pg_dump keeps resolving to 16.x even
+          # after 18 is installed. That produced a green install step followed by
+          # "aborting because of server version mismatch (server 18.4, pg_dump 16.14)"
+          # against the real Neon database. pgdg puts the versioned binaries here, so
+          # put them ahead of /usr/bin for every later step.
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      # Fails the run loudly if the PATH fix above ever stops working, instead of
+      # letting it resurface as a confusing mismatch error mid-dump.
+      - name: Verify pg_dump major version
+        run: |
+          set -euo pipefail
+          pg_dump --version
+          major="$(pg_dump --version | sed -E 's/.* ([0-9]+)\..*/\1/')"
+          if [ "${major}" -lt 18 ]; then
+            echo "::error::pg_dump is ${major}.x but the server is 18.x — the PATH fix in the previous step is not taking effect."
+            exit 1
+          fi
+
       - name: Dump database
         run: |
           set -euo pipefail
