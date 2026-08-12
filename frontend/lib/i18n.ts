@@ -523,6 +523,7 @@ export interface Dictionary {
     tooLong: string;
     slugFormat: string;
     slugTaken: string;
+    timestampNotUtc: string;
     mustBeZeroOrMore: string;
     invalidEmail: string;
     formError: string;
@@ -1041,6 +1042,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       slugFormat:
         "Use lowercase letters, numbers and hyphens only — for example: web-development-101.",
       slugTaken: "This slug is already in use. Try a different one.",
+      timestampNotUtc: "Pick a date and time using the date picker.",
       mustBeZeroOrMore: "Enter zero or a positive number.",
       invalidEmail: "Enter a valid email address.",
       formError: "Something went wrong. Please try again."
@@ -1557,6 +1559,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       slugFormat:
         "استخدم حروفًا إنجليزية صغيرة وأرقامًا وشرطات فقط — مثال: web-development-101.",
       slugTaken: "هذا المعرّف مستخدم بالفعل. جرّب معرّفًا آخر.",
+      timestampNotUtc: "اختر التاريخ والوقت من محدِّد التاريخ.",
       mustBeZeroOrMore: "أدخل صفرًا أو رقمًا موجبًا.",
       invalidEmail: "أدخل بريدًا إلكترونيًا صحيحًا.",
       formError: "حدث خطأ ما. من فضلك حاول مرة أخرى."

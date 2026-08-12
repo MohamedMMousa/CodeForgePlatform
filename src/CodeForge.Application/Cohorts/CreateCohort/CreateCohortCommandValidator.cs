@@ -1,3 +1,4 @@
+using CodeForge.Application.Common.Validation;
 using FluentValidation;
 
 namespace CodeForge.Application.Cohorts.CreateCohort
@@ -11,6 +12,10 @@ namespace CodeForge.Application.Cohorts.CreateCohort
             RuleFor(x => x.Name)
                 .NotEmpty()
                 .MaximumLength(255);
+
+            RuleFor(x => x.StartDate).MustBeUtc();
+            RuleFor(x => x.EndDate).MustBeUtc();
+            RuleFor(x => x.EnrollmentCutoffDate).MustBeUtc();
 
             RuleFor(x => x.EndDate)
                 .GreaterThan(x => x.StartDate)

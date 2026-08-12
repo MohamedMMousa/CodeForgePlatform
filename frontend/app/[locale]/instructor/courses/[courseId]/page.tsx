@@ -35,6 +35,7 @@ import {
   updateCohort,
   updateCourse
 } from "@/lib/api";
+import { utcIsoToLocalInput } from "@/lib/datetime";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
 import { Pagination } from "@/components/Pagination";
 
@@ -136,9 +137,9 @@ export default function InstructorCoursePage({
   function onEditCohort(c: CohortInfo) {
     setEditingCohortId(c.id);
     setCohortName(c.name);
-    setCohortStartDate(c.startDate.slice(0, 16));
-    setCohortEndDate(c.endDate.slice(0, 16));
-    setCohortCutoffDate(c.enrollmentCutoffDate.slice(0, 16));
+    setCohortStartDate(utcIsoToLocalInput(c.startDate));
+    setCohortEndDate(utcIsoToLocalInput(c.endDate));
+    setCohortCutoffDate(utcIsoToLocalInput(c.enrollmentCutoffDate));
     setCohortCapacity(String(c.capacity));
     setCohortGraceDays(String(c.gracePeriodDays));
   }

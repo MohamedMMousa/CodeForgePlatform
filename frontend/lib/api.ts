@@ -12,6 +12,7 @@
 // are inputs to JSON.stringify or FormData, not response DTOs.
 
 import type { components } from "./api-schema";
+import { localInputToUtcIso } from "./datetime";
 
 type Schemas = components["schemas"];
 
@@ -470,7 +471,7 @@ function sessionInputBody(input: SessionInput) {
     type: input.type,
     title: input.title,
     description: input.description ?? null,
-    scheduledAt: input.scheduledAt ?? null,
+    scheduledAt: localInputToUtcIso(input.scheduledAt),
     durationMinutes: input.durationMinutes ?? null,
     joinLink: input.joinLink ?? null,
     location: input.location ?? null,
@@ -800,7 +801,7 @@ function assignmentInputBody(input: AssignmentInput) {
     description: input.description,
     isPractice: input.isPractice,
     maxAttempts: input.maxAttempts ?? null,
-    dueAt: input.dueAt ?? null,
+    dueAt: localInputToUtcIso(input.dueAt),
     passScore: input.passScore ?? null
   };
 }

@@ -1,4 +1,5 @@
 using CodeForge.Application.Common.Constants;
+using CodeForge.Application.Common.Validation;
 using CodeForge.Application.Sessions.Common;
 using FluentValidation;
 
@@ -40,6 +41,8 @@ namespace CodeForge.Application.Sessions.CreateSession
                 RuleFor(x => x.VideoUrl).NotEmpty().MaximumLength(500)
                     .WithMessage("A pre-recorded lesson requires a video URL.");
             });
+
+            RuleFor(x => x.ScheduledAt).MustBeUtc();
 
             RuleFor(x => x.DurationMinutes).GreaterThan(0).When(x => x.DurationMinutes.HasValue);
         }

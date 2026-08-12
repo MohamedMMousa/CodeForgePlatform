@@ -19,6 +19,7 @@ using CodeForge.Api.Filters;
 using CodeForge.Api.Middleware;
 using CodeForge.Api.Observability;
 using CodeForge.Api.RateLimiting;
+using CodeForge.Api.Serialization;
 using CodeForge.Api.Swagger;
 using CodeForge.Infrastructure.Data;
 
@@ -68,6 +69,11 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<PasswordChangeRequiredFilter>();
     options.Filters.Add<CsrfProtectionFilter>();
+}).AddJsonOptions(options =>
+{
+    // Timestamps land in `timestamptz` columns, which Npgsql only accepts as UTC.
+    options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+    options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
 });
 
 // Localization scaffolding: resolve culture per request (Arabic/English) from the

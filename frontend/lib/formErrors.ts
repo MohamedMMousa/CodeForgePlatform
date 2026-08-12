@@ -31,6 +31,7 @@ const CODE_TO_KEY: Record<string, keyof Dictionary["validation"]> = {
   // Explicit — see Application/Common/Constants/ValidationErrorCodes.cs
   slug_format: "slugFormat",
   slug_taken: "slugTaken",
+  timestamp_not_utc: "timestampNotUtc",
   // FluentValidation defaults
   NotEmptyValidator: "required",
   NotNullValidator: "required",
