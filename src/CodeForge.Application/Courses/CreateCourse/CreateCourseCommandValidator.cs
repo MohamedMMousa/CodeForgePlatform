@@ -1,3 +1,4 @@
+using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Courses.Common;
 using FluentValidation;
 
@@ -15,7 +16,8 @@ namespace CodeForge.Application.Courses.CreateCourse
                 .NotEmpty()
                 .MaximumLength(255)
                 .Must(CourseValidationRules.IsValidSlug)
-                .WithMessage("Slug must contain lowercase letters, numbers, and hyphens only.");
+                .WithMessage("Slug must contain lowercase letters, numbers, and hyphens only.")
+                .WithErrorCode(ValidationErrorCodes.SlugFormat);
 
             RuleFor(x => x.Description)
                 .MaximumLength(5000);

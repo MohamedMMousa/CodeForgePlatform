@@ -30,7 +30,7 @@ namespace CodeForge.Application.Courses.CreateCourse
 
             if (slugExists)
             {
-                throw new InvalidOperationException("Course slug is already in use.");
+                throw CourseValidationRules.SlugTakenException("Course slug is already in use.");
             }
 
             var course = new Course

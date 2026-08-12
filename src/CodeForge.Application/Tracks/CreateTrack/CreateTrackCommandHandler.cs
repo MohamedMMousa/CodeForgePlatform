@@ -27,7 +27,7 @@ namespace CodeForge.Application.Tracks.CreateTrack
             var slugExists = await _context.Tracks.AnyAsync(x => x.Slug == slug, cancellationToken);
             if (slugExists)
             {
-                throw new InvalidOperationException("Track slug is already in use.");
+                throw Courses.Common.CourseValidationRules.SlugTakenException("Track slug is already in use.");
             }
 
             var track = new Track

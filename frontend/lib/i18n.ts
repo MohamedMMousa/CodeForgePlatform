@@ -350,6 +350,7 @@ export interface Dictionary {
 
     fieldTitle: string;
     fieldSlug: string;
+    slugHint: string;
     fieldDescription: string;
     fieldThumbnailUrl: string;
     fieldCategory: string;
@@ -514,6 +515,17 @@ export interface Dictionary {
     clientSent: string;
     serverButton: string;
     serverSent: string;
+  };
+  /** Copy for field-level validation failures. Keyed by the code the API returns
+   * alongside each message — see lib/formErrors.ts and API_CONVENTIONS.md §4. */
+  validation: {
+    required: string;
+    tooLong: string;
+    slugFormat: string;
+    slugTaken: string;
+    mustBeZeroOrMore: string;
+    invalidEmail: string;
+    formError: string;
   };
 }
 
@@ -856,6 +868,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 
       fieldTitle: "Title",
       fieldSlug: "Slug",
+      slugHint: "Lowercase letters, numbers and hyphens only. Suggested from the title.",
       fieldDescription: "Description",
       fieldThumbnailUrl: "Thumbnail URL",
       fieldCategory: "Category",
@@ -1021,6 +1034,16 @@ const dictionaries: Record<Locale, Dictionary> = {
       clientSent: "Client-side test event sent to Sentry.",
       serverButton: "Send test error (server)",
       serverSent: "Server-side test event sent to Sentry."
+    },
+    validation: {
+      required: "This field is required.",
+      tooLong: "This value is too long.",
+      slugFormat:
+        "Use lowercase letters, numbers and hyphens only — for example: web-development-101.",
+      slugTaken: "This slug is already in use. Try a different one.",
+      mustBeZeroOrMore: "Enter zero or a positive number.",
+      invalidEmail: "Enter a valid email address.",
+      formError: "Something went wrong. Please try again."
     }
   },
   ar: {
@@ -1360,6 +1383,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 
       fieldTitle: "العنوان",
       fieldSlug: "المعرّف (slug)",
+      slugHint: "حروف إنجليزية صغيرة وأرقام وشرطات فقط. يُقترح تلقائيًا من العنوان.",
       fieldDescription: "الوصف",
       fieldThumbnailUrl: "رابط الصورة المصغرة",
       fieldCategory: "الفئة",
@@ -1525,6 +1549,17 @@ const dictionaries: Record<Locale, Dictionary> = {
       clientSent: "تم إرسال حدث اختباري من جهة العميل إلى Sentry.",
       serverButton: "إرسال خطأ اختباري (الخادم)",
       serverSent: "تم إرسال حدث اختباري من جهة الخادم إلى Sentry."
+    },
+    validation: {
+      required: "هذا الحقل مطلوب.",
+      tooLong: "هذه القيمة أطول من المسموح.",
+      // The slug rule is Latin-only, so the example stays Latin in both locales.
+      slugFormat:
+        "استخدم حروفًا إنجليزية صغيرة وأرقامًا وشرطات فقط — مثال: web-development-101.",
+      slugTaken: "هذا المعرّف مستخدم بالفعل. جرّب معرّفًا آخر.",
+      mustBeZeroOrMore: "أدخل صفرًا أو رقمًا موجبًا.",
+      invalidEmail: "أدخل بريدًا إلكترونيًا صحيحًا.",
+      formError: "حدث خطأ ما. من فضلك حاول مرة أخرى."
     }
   }
 };

@@ -83,17 +83,34 @@ namespace CodeForge.Api.Middleware
 
         private static ValidationProblemDetails BuildValidationProblem(ValidationException exception)
         {
-            var errors = exception.Errors
+            // Group once and de-duplicate on the failures themselves, so `errors` and
+            // `errorCodes` stay index-aligned per property — the frontend pairs them
+            // positionally to localize each message.
+            var failuresByProperty = exception.Errors
                 .GroupBy(error => error.PropertyName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Select(error => error.ErrorMessage).Distinct().ToArray());
+                    group => group
+                        .GroupBy(error => error.ErrorMessage)
+                        .Select(duplicates => duplicates.First())
+                        .ToArray());
 
-            return new ValidationProblemDetails(errors)
+            var errors = failuresByProperty.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.Select(failure => failure.ErrorMessage).ToArray());
+
+            var errorCodes = failuresByProperty.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.Select(failure => failure.ErrorCode ?? string.Empty).ToArray());
+
+            var problem = new ValidationProblemDetails(errors)
             {
                 Status = StatusCodes.Status400BadRequest,
                 Title = "Validation Failed"
             };
+
+            problem.Extensions["errorCodes"] = errorCodes;
+            return problem;
         }
 
         private static ProblemDetails BuildProblem(int status, string title, string detail) => new()

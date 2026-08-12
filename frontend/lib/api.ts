@@ -111,6 +111,10 @@ export interface ApiError {
   title?: string;
   detail?: string;
   errors?: Record<string, string[]>;
+  /** Stable per-failure codes ("slug_format", "NotEmptyValidator", …), index-aligned
+   * with `errors` per key so the frontend can render bilingual copy instead of the
+   * server's English messages — see API_CONVENTIONS.md §4 and lib/formErrors.ts. */
+  errorCodes?: Record<string, string[]>;
   /** Machine-readable discriminator for errors the frontend must branch on,
    * e.g. "password_change_required" — see API_CONVENTIONS.md §4. */
   code?: string;

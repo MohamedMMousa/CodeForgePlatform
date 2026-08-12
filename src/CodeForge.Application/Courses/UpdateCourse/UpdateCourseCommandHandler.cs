@@ -39,7 +39,7 @@ namespace CodeForge.Application.Courses.UpdateCourse
 
             if (slugExists)
             {
-                throw new InvalidOperationException("Course slug is already in use.");
+                throw CourseValidationRules.SlugTakenException("Course slug is already in use.");
             }
 
             course.Title = request.Title.Trim();

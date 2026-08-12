@@ -37,7 +37,7 @@ namespace CodeForge.Application.Tracks.UpdateTrack
                 .AnyAsync(x => x.Id != request.Id && x.Slug == slug, cancellationToken);
             if (slugExists)
             {
-                throw new InvalidOperationException("Track slug is already in use.");
+                throw Courses.Common.CourseValidationRules.SlugTakenException("Track slug is already in use.");
             }
 
             track.Title = request.Title.Trim();

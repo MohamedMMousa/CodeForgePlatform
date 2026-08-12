@@ -41,6 +41,57 @@ namespace CodeForge.UnitTests.Middleware
         }
 
         [Fact]
+        public async Task ValidationException_EmitsErrorCodes_AlignedWithMessages()
+        {
+            var failures = new[]
+            {
+                new ValidationFailure("Slug", "Slug is required.") { ErrorCode = "NotEmptyValidator" },
+                new ValidationFailure("Slug", "Slug must be lowercase.") { ErrorCode = "slug_format" },
+                // Duplicated message: de-duplication must drop it from BOTH arrays, not just one.
+                new ValidationFailure("Slug", "Slug must be lowercase.") { ErrorCode = "slug_format" },
+                new ValidationFailure("Title", "Title is required.") { ErrorCode = "NotEmptyValidator" }
+            };
+
+            var (status, body) = await InvokeWith(new ValidationException(failures));
+
+            status.Should().Be(StatusCodes.Status400BadRequest);
+            using var document = JsonDocument.Parse(body);
+            var errors = document.RootElement.GetProperty("errors");
+            var errorCodes = document.RootElement.GetProperty("errorCodes");
+
+            // Same properties on both dictionaries, with PascalCase keys preserved.
+            errors.EnumerateObject().Select(p => p.Name)
+                .Should().BeEquivalentTo(errorCodes.EnumerateObject().Select(p => p.Name))
+                .And.BeEquivalentTo(new[] { "Slug", "Title" });
+
+            // Index-aligned per property — the frontend pairs them positionally.
+            foreach (var property in errors.EnumerateObject())
+            {
+                errorCodes.GetProperty(property.Name).GetArrayLength()
+                    .Should().Be(property.Value.GetArrayLength());
+            }
+
+            errors.GetProperty("Slug").EnumerateArray().Select(e => e.GetString())
+                .Should().Equal("Slug is required.", "Slug must be lowercase.");
+            errorCodes.GetProperty("Slug").EnumerateArray().Select(e => e.GetString())
+                .Should().Equal("NotEmptyValidator", "slug_format");
+        }
+
+        [Fact]
+        public async Task ValidationException_WithoutErrorCode_EmitsEmptyStringNotNull()
+        {
+            // FluentValidation leaves ErrorCode null for hand-built failures; the frontend
+            // treats an empty code as "fall back to the server's message".
+            var failures = new[] { new ValidationFailure("Email", "Email is required.") };
+
+            var (_, body) = await InvokeWith(new ValidationException(failures));
+
+            using var document = JsonDocument.Parse(body);
+            document.RootElement.GetProperty("errorCodes").GetProperty("Email")[0]
+                .GetString().Should().BeEmpty();
+        }
+
+        [Fact]
         public async Task UnauthorizedAccessException_MapsTo401()
         {
             var (status, _) = await InvokeWith(new UnauthorizedAccessException("nope"));

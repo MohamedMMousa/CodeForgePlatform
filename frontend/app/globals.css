@@ -196,6 +196,28 @@ a {
   color: var(--muted);
 }
 
+/* Validation message shown under the input that caused it. No directional
+   properties, so it mirrors correctly in RTL without an override. */
+.field-err {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--err);
+}
+
+/* Always-visible guidance under an input (e.g. the slug format rule). */
+.hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Input flagged by a validation failure. */
+[aria-invalid="true"] {
+  border-color: var(--err);
+}
+
 .pagination {
   display: flex;
   align-items: center;

@@ -86,7 +86,12 @@ All errors go through `ExceptionHandlingMiddleware` and come back as
 
 ```json
 // 400 — validation (FluentValidation)
-{ "title": "Validation Failed", "status": 400, "errors": { "Email": ["'Email' must not be empty."] } }
+{
+  "title": "Validation Failed",
+  "status": 400,
+  "errors":     { "Slug": ["Slug must contain lowercase letters, numbers, and hyphens only."] },
+  "errorCodes": { "Slug": ["slug_format"] }
+}
 
 // 401 — UnauthorizedAccessException
 { "title": "Unauthorized", "status": 401, "detail": "Invalid email or password." }
@@ -120,12 +125,33 @@ programmatically (not just display) — `password_change_required` and
 `csrf_validation_failed`. Most errors have no `code`; the frontend falls back to
 `title`/`detail` for display.
 
+**The `errorCodes` extension field** accompanies every validation 400. Its keys match
+`errors` exactly (PascalCase property names — `JsonSerializerDefaults.Web` camel-cases
+properties but not dictionary keys), and within each key the two arrays are
+**index-aligned**: `errors["Slug"][i]` and `errorCodes["Slug"][i]` describe the same
+failure. Validator messages are English-only, so the frontend renders its own bilingual
+copy off the code and falls back to the server's message when a code is unmapped — see
+`frontend/lib/formErrors.ts`.
+
+Codes are FluentValidation's defaults (`NotEmptyValidator`, `MaximumLengthValidator`, …)
+unless a rule sets one explicitly via `.WithErrorCode(...)`. Add an explicit code from
+`Application/Common/Constants/ValidationErrorCodes.cs` whenever the default would be
+ambiguous — notably every `.Must(...)`, which otherwise reports `PredicateValidator`.
+A failure with no code at all serializes as `""`.
+
 ## 5. Validation
 
 Every `Command`/`Query` that takes user input has a matching `Validator : AbstractValidator<T>`.
 `ValidationBehavior<TRequest, TResponse>` (a MediatR pipeline behavior) runs validators
 automatically before the handler executes — handlers can assume their input is valid.
 Never validate manually inside a handler; add a validator instead.
+
+**The one exception is uniqueness**, which needs a database round-trip and so cannot live
+in a validator. It is still an input problem about a specific field, so report it by
+throwing a `ValidationException` naming that field rather than an `InvalidOperationException`
+— see `CourseValidationRules.SlugTakenException`. That keeps "slug is malformed" and "slug
+is taken" in the same envelope, so the frontend can render both on the slug input instead
+of one inline and one as a detached page-level banner.
 
 ## 6. Pagination
 
