@@ -587,6 +587,12 @@ export function deleteAnnouncement(id: string): Promise<AnnouncementItem> {
 // My courses (student view)
 // ---------------------------------------------------------------------------
 
+export type MyCourseSummary = Schemas["MyCourseSummaryDto"];
+
+export function getMyCourses(): Promise<MyCourseSummary[]> {
+  return apiFetch<MyCourseSummary[]>("/my-courses");
+}
+
 export type MyCourseAssessment = Schemas["MyCourseAssessmentDto"];
 export type MyCourseAssignment = Schemas["MyCourseAssignmentDto"];
 export type MyCourseModule = Schemas["MyCourseModuleDto"];

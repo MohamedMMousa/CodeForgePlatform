@@ -4384,6 +4384,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my-courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyCourseSummaryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my-courses/upcoming-items": {
         parameters: {
             query?: never;
@@ -6135,6 +6170,17 @@ export interface components {
             sessions: components["schemas"]["SessionDto"][];
             assessments: components["schemas"]["MyCourseAssessmentDto"][];
             assignments: components["schemas"]["MyCourseAssignmentDto"][];
+        };
+        MyCourseSummaryDto: {
+            /** Format: uuid */
+            courseId: string;
+            title: string;
+            description?: string | null;
+            cohortName: string;
+            /** Format: date-time */
+            cohortStartDate: string;
+            /** Format: date-time */
+            cohortEndDate: string;
         };
         OptionDto: {
             /** Format: uuid */

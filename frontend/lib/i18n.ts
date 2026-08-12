@@ -227,6 +227,9 @@ export interface Dictionary {
   };
   student: {
     dashboard: string;
+    myCourses: string;
+    noCourses: string;
+    coursesLoadError: string;
     upcomingSessions: string;
     noUpcoming: string;
     recentAnnouncements: string;
@@ -746,6 +749,9 @@ const dictionaries: Record<Locale, Dictionary> = {
     },
     student: {
       dashboard: "Dashboard",
+      myCourses: "My courses",
+      noCourses: "You are not enrolled in any courses yet.",
+      coursesLoadError: "Could not load your courses.",
       upcomingSessions: "Upcoming sessions",
       noUpcoming: "No upcoming sessions.",
       recentAnnouncements: "Announcements",
@@ -1262,6 +1268,9 @@ const dictionaries: Record<Locale, Dictionary> = {
     },
     student: {
       dashboard: "لوحة التحكم",
+      myCourses: "دوراتي",
+      noCourses: "لست مسجّلاً في أي دورة حتى الآن.",
+      coursesLoadError: "تعذّر تحميل دوراتك.",
       upcomingSessions: "الجلسات القادمة",
       noUpcoming: "لا توجد جلسات قادمة.",
       recentAnnouncements: "الإعلانات",

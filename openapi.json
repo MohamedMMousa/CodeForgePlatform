@@ -4738,6 +4738,28 @@
         }
       }
     },
+    "/my-courses": {
+      "get": {
+        "tags": [
+          "MyCourses"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyCourseSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/my-courses/upcoming-items": {
       "get": {
         "tags": [
@@ -8826,6 +8848,41 @@
             "items": {
               "$ref": "#/components/schemas/MyCourseAssignmentDto"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MyCourseSummaryDto": {
+        "required": [
+          "cohortEndDate",
+          "cohortName",
+          "cohortStartDate",
+          "courseId",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cohortName": {
+            "type": "string"
+          },
+          "cohortStartDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cohortEndDate": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

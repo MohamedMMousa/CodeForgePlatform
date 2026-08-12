@@ -796,6 +796,17 @@ provisions the real accounts: the actual GitHub Actions run, the actual Docker
 image build/deploy, and real Sentry event delivery — all called out explicitly
 above and in `docs/DEPLOY.md` rather than assumed.
 
+**Fixed: courses unreachable with no upcoming session.** A live dry run found that a
+student's only path into an enrolled course was an upcoming-session card on
+`/dashboard` (`GET /my-courses/upcoming-items`, which only returns *scheduled future*
+sessions) — a student between sessions, or before any session was scheduled, had no
+way to reach `/[locale]/my-courses/[courseId]` and therefore no way to reach
+materials, assignments, or grades. Added `GET /my-courses` (`GetMyCoursesQuery`,
+scoped to active enrollments the same way `GetUpcomingItems` is, grouped by course
+since a student can hold enrollments in more than one cohort of the same course) and
+a `/[locale]/my-courses` index page listing every enrolled course independent of
+session state, linked persistently from `RoleNav` for students.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

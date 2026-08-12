@@ -30,6 +30,7 @@ export function RoleNav({ locale, t }: { locale: string; t: Dictionary }) {
       {session.role === "student" && (
         <>
           <Link href={`/${locale}/dashboard`}>{t.student.dashboard}</Link>
+          <Link href={`/${locale}/my-courses`}>{t.student.myCourses}</Link>
           <Link href={`/${locale}/my-certificates`}>{t.student.certificates}</Link>
         </>
       )}

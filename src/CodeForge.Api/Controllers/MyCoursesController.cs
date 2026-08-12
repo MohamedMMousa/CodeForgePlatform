@@ -1,6 +1,7 @@
 using CodeForge.Application.MyCourses.Common;
 using CodeForge.Application.MyCourses.GetMyCourseContent;
 using CodeForge.Application.MyCourses.GetMyCourseGrades;
+using CodeForge.Application.MyCourses.GetMyCourses;
 using CodeForge.Application.MyCourses.GetUpcomingItems;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,14 @@ namespace CodeForge.Api.Controllers
         public MyCoursesController(ISender sender)
         {
             _sender = sender;
+        }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<MyCourseSummaryDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyCourses(CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(new GetMyCoursesQuery(), cancellationToken);
+            return Ok(response);
         }
 
         [HttpGet("upcoming-items")]
