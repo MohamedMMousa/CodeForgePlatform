@@ -21,6 +21,7 @@ export interface Dictionary {
     description: string;
     browseCourses: string;
     signIn: string;
+    newHereHint: string;
   };
   login: {
     title: string;
@@ -542,7 +543,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       description:
         "Live, cohort-based programming tracks for school and university students.",
       browseCourses: "Browse courses",
-      signIn: "Sign in"
+      signIn: "Sign in",
+      newHereHint: "New here? Browse courses and enroll — no account needed."
     },
     login: {
       title: "Sign in",
@@ -1061,7 +1063,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       welcome: "مرحبًا بك في أكاديمية كود فورج",
       description: "مسارات برمجة مباشرة بنظام الدفعات لطلاب المدارس والجامعات.",
       browseCourses: "تصفّح الدورات",
-      signIn: "تسجيل الدخول"
+      signIn: "تسجيل الدخول",
+      newHereHint: "جديد هنا؟ تصفح الدورات وسجّل الآن — بدون حاجة لإنشاء حساب."
     },
     login: {
       title: "تسجيل الدخول",
