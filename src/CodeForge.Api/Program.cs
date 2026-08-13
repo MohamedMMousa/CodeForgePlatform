@@ -303,6 +303,28 @@ if (app.Configuration.GetValue<bool>("Database:AutoMigrate"))
 // Bootstrap the initial super-admin (idempotent; no-op unless AdminSeed is configured).
 await DatabaseSeeder.SeedAsync(app.Services);
 
+// Silent-email-in-prod guard: unconfigured EmailSettings binds LoggingEmailSender in
+// Production too (see DependencyInjection.cs), so password resets and notification
+// emails would otherwise report success and deliver nothing with zero signal. This is
+// a loud Critical log rather than a fail-fast throw (unlike the JWT-secret/connection-
+// string guards above) because the deployed Render API has no mail provider yet during
+// this pre-pilot period — throwing here would take down an otherwise-healthy API.
+// LogCritical (not Warning) is deliberate: Sentry's ILogger integration captures at
+// Error+, so once Sentry__Dsn is set this also raises a Sentry event per deploy.
+// Once email is activated, turn this into a fail-fast throw like the guards above.
+if (app.Environment.IsProduction())
+{
+    var emailSettings = app.Services.GetRequiredService<IOptions<EmailSettings>>().Value;
+    if (!emailSettings.Enabled || string.IsNullOrWhiteSpace(emailSettings.Host))
+    {
+        app.Logger.LogCritical(
+            "EMAIL IS NOT CONFIGURED IN PRODUCTION. IEmailSender is bound to " +
+            "LoggingEmailSender, which delivers nothing: password resets and all " +
+            "notification emails will silently fail. Set EmailSettings__Enabled=true " +
+            "and EmailSettings__Host to activate delivery.");
+    }
+}
+
 // Translate handler/validation exceptions into a consistent ProblemDetails envelope.
 // Registered first so it wraps the entire downstream pipeline.
 app.UseMiddleware<ExceptionHandlingMiddleware>();

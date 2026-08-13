@@ -72,6 +72,31 @@ services:
         sync: false # https://<your-app>.vercel.app — known only once Vercel exists
       - key: EmailSettings__FrontendBaseUrl
         sync: false # same Vercel URL — builds the password-reset link
+      # Declared-but-unset on purpose: there's no domain/SMTP provider yet. Declaring
+      # these here (even with placeholder values) is what stops a future blueprint sync
+      # from silently reverting dashboard-set values back to appsettings.json's
+      # disabled defaults — see Program.cs's Production startup guard, which logs
+      # Critical whenever Enabled/Host end up unset. Enabled/Port/UseSsl are typed
+      # (bool/int/bool) — an empty string for those three fails config binding at
+      # startup, so keep explicit placeholders below rather than blanking them like the
+      # string-typed keys (Username/Password/FromAddress/FromName can stay blank, same
+      # as Proxy__ClientIpHeader above).
+      - key: EmailSettings__Enabled
+        value: "false"
+      - key: EmailSettings__Host
+        sync: false
+      - key: EmailSettings__Port
+        value: "587"
+      - key: EmailSettings__UseSsl
+        value: "true"
+      - key: EmailSettings__Username
+        sync: false
+      - key: EmailSettings__Password
+        sync: false
+      - key: EmailSettings__FromAddress
+        sync: false
+      - key: EmailSettings__FromName
+        sync: false
       - key: Storage__R2AccountId
         sync: false
       - key: Storage__R2Bucket

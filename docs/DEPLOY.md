@@ -112,6 +112,11 @@ auth phase. Run it again, the same way, any time a future change adds a migratio
    | `AdminSeed__Password` | The real first admin's password — `mustChangePassword` is enforced, so this is only used for the very first login before being forced to change |
    | `Cors__AllowedOrigins__0` | `https://<your-app>.vercel.app` — you won't have this until Step 5; come back and set it after |
    | `EmailSettings__FrontendBaseUrl` | Same Vercel URL — builds the password-reset link. Also come back after Step 5 |
+   | `EmailSettings__Host` | Leave blank for now — no domain/SMTP provider yet (see below) |
+   | `EmailSettings__Username` | Leave blank for now |
+   | `EmailSettings__Password` | Leave blank for now |
+   | `EmailSettings__FromAddress` | Leave blank for now |
+   | `EmailSettings__FromName` | Leave blank for now |
    | `Storage__R2AccountId` | From Step 2 |
    | `Storage__R2Bucket` | From Step 2 |
    | `Storage__R2AccessKeyId` | From Step 2 |
@@ -121,11 +126,20 @@ auth phase. Run it again, the same way, any time a future change adds a migratio
    (`AdminSeed__FullName` isn't listed — it defaults to `"Platform Administrator"` in
    code; only set it if you want something else.)
 
+   **Email is deliberately inactive** until a domain/SMTP provider exists —
+   `EmailSettings__Enabled=false`, `EmailSettings__Port=587`, `EmailSettings__UseSsl=true`
+   are already inlined in `render.yaml` as safe non-secret placeholders; only the five
+   blanks above are prompted for. With `Enabled=false`, the API falls back to
+   `LoggingEmailSender` (no real delivery) and logs a `Critical` line once at every boot
+   — that's expected and by design during this pre-pilot period (see Program.cs). To
+   activate real delivery later: set `Enabled=true` and fill in `Host` and the rest,
+   then redeploy.
+
    Everything else (`ASPNETCORE_ENVIRONMENT`, `Database__AutoMigrate=false`,
    `Proxy__TrustForwardedFor=true`, `Storage__Provider=R2`, `Sentry__Environment`, the
    `Proxy__TrustedProxyHopCount`/`Proxy__EnableDiagnostics`/`Sentry__EnableTestEndpoint`
-   toggles) is already inlined in `render.yaml` with safe defaults — nothing more to
-   set there.
+   toggles, `EmailSettings__Enabled`/`Port`/`UseSsl`) is already inlined in `render.yaml`
+   with safe defaults — nothing more to set there.
 3. Deploy. First build takes several minutes (multi-stage Docker build). Confirm
    `https://<your-api>.onrender.com/health` returns healthy before moving on.
 4. **Cold starts are accepted, not fixed, in this phase.** Render's free plan spins
@@ -272,6 +286,8 @@ Report what passed and what didn't — don't mark this done from documentation a
 | `AdminSeed__Email` / `AdminSeed__Password` | you (Step 4) | First admin; forced password change on first login |
 | `Cors__AllowedOrigins__0` | you (Step 4, after Step 5) | `https://<app>.vercel.app` |
 | `EmailSettings__FrontendBaseUrl` | you (Step 4, after Step 5) | Same Vercel URL — password-reset links |
+| `EmailSettings__Enabled` / `Port` / `UseSsl` | render.yaml | `false` / `587` / `true` — safe placeholders; declared so a blueprint sync can't silently revert dashboard values once email is activated |
+| `EmailSettings__Host` / `Username` / `Password` / `FromAddress` / `FromName` | you (Step 4), blank for now | Left empty until a domain/SMTP provider exists — Production logs `Critical` once per boot while unset (see Program.cs) |
 | `Storage__R2AccountId` / `R2Bucket` / `R2AccessKeyId` / `R2SecretAccessKey` | you (Step 4) | Upload storage |
 | `Sentry__Dsn` | you (Step 4) | Backend error monitoring |
 

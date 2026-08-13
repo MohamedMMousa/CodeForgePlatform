@@ -115,9 +115,12 @@
   (password reset), never returned in a JSON response body, and never persisted
   outside the hash/pending-plaintext columns.
 - **Email** — `IEmailSender` abstraction; `SmtpEmailSender` when `EmailSettings:Enabled`
-  is true and a host is configured, otherwise `LoggingEmailSender` (dev fallback that
-  logs instead of sending). Forgot-password sends a reset link by email; the API never
-  returns the token.
+  is true and a host is configured, otherwise `LoggingEmailSender` (fallback that logs
+  recipient/subject only — the body, which can carry reset tokens or temp passwords, is
+  never logged). This fallback is also what Production binds when email is unconfigured;
+  `Program.cs` logs `Critical` once at every boot in that state so it can't go unnoticed
+  (loud rather than fail-fast during the pre-pilot period with no mail provider yet).
+  Forgot-password sends a reset link by email; the API never returns the token.
 - **Notifications** (Phase 5) — `INotificationDispatcher` fans a `NotificationEvent`
   (`NotificationEventType`: `EnrollmentApproved`/`Rejected`, `CertificateIssued`,
   `AssignmentGraded`) out to every registered `INotificationChannel`, isolating

@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace CodeForge.Infrastructure.Email
 {
     /// <summary>
-    /// Development/fallback email sender that logs the message instead of delivering it.
-    /// Used when SMTP is not configured, so local flows (e.g. password reset) are observable
-    /// without a real mail server and without leaking tokens in API responses.
+    /// Development/fallback email sender that logs metadata instead of delivering the
+    /// message. Used when SMTP is not configured — including as the Production fallback
+    /// when EmailSettings is unset, see Program.cs's startup guard for that case.
     /// </summary>
     public class LoggingEmailSender : IEmailSender
     {
@@ -23,11 +23,12 @@ namespace CodeForge.Infrastructure.Email
             string htmlBody,
             CancellationToken cancellationToken = default)
         {
+            // Body is deliberately never logged: it carries password-reset tokens and
+            // temp passwords, and this stub is also what Production falls back to.
             _logger.LogInformation(
-                "[DEV EMAIL] To: {ToEmail} | Subject: {Subject}\n{Body}",
+                "[DEV EMAIL] Would send to {ToEmail} | Subject: {Subject} (body not logged)",
                 toEmail,
-                subject,
-                htmlBody);
+                subject);
             return Task.CompletedTask;
         }
     }
