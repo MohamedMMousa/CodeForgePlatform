@@ -530,6 +530,7 @@ export interface Dictionary {
     timestampNotUtc: string;
     mustBeZeroOrMore: string;
     invalidEmail: string;
+    invalidUrl: string;
     formError: string;
   };
 }
@@ -1053,6 +1054,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       timestampNotUtc: "Pick a date and time using the date picker.",
       mustBeZeroOrMore: "Enter zero or a positive number.",
       invalidEmail: "Enter a valid email address.",
+      invalidUrl: "Enter a valid web address, e.g. zoom.us/j/123.",
       formError: "Something went wrong. Please try again."
     }
   },
@@ -1574,6 +1576,8 @@ const dictionaries: Record<Locale, Dictionary> = {
       timestampNotUtc: "اختر التاريخ والوقت من محدِّد التاريخ.",
       mustBeZeroOrMore: "أدخل صفرًا أو رقمًا موجبًا.",
       invalidEmail: "أدخل بريدًا إلكترونيًا صحيحًا.",
+      // Like the slug example above, a web address stays Latin in both locales.
+      invalidUrl: "أدخل رابطًا صحيحًا، مثال: zoom.us/j/123.",
       formError: "حدث خطأ ما. من فضلك حاول مرة أخرى."
     }
   }

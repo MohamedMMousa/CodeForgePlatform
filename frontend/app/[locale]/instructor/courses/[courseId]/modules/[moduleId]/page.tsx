@@ -52,6 +52,9 @@ import {
   markAttendance
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { externalHref } from "@/lib/url";
+import { useFormErrors } from "@/lib/formErrors";
+import { FieldError, fieldErrorProps } from "@/components/FieldError";
 
 const emptySession: SessionInput = { type: "live", title: "" };
 const emptyAssessment: AssessmentInput = {
@@ -72,7 +75,8 @@ export default function InstructorModulePage({
 }) {
   const { locale: rawLocale, courseId, moduleId } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).instructor;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.instructor;
 
   const { session } = useAuth();
   const [sessions, setSessions] = useState<SessionItem[] | null>(null);
@@ -83,6 +87,7 @@ export default function InstructorModulePage({
 
   const [form, setForm] = useState<SessionInput>(emptySession);
   const [saving, setSaving] = useState(false);
+  const formErrors = useFormErrors(dictionary);
 
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [sessionMaterials, setSessionMaterials] = useState<Record<string, MaterialItem[]>>({});
@@ -105,13 +110,14 @@ export default function InstructorModulePage({
   async function onAddSession(e: React.FormEvent) {
     e.preventDefault();
     if (!session) return;
+    formErrors.reset();
     setSaving(true);
     try {
       await createSession(moduleId, form);
       setForm(emptySession);
       reload();
     } catch (err) {
-      onError(err);
+      formErrors.capture(err);
     } finally {
       setSaving(false);
     }
@@ -173,13 +179,13 @@ export default function InstructorModulePage({
           {s.scheduledAt && <p>{t.scheduledAt}: {new Date(s.scheduledAt).toLocaleString(locale)}</p>}
           {s.joinLink && (
             <p>
-              {t.joinLink}: <a href={s.joinLink} target="_blank" rel="noreferrer">{s.joinLink}</a>
+              {t.joinLink}: <a href={externalHref(s.joinLink)} target="_blank" rel="noreferrer">{s.joinLink}</a>
             </p>
           )}
           {s.location && <p>{t.location}: {s.location}</p>}
           {s.videoUrl && (
             <p>
-              {t.videoUrl}: <a href={s.videoUrl} target="_blank" rel="noreferrer">{s.videoUrl}</a>
+              {t.videoUrl}: <a href={externalHref(s.videoUrl)} target="_blank" rel="noreferrer">{s.videoUrl}</a>
             </p>
           )}
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
@@ -273,9 +279,14 @@ export default function InstructorModulePage({
               <label>{t.joinLink}</label>
               <input
                 value={form.joinLink ?? ""}
-                onChange={(e) => setForm({ ...form, joinLink: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, joinLink: e.target.value });
+                  formErrors.clearField("JoinLink");
+                }}
                 required
+                {...fieldErrorProps("session-join-link", formErrors.messagesFor("JoinLink"))}
               />
+              <FieldError id="session-join-link-error" messages={formErrors.messagesFor("JoinLink")} />
             </div>
           )}
           {form.type === "in_person" && (
@@ -293,11 +304,18 @@ export default function InstructorModulePage({
               <label>{t.videoUrl}</label>
               <input
                 value={form.videoUrl ?? ""}
-                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, videoUrl: e.target.value });
+                  formErrors.clearField("VideoUrl");
+                }}
                 required
+                {...fieldErrorProps("session-video-url", formErrors.messagesFor("VideoUrl"))}
               />
+              <FieldError id="session-video-url-error" messages={formErrors.messagesFor("VideoUrl")} />
             </div>
           )}
+
+          {formErrors.formError && <p className="notice err">{formErrors.formError}</p>}
 
           <button className="btn" type="submit" disabled={saving}>
             {t.add}

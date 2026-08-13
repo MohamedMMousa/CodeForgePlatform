@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useSessionGate } from "@/components/SessionGuard";
 import { ApiRequestError, UpcomingItems, getUpcomingItems } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { externalHref } from "@/lib/url";
 
 export default function DashboardPage({
   params
@@ -54,7 +55,7 @@ export default function DashboardPage({
           <p className="muted">{s.courseTitle} · {s.moduleTitle}</p>
           <p>{new Date(s.scheduledAt).toLocaleString(locale)}</p>
           {s.joinLink && (
-            <a className="btn" href={s.joinLink} target="_blank" rel="noreferrer">
+            <a className="btn" href={externalHref(s.joinLink)} target="_blank" rel="noreferrer">
               {t.join}
             </a>
           )}

@@ -1,6 +1,7 @@
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Validation;
 using CodeForge.Application.Sessions.Common;
 using CodeForge.Domain.Entities;
 using MediatR;
@@ -48,9 +49,9 @@ namespace CodeForge.Application.Sessions.UpdateSession
             session.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
             session.ScheduledAt = request.ScheduledAt;
             session.DurationMinutes = request.DurationMinutes;
-            session.JoinLink = string.IsNullOrWhiteSpace(request.JoinLink) ? null : request.JoinLink.Trim();
+            session.JoinLink = UrlRules.NormalizeOrNull(request.JoinLink);
             session.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
-            session.VideoUrl = string.IsNullOrWhiteSpace(request.VideoUrl) ? null : request.VideoUrl.Trim();
+            session.VideoUrl = UrlRules.NormalizeOrNull(request.VideoUrl);
             session.InstructorId = request.InstructorId;
 
             _context.ActivityLogs.Add(ActivityLogFactory.Create(

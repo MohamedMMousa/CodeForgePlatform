@@ -13,5 +13,6 @@ namespace CodeForge.Application.Common.Constants
         public const string SlugFormat = "slug_format";
         public const string SlugTaken = "slug_taken";
         public const string TimestampNotUtc = "timestamp_not_utc";
+        public const string InvalidUrl = "invalid_url";
     }
 }

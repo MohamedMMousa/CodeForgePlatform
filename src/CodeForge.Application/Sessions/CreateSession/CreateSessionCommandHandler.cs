@@ -1,6 +1,7 @@
 using CodeForge.Application.Common;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Application.Common.Interfaces;
+using CodeForge.Application.Common.Validation;
 using CodeForge.Application.Sessions.Common;
 using CodeForge.Domain.Entities;
 using MediatR;
@@ -60,9 +61,9 @@ namespace CodeForge.Application.Sessions.CreateSession
                 OrderIndex = maxOrder + 1,
                 ScheduledAt = request.ScheduledAt,
                 DurationMinutes = request.DurationMinutes,
-                JoinLink = string.IsNullOrWhiteSpace(request.JoinLink) ? null : request.JoinLink.Trim(),
+                JoinLink = UrlRules.NormalizeOrNull(request.JoinLink),
                 Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
-                VideoUrl = string.IsNullOrWhiteSpace(request.VideoUrl) ? null : request.VideoUrl.Trim(),
+                VideoUrl = UrlRules.NormalizeOrNull(request.VideoUrl),
                 InstructorId = instructorId
             };
 

@@ -26,7 +26,8 @@ namespace CodeForge.Application.Sessions.CreateSession
             {
                 RuleFor(x => x.ScheduledAt).NotEmpty().WithMessage("A live session requires a scheduled date/time.");
                 RuleFor(x => x.JoinLink).NotEmpty().MaximumLength(500)
-                    .WithMessage("A live session requires a join link.");
+                    .WithMessage("A live session requires a join link.")
+                    .MustBeNormalizableHttpUrl();
             });
 
             When(x => x.Type == SessionTypes.InPerson, () =>
@@ -39,7 +40,8 @@ namespace CodeForge.Application.Sessions.CreateSession
             When(x => x.Type == SessionTypes.RecordedLesson, () =>
             {
                 RuleFor(x => x.VideoUrl).NotEmpty().MaximumLength(500)
-                    .WithMessage("A pre-recorded lesson requires a video URL.");
+                    .WithMessage("A pre-recorded lesson requires a video URL.")
+                    .MustBeNormalizableHttpUrl();
             });
 
             RuleFor(x => x.ScheduledAt).MustBeUtc();

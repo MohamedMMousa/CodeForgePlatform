@@ -32,6 +32,7 @@ const CODE_TO_KEY: Record<string, keyof Dictionary["validation"]> = {
   slug_format: "slugFormat",
   slug_taken: "slugTaken",
   timestamp_not_utc: "timestampNotUtc",
+  invalid_url: "invalidUrl",
   // FluentValidation defaults
   NotEmptyValidator: "required",
   NotNullValidator: "required",

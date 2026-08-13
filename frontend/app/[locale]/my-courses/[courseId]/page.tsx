@@ -15,6 +15,7 @@ import {
   getSessionMaterials
 } from "@/lib/api";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { externalHref } from "@/lib/url";
 
 export default function MyCoursePage({
   params
@@ -113,7 +114,7 @@ export default function MyCoursePage({
                   {s.scheduledAt && <p>{new Date(s.scheduledAt).toLocaleString(locale)}</p>}
 
                   {s.type === "live" && s.joinLink && (
-                    <a className="btn" href={s.joinLink} target="_blank" rel="noreferrer">
+                    <a className="btn" href={externalHref(s.joinLink)} target="_blank" rel="noreferrer">
                       {t.join}
                     </a>
                   )}
@@ -121,7 +122,7 @@ export default function MyCoursePage({
                     <p>{t.viewLocation}: {s.location}</p>
                   )}
                   {s.videoUrl && (
-                    <a className="btn secondary" href={s.videoUrl} target="_blank" rel="noreferrer">
+                    <a className="btn secondary" href={externalHref(s.videoUrl)} target="_blank" rel="noreferrer">
                       {t.watchVideo}
                     </a>
                   )}

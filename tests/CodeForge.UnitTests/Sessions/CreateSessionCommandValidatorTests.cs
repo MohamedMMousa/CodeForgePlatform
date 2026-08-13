@@ -144,5 +144,61 @@ namespace CodeForge.UnitTests.Sessions
 
             result.ShouldHaveValidationErrorFor(x => x.DurationMinutes);
         }
+
+        // A join link pasted without a scheme (e.g. "zoom.com") is normalized to
+        // "https://zoom.com" on save rather than rejected — see UrlRules.TryNormalize.
+        [Fact]
+        public void Validate_SchemeLessJoinLink_HasNoError()
+        {
+            var command = ValidLive() with { JoinLink = "zoom.com" };
+
+            var result = _validator.TestValidate(command);
+
+            result.ShouldNotHaveValidationErrorFor(x => x.JoinLink);
+        }
+
+        [Fact]
+        public void Validate_MalformedJoinLink_HasError()
+        {
+            var command = ValidLive() with { JoinLink = "not a url" };
+
+            var result = _validator.TestValidate(command);
+
+            result.ShouldHaveValidationErrorFor(x => x.JoinLink)
+                .WithErrorCode(ValidationErrorCodes.InvalidUrl);
+        }
+
+        [Fact]
+        public void Validate_SchemeLessVideoUrl_HasNoError()
+        {
+            var command = ValidLive() with
+            {
+                Type = SessionTypes.RecordedLesson,
+                ScheduledAt = null,
+                JoinLink = null,
+                VideoUrl = "videos.example.com/lesson-1"
+            };
+
+            var result = _validator.TestValidate(command);
+
+            result.ShouldNotHaveValidationErrorFor(x => x.VideoUrl);
+        }
+
+        [Fact]
+        public void Validate_MalformedVideoUrl_HasError()
+        {
+            var command = ValidLive() with
+            {
+                Type = SessionTypes.RecordedLesson,
+                ScheduledAt = null,
+                JoinLink = null,
+                VideoUrl = "not a url"
+            };
+
+            var result = _validator.TestValidate(command);
+
+            result.ShouldHaveValidationErrorFor(x => x.VideoUrl)
+                .WithErrorCode(ValidationErrorCodes.InvalidUrl);
+        }
     }
 }
