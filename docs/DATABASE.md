@@ -142,6 +142,18 @@ leads *───0..1 courses (optional)
   `status == Open AND now <= enrollment_cutoff_date AND active_enrollment_count < capacity`.
   No background job flips a cohort to "closed" or "full" — availability is always
   computed at read/write time. `seats_left = max(0, capacity - active_enrollment_count)`.
+  Three call sites share this exact predicate so a course's catalog card, its detail
+  page, and the enrollment path it feeds can never disagree: `CohortAvailability`
+  (`FindOpenCohortAsync`/`GetActiveEnrollmentCountAsync`, used by enrollment submission
+  and approval), `CohortMapping.ToDto`'s `isAcceptingEnrollment` (the course-detail
+  page's per-cohort cards), and `NextCohortSelector` (picks the single nearest bookable
+  cohort per course for the catalog **list** endpoint's computed `nextCohort` summary —
+  status `open` or `almost_full` at `CohortAvailabilityDefaults.AlmostFullSeatsThreshold`
+  seats left, or `null` when nothing is bookable). `NextCohortSelector` is a pure
+  function over already-materialized candidates (no `ICodeForgeDbContext`), so
+  `GetPublishedCoursesQueryHandler` can compute it for a whole page in one set-based
+  query instead of the per-cohort loop `GetPublishedCourseDetailQueryHandler` uses for a
+  single course.
 - **Access expiry:** set at approval time = `cohort.end_date + cohort.grace_period_days`.
 - **Track bundle rule (Phase 1, strict):** a track is only bundle-enrollable when
   *every* constituent course currently has an open cohort. If any course lacks one,

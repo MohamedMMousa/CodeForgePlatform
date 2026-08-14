@@ -5737,6 +5737,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            nextCohort: components["schemas"]["NextCohortSummaryDto"];
         };
         CourseListDtoPagedResult: {
             items: components["schemas"]["CourseListDto"][];
@@ -6181,6 +6182,16 @@ export interface components {
             cohortStartDate: string;
             /** Format: date-time */
             cohortEndDate: string;
+        };
+        NextCohortSummaryDto: {
+            /** Format: uuid */
+            cohortId: string;
+            name: string;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: int32 */
+            seatsLeft: number;
+            status: string;
         };
         OptionDto: {
             /** Format: uuid */

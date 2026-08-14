@@ -41,12 +41,43 @@ namespace CodeForge.Application.Courses.GetPublishedCourses
 
             var totalCount = await query.CountAsync(cancellationToken);
 
-            var items = await query
+            var courses = await query
                 .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(x => CourseMapping.ToListDto(x))
                 .ToListAsync(cancellationToken);
+
+            var courseIds = courses.Select(x => x.Id).ToList();
+
+            // One set-based query for the whole page — the active-enrollment count is a
+            // correlated subquery EF translates into the same statement, not a
+            // per-cohort round trip. Contrast GetPublishedCourseDetailQueryHandler, which
+            // loops per cohort for a single course; that pattern doesn't scale to a page
+            // of courses.
+            var candidates = await _context.Cohorts
+                .AsNoTracking()
+                .Where(c => courseIds.Contains(c.CourseId) && c.Status == CohortStatuses.Open)
+                .Select(c => new
+                {
+                    c.CourseId,
+                    Candidate = new NextCohortSelector.Candidate(
+                        c.Id,
+                        c.Name,
+                        c.StartDate,
+                        c.EnrollmentCutoffDate,
+                        c.Capacity,
+                        c.Enrollments.Count(e => e.Status == EnrollmentStatuses.Active))
+                })
+                .ToListAsync(cancellationToken);
+
+            var candidatesByCourse = candidates.ToLookup(x => x.CourseId, x => x.Candidate);
+            var now = DateTime.UtcNow;
+
+            var items = courses
+                .Select(x => CourseMapping.ToListDto(
+                    x,
+                    NextCohortSelector.Select(candidatesByCourse[x.Id], now)))
+                .ToList();
 
             return new PagedResult<CourseListDto>(items, request.Page, request.PageSize, totalCount);
         }

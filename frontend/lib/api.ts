@@ -275,7 +275,19 @@ export function logout(locale?: string): Promise<void> {
 // Public catalog
 // ---------------------------------------------------------------------------
 
-export type CourseListItem = Schemas["CourseListDto"];
+export type NextCohortSummary = Schemas["NextCohortSummaryDto"];
+
+// Schemas["CourseListDto"]'s generated `nextCohort` is typed non-nullable, but the API
+// genuinely returns null (no bookable cohort right now) — Swashbuckle's
+// SupportNonNullableReferenceTypes() doesn't detect nullability on a nullable
+// *custom-type* property (the same gap already exists for
+// CertificateCandidateDto.existingCertificate; see RequireNonNullablePropertiesSchemaFilter's
+// doc comment for the general limitation). Overridden here, hand-written like the other
+// exceptions at the top of this file, so the type matches runtime reality instead of
+// hiding the null case this field exists to carry.
+export type CourseListItem = Omit<Schemas["CourseListDto"], "nextCohort"> & {
+  nextCohort: NextCohortSummary | null;
+};
 export type CohortInfo = Schemas["CohortListDto"];
 export type CourseInstructorInfo = Schemas["CourseInstructorDto"];
 export type PublicCourseDetail = Schemas["PublicCourseDetailDto"];

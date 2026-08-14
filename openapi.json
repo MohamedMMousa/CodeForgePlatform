@@ -7358,6 +7358,7 @@
           "createdAt",
           "currency",
           "id",
+          "nextCohort",
           "price",
           "slug",
           "status",
@@ -7405,6 +7406,9 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "nextCohort": {
+            "$ref": "#/components/schemas/NextCohortSummaryDto"
           }
         },
         "additionalProperties": false
@@ -8883,6 +8887,37 @@
           "cohortEndDate": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NextCohortSummaryDto": {
+        "required": [
+          "cohortId",
+          "name",
+          "seatsLeft",
+          "startDate",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "cohortId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "seatsLeft": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
           }
         },
         "additionalProperties": false

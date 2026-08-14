@@ -40,7 +40,7 @@ namespace CodeForge.Application.Courses.GetAssignedCourses
                 .OrderByDescending(x => x.Course.CreatedAt).ThenBy(x => x.Course.Id)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(x => CourseMapping.ToListDto(x.Course))
+                .Select(x => CourseMapping.ToListDto(x.Course, null))
                 .ToListAsync(cancellationToken);
 
             return new PagedResult<CourseListDto>(items, request.Page, request.PageSize, totalCount);

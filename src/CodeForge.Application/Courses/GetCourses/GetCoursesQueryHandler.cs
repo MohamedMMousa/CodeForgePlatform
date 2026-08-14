@@ -45,7 +45,7 @@ namespace CodeForge.Application.Courses.GetCourses
                 .OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(x => CourseMapping.ToListDto(x))
+                .Select(x => CourseMapping.ToListDto(x, null))
                 .ToListAsync(cancellationToken);
 
             return new PagedResult<CourseListDto>(items, request.Page, request.PageSize, totalCount);

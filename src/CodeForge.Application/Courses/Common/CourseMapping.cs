@@ -1,10 +1,11 @@
+using CodeForge.Application.Cohorts.Common;
 using CodeForge.Domain.Entities;
 
 namespace CodeForge.Application.Courses.Common
 {
     public static class CourseMapping
     {
-        public static CourseListDto ToListDto(Course course)
+        public static CourseListDto ToListDto(Course course, NextCohortSummaryDto? nextCohort = null)
         {
             return new CourseListDto(
                 course.Id,
@@ -17,7 +18,8 @@ namespace CodeForge.Application.Courses.Common
                 course.Currency,
                 course.Status,
                 course.CreatedAt,
-                course.UpdatedAt);
+                course.UpdatedAt,
+                nextCohort);
         }
 
         public static CourseDetailDto ToDetailDto(Course course)
