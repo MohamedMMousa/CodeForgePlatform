@@ -38,7 +38,7 @@ export default function DashboardPage({
   }
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{t.dashboard}</h1>
       {error && <p className="notice err">{error}</p>}
 

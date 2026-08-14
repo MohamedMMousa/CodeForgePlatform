@@ -32,7 +32,7 @@ export default function MyCoursesPage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{t.myCourses}</h1>
       {error && <p className="notice err">{error}</p>}
 

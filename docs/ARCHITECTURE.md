@@ -483,10 +483,62 @@ file uploads, rate limiting, versioning stance).
   change-password page (`app/[locale]/change-password/page.tsx`) submits via
   `changePassword()` and calls `useAuth().refreshSession()`, so no second login is
   needed. See `API_CONVENTIONS.md` §3.
-- **Brand** — see `docs/assets/brand-guide.png` and the CSS custom properties in
-  `frontend/app/globals.css` (`--bg`, `--card`, `--fg`, `--muted`, `--accent`,
-  `--accent-2`). Do not hardcode colors in components; use the CSS variables so theme
-  changes stay centralized.
+- **Design system** (foundation landed post-Phase 6) — Tailwind v4 + shadcn/ui, both
+  reading from the tokens in `frontend/app/globals.css`. `docs/DESIGN_LANGUAGE.md` §2 is
+  the source of truth for those values; this codebase implements it, it does not
+  redefine it. Three things about the setup are load-bearing and non-obvious:
+
+  1. **Tailwind's default colour palette is removed** (`--color-*: initial`). An
+     off-token colour is a compile error rather than a review finding — the
+     machine-checkable half of the doc's "no page gets hand-styled off-token" rule.
+     Spacing is *not* enforced the same way: the primitives need fractional steps for
+     icon sizing and hit-areas, so the ten-step scale is documented and reviewed, not
+     compiled.
+  2. **Light/dark is a `data-theme` attribute, not `prefers-color-scheme`.** The mode
+     belongs to the surface, not the viewer (dark for marketing/browse, light for
+     reading/work), and an attribute is what lets a light panel sit inside a dark page.
+     The root layout seeds `dark`. This replaced an OS-preference media query, so the
+     app is now deterministically dark until a surface opts into light.
+  3. **Radix direction comes from `DirectionProvider`, not the DOM.** `dir` on `<html>`
+     is necessary but not sufficient: Radix reads React context, and its floating layers
+     portal to `document.body`. Without `components/DirectionProvider.tsx` (mounted in
+     the root layout) every portalled primitive stamps `dir="ltr"` on itself and mirrors
+     the wrong way in Arabic. Found by inspecting a real select panel under `/ar`, not
+     by reading docs — re-verify this whenever a new Radix primitive is adopted.
+
+  Restyled primitives live in `frontend/components/ui/`. `lib/utils.ts`'s `cn` is
+  configured with the custom colour and type scales, without which tailwind-merge cannot
+  tell `text-body` (a size) from `text-text` (a colour) and silently drops one.
+
+  **Migration is per-surface and incomplete.** Pages built before this still use the
+  legacy classes (`.card`, `.btn`, `.field`) at the bottom of `globals.css`, plus a
+  temporary block restoring the heading/list/margin defaults Tailwind's preflight zeroes.
+
+  That legacy block used to be **unlayered on purpose**, and three of its class names —
+  `.container`, `.grid`, `.table` — were also Tailwind utility names. Unlayered CSS
+  outranks `@layer utilities` regardless of specificity, so on any element carrying one
+  of those names the legacy rule won and the utility silently lost. This produced a
+  real bug: `CardHeader` used the `grid` utility and inherited the catalog grid's
+  `repeat(auto-fill, minmax(260px, 1fr))` template and 1.25rem gap, which clipped the
+  card's status badge — visibly in English, not in Arabic, purely because the English
+  strings are longer.
+
+  **RESOLVED.** The legacy definitions were renamed to `.cf-container`, `.cf-grid`, and
+  `.cf-table`, and every legacy `className` reference was updated to match — a pure
+  rename, verified rule-for-rule identical (`.cf-container { max-width: 960px; margin:
+  0 auto; padding: 2.5rem 1.25rem; }` etc.), no styling changed on any pre-design-system
+  page. `components/ui/` can now use the real `grid`/`table`/`container` Tailwind
+  utilities without collision.
+
+  Moving the block into a cascade layer instead was tried and reverted, and is worth
+  recording so it isn't re-attempted: Tailwind emits its own `.container` utility
+  because that bare class name appeared in legacy JSX, so layering handed every legacy
+  page Tailwind's container (max-width 1280px, no auto margin) in place of the 960px
+  centred one. The rename has no equivalent failure mode, since `cf-container` etc. are
+  not Tailwind utility names.
+  Both shrink as surfaces are rebuilt in the §4 priority order; when the compat block is
+  empty the migration is done. See `docs/assets/brand-guide.png` for the original brand
+  reference.
 
 ## 7. Deferred / Open Architectural Decisions
 

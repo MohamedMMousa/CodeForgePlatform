@@ -64,11 +64,39 @@ startup if they're missing; see `README.md`.
 - **All network access goes through `apiFetch` in `frontend/lib/api.ts`.** Never raw `fetch`.
   Catch `ApiRequestError` and read `.info.status` / `.info.errors` for form-level errors.
 - Server components by default; `"use client"` only for interactivity (forms, auth).
-- **Styling today** is the CSS custom properties and utility classes in `globals.css`
-  (`--bg`, `--fg`, `--accent`, `.card`, `.btn`, …) — extend those, don't hardcode hex.
-  Tailwind + shadcn/ui is the locked target and will replace this in the design-system phase.
-  When it lands, use logical properties (`ms-`/`me-`/`ps-`/`pe-`, `start`/`end`) and never
-  hard-code `left`/`right` for anything that must mirror in RTL.
+- **Styling** is Tailwind v4 + shadcn/ui, reading from the design tokens in
+  `app/globals.css`. `docs/DESIGN_LANGUAGE.md` is the source of truth for every colour,
+  size, and radius; when it and the code disagree, it wins. Tailwind's default palette is
+  deliberately removed, so `bg-blue-500` does not compile — use the token utilities
+  (`bg-surface`, `text-text-muted`, `text-accent-text`, `rounded-card`, …).
+  Restyled primitives live in `components/ui/` (button, badge, card, input, select,
+  table, dialog). **Surfaces are migrated one at a time** — pages predating the design
+  system still use the legacy classes (`.card`, `.btn`, `.field`) kept at the bottom of
+  `globals.css`, alongside a temporary preflight-compat block. Delete from both as each
+  surface is rebuilt.
+- **RESOLVED — the `container`/`grid`/`table` utility collision.** The legacy block in
+  `globals.css` used to define plain classes named `.container`, `.grid`, and `.table`,
+  unlayered so it beat `@layer utilities` no matter the specificity — a component using
+  the `grid` utility silently inherited the catalog grid's `grid-template-columns` and
+  gap (this clipped a card's status badge before it was found). Fixed by renaming the
+  legacy definitions to `.cf-container`/`.cf-grid`/`.cf-table` and updating every legacy
+  `className` reference to match — a pure rename, same computed styles, nothing
+  restyled. `components/ui/` is free to use the real `grid`/`table`/`container`
+  utilities now. Moving the legacy block into a cascade layer instead was tried and
+  reverted: Tailwind emits its own `.container` utility because that bare name was in
+  legacy JSX, so layering handed every legacy page Tailwind's container (max-width
+  1280px, no auto margin) in place of the 960px centred one.
+- **Light/dark is per surface, not per viewer.** `data-theme` on any element re-scopes
+  every token below it; `app/[locale]/layout.tsx` seeds the document `dark`. Dark is the
+  shop window (landing, catalog, course detail), light is for reading and work.
+- **Logical properties only** — `ms-`/`me-`, `ps-`/`pe-`, `start`/`end`, `text-start`.
+  Never `left`/`right`/`ml-`/`mr-`. The two deliberate exceptions are both commented
+  where they live: code blocks are pinned LTR, and the dialog's centring transform has
+  no logical equivalent so it carries an `rtl:` pair.
+- **Radix needs `DirectionProvider`, not just `dir` on `<html>`.** It resolves direction
+  from React context, and its floating layers portal to `document.body`. Without the
+  provider (mounted in the root layout) every select panel and dialog stamps itself
+  `dir="ltr"` inside an otherwise correct Arabic page.
 
 ## Definition of done
 

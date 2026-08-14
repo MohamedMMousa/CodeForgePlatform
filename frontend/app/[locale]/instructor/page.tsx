@@ -54,7 +54,7 @@ export default function InstructorCoursesPage({
   const { session } = gate;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       {session.role === "admin" && (
         <p>
           <Link className="btn secondary" href={`/${locale}/admin/analytics`}>
@@ -73,7 +73,7 @@ export default function InstructorCoursesPage({
           </div>
           {dashboard.courses.length > 0 && (
             <div style={{ overflowX: "auto", marginTop: "0.75rem" }}>
-              <table className="table">
+              <table className="cf-table">
                 <thead>
                   <tr>
                     <th>{ta.course}</th>
@@ -104,7 +104,7 @@ export default function InstructorCoursesPage({
       {error && <p className="notice err">{error}</p>}
       {courses === null && !error && <p className="muted">…</p>}
       {courses !== null && courses.length === 0 && <p className="muted">{t.noCourses}</p>}
-      <div className="grid">
+      <div className="cf-grid">
         {courses?.map((course) => (
           <Link
             key={course.id}

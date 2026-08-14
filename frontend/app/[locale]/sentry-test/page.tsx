@@ -27,7 +27,7 @@ export default async function SentryTestPage({
   const t = getDictionary(locale).sentryTest;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <div className="card" style={{ maxWidth: 520, margin: "0 auto" }}>
         <h1>{t.title}</h1>
         <p className="muted">{t.description}</p>

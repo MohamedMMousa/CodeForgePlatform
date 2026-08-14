@@ -63,7 +63,7 @@ export default function AssignmentSubmissionPage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <Link href={`/${locale}/my-courses/${courseId}`}>{t.back}</Link>
       {error && <p className="notice err">{error}</p>}
       {assignment === null && !error && <p className="muted">…</p>}

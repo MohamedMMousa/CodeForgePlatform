@@ -183,7 +183,7 @@ export default function AdminTracksPage({
       {tracks !== null && tracks.length === 0 && <p className="muted">{t.noTracks}</p>}
       {tracks !== null && tracks.length > 0 && (
         <div style={{ overflowX: "auto", marginBottom: "1.5rem" }}>
-          <table className="table">
+          <table className="cf-table">
             <thead>
               <tr>
                 <th>{t.fieldTitle}</th>

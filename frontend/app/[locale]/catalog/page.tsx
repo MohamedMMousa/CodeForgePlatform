@@ -58,7 +58,7 @@ export default async function CatalogPage({
   const tracksTotalPages = Math.max(1, Math.ceil(tracks.totalCount / tracks.pageSize));
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{t.title}</h1>
       <p className="muted">{t.subtitle}</p>
 
@@ -73,7 +73,7 @@ export default async function CatalogPage({
       {!loadError && tracks.items.length > 0 && (
         <section style={{ marginBottom: "2rem" }}>
           <h2>{t.tracksHeading}</h2>
-          <div className="grid">
+          <div className="cf-grid">
             {tracks.items.map((track) => (
               <Link
                 key={track.id}
@@ -131,7 +131,7 @@ export default async function CatalogPage({
             <p className="muted">{t.empty}</p>
           ) : (
             <>
-              <div className="grid">
+              <div className="cf-grid">
                 {courses.items.map((course) => (
                   <Link
                     key={course.id}

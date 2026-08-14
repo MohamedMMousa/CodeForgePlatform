@@ -11,7 +11,7 @@ export default async function HomePage({
   const t = getDictionary(locale);
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <div className="card">
         <h1>{t.home.welcome}</h1>
         <p className="muted">{t.home.description}</p>

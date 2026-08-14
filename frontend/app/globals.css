@@ -1,29 +1,426 @@
-/* CodeForge Academy brand palette — see docs/assets/brand-guide.png */
-:root {
-  --bg: #111827; /* dark background */
-  --card: #1f2937; /* card / surface */
-  --fg: #ffffff; /* primary text */
-  --muted: #d1d5db; /* secondary text */
-  --accent: #f97316; /* primary orange */
-  --accent-2: #fb923c; /* secondary orange */
+/* ============================================================================
+   CodeForge Academy — design foundation
+   Implements docs/DESIGN_LANGUAGE.md §2 (foundations). That document is the
+   source of truth: when it and this file disagree, the document wins.
+
+   Layer order in this file:
+     1. Imports + the dark/light variant binding
+     2. Colour tokens — dark (§2.2) and light (§2.3)
+     3. @theme — what Tailwind exposes as utilities
+     4. Base layer — typography, code direction, focus
+     5. Legacy compatibility (temporary — see the banner on that section)
+     6. Legacy component CSS, untouched pending the per-surface design pass
+   ========================================================================= */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Light/dark is driven by a `data-theme` attribute, not by the OS preference.
+   Per §1.3 and §4 the mode is a property of the *surface*, not of the viewer:
+   marketing/browse is dark, reading/work is light. Using an attribute rather
+   than a media query is what lets a light panel live inside a dark page —
+   any element may carry data-theme and re-scope every token below it. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* ---------------------------------------------------------------------------
+   2. Colour tokens
+   The `:root` set is dark, so an unattributed document is dark by default
+   ("dark sells" — §1.3). `[data-theme]` selectors are deliberately not
+   anchored to :root so they can re-scope a subtree.
+   ------------------------------------------------------------------------ */
+
+:root,
+[data-theme="dark"] {
+  /* §2.2 — dark: the shop window (landing, catalog, course detail) */
+  --bg: #111827;
+  --surface: #1f2937;
+  --surface-2: #26334a;
   --border: #2b3444;
+  --border-strong: #3a4557;
+  --text: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #9aa4b2;
+  --accent: #f97316;
+  --accent-hover: #ea6b0f;
+  --accent-ink: #111827;
+  /* Orange-as-text. On dark the fill colour is already legible as text, so
+     this equals --accent; on light it darkens (§2.3). Components reference
+     this one token and stay correct in both modes. */
+  --accent-text: #f97316;
+
+  --success: #34d399;
+  --success-border: #235c46;
+  --success-soft: rgb(52 211 153 / 0.08);
+  --warning: #fb923c;
+  --warning-border: #6b3d16;
+  --warning-soft: rgb(251 146 60 / 0.08);
+  --danger: #f87171;
+  --danger-border: #7a2e3d;
+  --danger-soft: rgb(248 113 113 / 0.08);
+  --danger-hover: #f45c5c;
+  /* Ink on a solid --danger fill. §3 calls for "light ink", which holds on the
+     light palette's deep red — but the dark palette's --danger is a *light*
+     red, where white lands at 2.8:1 and fails AA. So this flips, exactly the
+     way --accent-ink already solves the same problem for orange in §2.3.
+     #111827 on #F87171 is 6.0:1. */
+  --danger-ink: #111827;
+
+  /* Backdrop behind a floating layer. Not named in §2, but a dialog needs one
+     and it has to differ per mode — pure black over a light page is harsher
+     than it should be. */
+  --scrim: rgb(0 0 0 / 0.6);
+
+  /* §2.4 — hairlines are 0.5px on dark, 1px on light. */
+  --hairline: 0.5px;
+
+  /* Legacy aliases. Pre-design-system pages read these; every value is
+     identical to what they resolved to before, so nothing shifts. Delete each
+     one as the surfaces using it are rebuilt on the tokens above. */
+  --card: var(--surface);
+  --fg: var(--text);
+  --muted: var(--text-secondary);
+  --accent-2: #fb923c;
   --ok: #2f7d55;
   --err: #dc5b7a;
 }
 
-/* The brand guide is dark-first; a light variant follows the same hues so the
-   app still respects the viewer's OS preference without breaking the identity. */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f7f7f8;
-    --card: #ffffff;
-    --fg: #111827;
-    --muted: #4b5563;
-    --accent: #f97316;
-    --accent-2: #ea6b0f;
-    --border: #e5e7eb;
+[data-theme="light"] {
+  /* §2.3 — light: reading and work (lessons, assignments, gradebook, forms) */
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --text: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --accent: #f97316;
+  --accent-hover: #ea6b0f;
+  --accent-ink: #111827;
+  /* §2.3: orange as *text* on white must darken to pass contrast. */
+  --accent-text: #c2560c;
+
+  --success: #15803d;
+  --success-border: #bbf7d0;
+  --success-soft: #f0fdf4;
+  --warning: #b45309;
+  --warning-border: #fed7aa;
+  --warning-soft: #fff7ed;
+  --danger: #b91c1c;
+  --danger-border: #fecaca;
+  --danger-soft: #fef2f2;
+  --danger-hover: #991b1b;
+  /* Literally the light ink §3 asks for — white on #B91C1C is 6.5:1. */
+  --danger-ink: #ffffff;
+
+  --scrim: rgb(17 24 39 / 0.45);
+
+  --hairline: 1px;
+
+  /* Legacy aliases — see the note in the dark block. */
+  --card: var(--surface);
+  --fg: var(--text);
+  --muted: var(--text-secondary);
+  --accent-2: #ea6b0f;
+  --ok: #2f7d55;
+  --err: #dc5b7a;
+}
+
+/* Arabic needs more vertical breathing room (§2.1). Exposed as a variable so
+   the `text-body` utility picks it up per-scope rather than needing an
+   Arabic-only override at every call site. */
+:root {
+  --leading-body: 1.7;
+}
+
+:where([lang="ar"]) {
+  --leading-body: 1.8;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Tailwind theme
+   ------------------------------------------------------------------------ */
+
+/* Drop Tailwind's default palette entirely. `bg-blue-500` and friends now
+   fail to compile, which is guardrail (b) of §6 enforced by the build rather
+   than by review: there is no way to put an off-token colour on a surface. */
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-inherit: inherit;
+}
+
+@theme inline {
+  /* -- Colour. Named after §2 so the code and the document share a vocabulary. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+
+  --color-success: var(--success);
+  --color-success-border: var(--success-border);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-border: var(--warning-border);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-border: var(--danger-border);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-ink: var(--danger-ink);
+  --color-scrim: var(--scrim);
+
+  /* shadcn/ui's own vocabulary, aliased onto the tokens above so a component
+     copied from the registry renders in CodeForge colours instead of the
+     library's neutrals. Note --color-accent is orange here, where shadcn means
+     it as a hover surface — the primitives in components/ui are written
+     against the §2 names above and never rely on that. */
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-ink);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-destructive: var(--danger);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+
+  /* -- Type. Cairo for UI in both scripts; JetBrains Mono for code only (§2.1). */
+  --font-sans: var(--font-cairo), "Segoe UI", system-ui, -apple-system, Tahoma,
+    Arial, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* -- Type scale (§2.1). Sizes are px because the scale is specified in px. */
+  --text-display: 38px;
+  --text-display--line-height: 1.2;
+  --text-display--font-weight: 700;
+
+  --text-h1: 28px;
+  --text-h1--line-height: 1.25;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 22px;
+  --text-h2--line-height: 1.3;
+  --text-h2--font-weight: 700;
+
+  --text-h3: 18px;
+  --text-h3--line-height: 1.4;
+  --text-h3--font-weight: 600;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 1.7;
+  --text-body-lg--font-weight: 400;
+
+  --text-body: 15px;
+  --text-body--line-height: var(--leading-body);
+  --text-body--font-weight: 400;
+
+  --text-label: 13px;
+  --text-label--line-height: 1.5;
+  --text-label--font-weight: 600;
+
+  --text-meta: 12px;
+  --text-meta--line-height: 1.4;
+  --text-meta--font-weight: 600;
+
+  --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 1.4;
+  --text-eyebrow--font-weight: 700;
+
+  --text-code: 13px;
+  --text-code--line-height: 1.6;
+  --text-code--font-weight: 500;
+
+  /* -- Radius (§2.4). Semantic names first; the numeric scale is mapped onto
+        the same three values so any stray `rounded-lg` still lands on-token. */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  --radius: 8px;
+  --radius-xs: 6px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 999px;
+  --radius-4xl: 999px;
+
+  /* -- Spacing (§2.4): 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.
+        Tailwind's 0.25rem base makes exactly those reachable as steps
+        1, 2, 3, 4, 5, 6, 8, 10, 12, 16 — use only those. The named tokens
+        below are for hand-written CSS. Off-scale steps (p-7, p-2.5) still
+        compile; keeping the dynamic scale is what lets the primitives size
+        their icons and hit-areas. Treat off-scale use as a review finding. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* -- Elevation (§2.4): flat by default. Shadows exist only for floating
+        layers — menus, dialogs, toasts — and stay subtle. */
+  --shadow-overlay: 0 10px 30px rgb(0 0 0 / 0.28);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Base layer
+   ------------------------------------------------------------------------ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-bg text-text;
+    line-height: var(--leading-body);
+  }
+
+  /* Code is always LTR, even inside an RTL page (§2.1, §2.5). `text-align:
+     left` is a deliberate exception to the logical-properties rule below —
+     code must not mirror, so `start` would be wrong here. `unicode-bidi:
+     isolate` stops the surrounding RTL run from reordering the snippet. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+  }
+
+  /* Western digits everywhere, including Arabic UI (§2.1). Cairo maps
+     U+0030–0039 to Latin glyphs; this pins the numeral style so an
+     inherited font-feature-settings can't substitute Eastern-Arabic forms. */
+  body {
+    font-variant-numeric: lining-nums;
   }
 }
+
+/* The `eyebrow` treatment is uppercase in Latin only — Arabic has no letter
+   case, so faux-caps would be wrong (§2.1). */
+@utility eyebrow {
+  font-size: var(--text-eyebrow);
+  line-height: 1.4;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  &:where([lang="ar"], [lang="ar"] *) {
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 600;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   5. Legacy compatibility — TEMPORARY
+   Tailwind's preflight zeroes heading sizes, list markers, and block margins.
+   Every surface predating the design system relies on those browser defaults,
+   and this session deliberately changes no surface. These rules restore just
+   enough for those pages to render as they did.
+
+   Delete the matching rule as each surface in §4 of DESIGN_LANGUAGE.md is
+   rebuilt on the type scale above. When this block is empty, the migration is
+   complete.
+   ------------------------------------------------------------------------ */
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 700;
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-block: 0.67em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+    margin-block: 0.83em;
+  }
+
+  h3 {
+    font-size: 1.17em;
+    margin-block: 1em;
+  }
+
+  h4 {
+    margin-block: 1.33em;
+  }
+
+  p {
+    margin-block: 1em;
+  }
+
+  ul,
+  ol {
+    margin-block: 1em;
+    padding-inline-start: 40px;
+    list-style: revert;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   6. Legacy component CSS — unchanged pending the per-surface design pass.
+   Kept verbatim so no existing surface shifts. Everything here reads from the
+   legacy aliases in section 2, which now resolve to §2 tokens.
+
+   RESOLVED — previously three class names here (`.container`, `.grid`,
+   `.table`) collided with Tailwind utilities of the same name. This block is
+   unlayered, so it used to outrank `@layer utilities` regardless of
+   specificity: any element carrying one of those names silently got the
+   legacy rule instead of the utility. That produced a real bug — `CardHeader`
+   used the `grid` utility and inherited this file's
+   `grid-template-columns: repeat(auto-fill, minmax(260px, 1fr))` and 1.25rem
+   gap, which clipped the card's status badge.
+
+   Fixed by renaming the legacy definitions to a `cf-` prefix (`.cf-container`,
+   `.cf-grid`, `.cf-table`) and updating every legacy `className` reference to
+   match — a pure rename, no styling changed. Wrapping the block in a cascade
+   layer instead was tried and reverted: Tailwind emits its own `.container`
+   utility because that bare name appeared in legacy JSX, so layering handed
+   every legacy page Tailwind's container (max-width 1280px, no auto margin) in
+   place of the 960px centred one. The rename has no such failure mode, since
+   `cf-container`/`cf-grid`/`cf-table` are not Tailwind utility names.
+   ------------------------------------------------------------------------ */
 
 * {
   box-sizing: border-box;
@@ -38,8 +435,8 @@ body {
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: "Segoe UI", system-ui, -apple-system, Tahoma, Arial, sans-serif;
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  line-height: var(--leading-body);
 }
 
 a {
@@ -47,7 +444,7 @@ a {
   text-decoration: none;
 }
 
-.container {
+.cf-container {
   max-width: 960px;
   margin: 0 auto;
   padding: 2.5rem 1.25rem;
@@ -102,26 +499,26 @@ a {
   padding: 1.75rem;
 }
 
-.grid {
+.cf-grid {
   display: grid;
   gap: 1.25rem;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 
-.table {
+.cf-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.table th,
-.table td {
+.cf-table th,
+.cf-table td {
   border: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   text-align: start;
 }
 
-.table th {
+.cf-table th {
   background: var(--card);
   color: var(--muted);
   font-weight: 600;

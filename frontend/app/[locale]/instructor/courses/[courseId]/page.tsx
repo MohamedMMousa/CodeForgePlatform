@@ -332,14 +332,14 @@ export default function InstructorCoursePage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <Link href={`/${locale}/instructor`}>{t.myCourses}</Link>
       {error && <p className="notice err">{error}</p>}
 
       <h1>{t.modules}</h1>
       {modules === null && <p className="muted">…</p>}
       {modules !== null && modules.length === 0 && <p className="muted">{t.noModules}</p>}
-      <div className="grid">
+      <div className="cf-grid">
         {modules?.map((m) => (
           <div key={m.id} className="card">
             <h3>
@@ -383,7 +383,7 @@ export default function InstructorCoursePage({
       </button>
       {showGradebook && gradebook && (
         <div style={{ overflowX: "auto", marginTop: "0.75rem" }}>
-          <table className="table">
+          <table className="cf-table">
             <thead>
               <tr>
                 <th>{t.moduleTitle}</th>
@@ -449,7 +449,7 @@ export default function InstructorCoursePage({
           )}
           {candidates !== null && candidates.candidates.length > 0 && (
             <div style={{ overflowX: "auto" }}>
-              <table className="table">
+              <table className="cf-table">
                 <thead>
                   <tr>
                     <th>{tc.student}</th>
@@ -541,7 +541,7 @@ export default function InstructorCoursePage({
             <p className="muted">{ta.noInstructorsAssigned}</p>
           )}
           {courseDetail && courseDetail.instructors.length > 0 && (
-            <table className="table">
+            <table className="cf-table">
               <thead>
                 <tr>
                   <th>{ta.fullNameLabel}</th>
@@ -589,7 +589,7 @@ export default function InstructorCoursePage({
           {cohorts !== null && cohorts.length === 0 && <p className="muted">{ta.noCohorts}</p>}
           {cohorts !== null && cohorts.length > 0 && (
             <div style={{ overflowX: "auto" }}>
-              <table className="table">
+              <table className="cf-table">
                 <thead>
                   <tr>
                     <th>{ta.cohortName}</th>

@@ -47,7 +47,7 @@ export default function VerifyCertificatePage({
     tier === "completion" ? tc.completion : tier === "participation" ? tc.participation : "";
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{tc.verifyTitle}</h1>
       <p className="muted">{tc.verifySubtitle}</p>
 

@@ -105,7 +105,7 @@ export default function AssessmentAttemptPage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <Link href={`/${locale}/my-courses/${courseId}`}>{t.back}</Link>
       {error && <p className="notice err">{error}</p>}
       {assessment === null && !error && <p className="muted">…</p>}

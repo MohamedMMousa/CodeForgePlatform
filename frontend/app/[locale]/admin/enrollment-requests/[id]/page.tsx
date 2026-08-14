@@ -103,7 +103,7 @@ export default function AdminEnrollmentRequestDetailPage({
       {request && (
         <>
           <h2>{request.applicantName}</h2>
-          <table className="table" style={{ maxWidth: "40rem" }}>
+          <table className="cf-table" style={{ maxWidth: "40rem" }}>
             <tbody>
               <tr><td>{t.applicantEmailLabel}</td><td>{request.applicantEmail}</td></tr>
               <tr><td>{t.applicantPhoneLabel}</td><td>{request.applicantPhone ?? "—"}</td></tr>

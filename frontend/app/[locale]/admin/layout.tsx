@@ -31,7 +31,7 @@ export default function AdminLayout({
   ];
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{t.title}</h1>
       <nav
         style={{

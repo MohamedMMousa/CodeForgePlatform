@@ -807,6 +807,63 @@ since a student can hold enrollments in more than one cohort of the same course)
 a `/[locale]/my-courses` index page listing every enrolled course independent of
 session state, linked persistently from `RoleNav` for students.
 
+## Design System — Foundation (post-Phase 6) — ✅ COMPLETE
+
+Step 1 and 2 of `DESIGN_LANGUAGE.md` §6's sequence. Deliberately scoped to the
+foundation with **no surface touched**, so the token layer could be reviewed before
+anything was built on it. Step 3 (apply surface by surface, in §4 priority order) has
+not started.
+
+**Fonts.** Cairo 400/600/700 (latin + arabic subsets) and JetBrains Mono via
+`next/font`, wired as CSS variables on `<html>` in `app/[locale]/layout.tsx`. Cairo is
+the UI face for both locales; JetBrains Mono is code-only and `globals.css` pins
+`code`/`pre`/`kbd`/`samp` to `direction: ltr` + `unicode-bidi: isolate`, so a snippet
+stays LTR and left-aligned inside an Arabic page.
+
+**Tokens.** §2.2/§2.3 implemented in full for both modes — colours, the ten-step spacing
+scale, the three radius values, and the type scale with per-token line-height and weight.
+Exposed through Tailwind's `@theme` so components consume tokens. Two decisions worth
+knowing: Tailwind's default palette is removed so an off-token colour fails the build,
+and light/dark switches on a `data-theme` attribute rather than `prefers-color-scheme`
+(the mode is a property of the surface, not the viewer — see `ARCHITECTURE.md` §6).
+Legacy variables (`--card`, `--fg`, `--muted`, `--accent-2`) survive as aliases onto the
+new tokens at their exact previous values, so pre-design-system pages don't shift.
+
+**shadcn/ui.** Installed on the Radix base with `--rtl`; only the seven primitives named
+in §6 were added (button, badge, card, input, select, table, dialog), and every one was
+restyled to §2 tokens before use — none ships with library-default colours, radius, or
+fonts. Button implements §3's three levels (primary = accent fill with `--accent-ink`,
+never white; secondary = `--border-strong` outline; ghost = text-only in
+`--accent-text`), plus a fourth `danger` level §3 doesn't name but the existing
+delete/deactivate/revoke actions need.
+
+**One real bug found by the RTL spot-check, not by the type checker.** Radix resolves
+direction from React context rather than the DOM, and portals its floating layers to
+`document.body` — so with `dir="rtl"` correctly set on `<html>`, the select panel still
+stamped `dir="ltr"` on itself and put its check indicator on the wrong side under `/ar`.
+Fixed with `components/DirectionProvider.tsx` in the root layout. Verified by measuring
+the rendered geometry: the indicator moved from the panel's right edge to its left, and
+the dialog's close button from 12px inside the right edge to 12px inside the left, while
+both stayed centred. This is exactly the guardrail (c) §6 asks for, and it needs
+re-running for each new Radix primitive.
+
+**Accepted cost, flagged rather than hidden.** Tailwind's preflight zeroes heading sizes,
+list markers, and block margins, which every pre-design-system surface relies on; a
+temporary compat block in `globals.css` restores them. Two intentional global shifts do
+reach existing pages: the UI font becomes Cairo, and body line-height moves 1.6 → 1.7
+(§2.1). Both are the foundation landing as specified, not regressions.
+
+**Verified:** `node scripts/verify.mjs` green. Beyond that, computed styles were read
+out of a running dev server rather than eyeballed — every §2 token resolving to its
+specified hex in both modes, the primitives' radius/weight/colour matching §3 (primary
+`#F97316` on `#111827` ink at 700, badges at 999px, cards at 12px, table headers at
+11px/700 uppercase), `--accent-text` correctly switching `#F97316` → `#C2560C` between
+modes, and the Arabic-only rules firing (eyebrow and table headers drop uppercase and
+letter-spacing under `lang="ar"`). Legacy surfaces confirmed unshifted by reading
+`.card`/`.btn`/`.field input` computed styles on `/en/login` — gradient, 14px radius, and
+colours all unchanged. The browser pane could not composite frames in this environment,
+so this was done by computed-style and geometry inspection instead of screenshots.
+
 ## Session Start Checklist
 
 At the start of any session touching this codebase, read `SRS.md`, `ARCHITECTURE.md`,

@@ -63,7 +63,7 @@ export default function ChangePasswordPage({
   }
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <div className="card" style={{ maxWidth: 420, margin: "0 auto" }}>
         <h1>{t.title}</h1>
         {session.mustChangePassword && <p className="notice">{t.forcedNotice}</p>}

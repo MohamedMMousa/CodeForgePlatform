@@ -133,7 +133,7 @@ export default function AdminCouponsPage({
       {coupons !== null && coupons.length === 0 && <p className="muted">{t.noCoupons}</p>}
       {coupons !== null && coupons.length > 0 && (
         <div style={{ overflowX: "auto", marginBottom: "1.5rem" }}>
-          <table className="table">
+          <table className="cf-table">
             <thead>
               <tr>
                 <th>{t.code}</th>

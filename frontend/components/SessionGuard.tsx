@@ -23,7 +23,7 @@ export interface SessionGateOptions {
    * fallback that links straight to /login, matching what those pages did before. */
   roles?: readonly string[];
   /** Pages that render inside admin/layout.tsx are already inside its
-   * `<main className="container">` — pass true to render a bare `<p>` instead of a
+   * `<main className="cf-container">` — pass true to render a bare `<p>` instead of a
    * second nested `<main>`. */
   bare?: boolean;
 }
@@ -64,5 +64,5 @@ function RecoveringNotice({ locale }: { locale: Locale }) {
 }
 
 function wrap(bare: boolean | undefined, node: React.ReactNode): React.ReactNode {
-  return bare ? node : <main className="container">{node}</main>;
+  return bare ? node : <main className="cf-container">{node}</main>;
 }

@@ -54,7 +54,7 @@ export default function LoginPage({
   }
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <div className="card" style={{ maxWidth: 420, margin: "0 auto" }}>
         <h1>{t.title}</h1>
         <form onSubmit={onSubmit}>

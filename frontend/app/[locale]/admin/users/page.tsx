@@ -123,7 +123,7 @@ export default function AdminUsersPage({
       {users !== null && users.length === 0 && <p className="muted">{t.noUsers}</p>}
       {users !== null && users.length > 0 && (
         <div style={{ overflowX: "auto", marginBottom: "1.5rem" }}>
-          <table className="table">
+          <table className="cf-table">
             <thead>
               <tr>
                 <th>{t.fullNameLabel}</th>

@@ -57,7 +57,7 @@ export default function AdminAnalyticsPage({
       <h2 style={{ marginTop: "1.5rem" }}>{ta.businessDashboard}</h2>
       {business && (
         <>
-          <div className="grid" style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div className="cf-grid" style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
             <Stat label={ta.totalStudents} value={business.totalStudents} />
             <Stat label={ta.publishedCourses} value={business.publishedCourses} />
             <Stat label={ta.publishedTracks} value={business.publishedTracks} />
@@ -72,7 +72,7 @@ export default function AdminAnalyticsPage({
           {business.topCoursesByRevenue.length > 0 && (
             <div style={{ marginTop: "1rem", overflowX: "auto" }}>
               <h3>{ta.topCoursesByRevenue}</h3>
-              <table className="table">
+              <table className="cf-table">
                 <thead>
                   <tr>
                     <th>{ta.course}</th>
@@ -124,7 +124,7 @@ export default function AdminAnalyticsPage({
       <h2 style={{ marginTop: "2rem" }}>{ta.academicDashboard}</h2>
       {academic && (
         <>
-          <div className="grid" style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div className="cf-grid" style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
             <Stat label={ta.certificatesIssued} value={academic.certificatesIssued} />
             <Stat label={ta.completionCerts} value={academic.completionCertificates} />
             <Stat label={ta.participationCerts} value={academic.participationCertificates} />
@@ -138,7 +138,7 @@ export default function AdminAnalyticsPage({
 
           <div style={{ marginTop: "1rem", overflowX: "auto" }}>
             <h3>{ta.perCourse}</h3>
-            <table className="table">
+            <table className="cf-table">
               <thead>
                 <tr>
                   <th>{ta.course}</th>

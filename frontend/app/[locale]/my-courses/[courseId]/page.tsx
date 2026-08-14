@@ -70,7 +70,7 @@ export default function MyCoursePage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <Link href={`/${locale}/dashboard`}>{t.back}</Link>
       {error && <p className="notice err">{error}</p>}
       {content === null && !error && <p className="muted">…</p>}

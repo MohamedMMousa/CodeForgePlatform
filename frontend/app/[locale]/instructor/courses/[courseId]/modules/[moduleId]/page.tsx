@@ -164,7 +164,7 @@ export default function InstructorModulePage({
   if (!gate.ok) return gate.fallback;
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <Link href={`/${locale}/instructor/courses/${courseId}`}>{t.modules}</Link>
       {error && <p className="notice err">{error}</p>}
 
@@ -866,7 +866,7 @@ function AssessmentDetailPanel({
         {t.viewResults}
       </button>
       {showResults && results && (
-        <table className="table" style={{ marginTop: "0.5rem" }}>
+        <table className="cf-table" style={{ marginTop: "0.5rem" }}>
           <thead>
             <tr>
               <th>{t.assessmentTitle}</th>

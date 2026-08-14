@@ -261,7 +261,7 @@ export default function AdminTrackDetailPage({
           <h3 style={{ marginTop: "1.5rem" }}>{t.coursesInTrack}</h3>
           {track.courses.length === 0 && <p className="muted">{t.noCourses}</p>}
           {track.courses.length > 0 && (
-            <table className="table">
+            <table className="cf-table">
               <thead>
                 <tr>
                   <th>{t.fieldTitle}</th>

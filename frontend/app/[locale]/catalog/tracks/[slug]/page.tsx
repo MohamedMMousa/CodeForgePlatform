@@ -23,7 +23,7 @@ export default async function TrackDetailPage({
   }
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <p>
         <Link href={`/${locale}/catalog`}>&larr; {t.courseDetail.back}</Link>
       </p>

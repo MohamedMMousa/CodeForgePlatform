@@ -34,7 +34,7 @@ export default async function CourseDetailPage({
   const openCohorts = course.cohorts.filter((c) => c.isAcceptingEnrollment);
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <p>
         <Link href={`/${locale}/catalog`}>&larr; {t.courseDetail.back}</Link>
       </p>
@@ -63,7 +63,7 @@ export default async function CourseDetailPage({
             </div>
           </>
         ) : (
-          <div className="grid">
+          <div className="cf-grid">
             {openCohorts.map((cohort) => (
               <div key={cohort.id} className="card">
                 <span className={`badge ${cohort.seatsLeft <= 3 ? "full" : "open"}`}>

@@ -42,7 +42,7 @@ export default function MyCertificatesPage({
   const tierLabel = (tier: string) => (tier === "completion" ? tc.completion : tc.participation);
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <h1>{tc.myCertificates}</h1>
       {error && <p className="notice err">{error}</p>}
       {certificates !== null && certificates.length === 0 && (

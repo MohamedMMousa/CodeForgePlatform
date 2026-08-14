@@ -85,7 +85,7 @@ export default function EnrollForm({ locale: rawLocale }: { locale: string }) {
 
   if (!courseId && !trackId) {
     return (
-      <main className="container">
+      <main className="cf-container">
         <div className="notice err">{t.error}</div>
       </main>
     );
@@ -93,7 +93,7 @@ export default function EnrollForm({ locale: rawLocale }: { locale: string }) {
 
   if (result?.ok) {
     return (
-      <main className="container">
+      <main className="cf-container">
         <div className="card">
           <div className="notice ok">{result.text}</div>
         </div>
@@ -102,7 +102,7 @@ export default function EnrollForm({ locale: rawLocale }: { locale: string }) {
   }
 
   return (
-    <main className="container">
+    <main className="cf-container">
       <div className="card" style={{ maxWidth: 560, margin: "0 auto" }}>
         <h1>{format(t.title, { name })}</h1>
 

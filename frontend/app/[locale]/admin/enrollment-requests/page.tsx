@@ -71,7 +71,7 @@ export default function AdminEnrollmentRequestsPage({
       {requests !== null && requests.length === 0 && <p className="muted">{t.noRequests}</p>}
       {requests !== null && requests.length > 0 && (
         <div style={{ overflowX: "auto" }}>
-          <table className="table">
+          <table className="cf-table">
             <thead>
               <tr>
                 <th>{t.applicant}</th>
