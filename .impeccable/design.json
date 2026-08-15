@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-15T00:00:00Z",
+  "title": "Design System: CodeForge Academy",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Accent Orange", "canonical": "#F97316" },
+      "accent-hover": { "role": "primary", "displayName": "Accent Orange (hover/pressed)", "canonical": "#EA6B0F" },
+      "accent-ink": { "role": "primary", "displayName": "Ink on Orange Fill", "canonical": "#111827" },
+      "accent-text-dark": { "role": "primary", "displayName": "Accent Orange as Text (dark)", "canonical": "#F97316" },
+      "accent-text-light": { "role": "primary", "displayName": "Accent Orange as Text (light)", "canonical": "#C2560C" },
+      "bg-dark": { "role": "neutral", "displayName": "Background (dark)", "canonical": "#111827" },
+      "surface-dark": { "role": "neutral", "displayName": "Surface (dark)", "canonical": "#1F2937" },
+      "surface-2-dark": { "role": "neutral", "displayName": "Surface Raised (dark)", "canonical": "#26334A" },
+      "border-dark": { "role": "neutral", "displayName": "Border (dark)", "canonical": "#2B3444" },
+      "border-strong-dark": { "role": "neutral", "displayName": "Border Strong (dark)", "canonical": "#3A4557" },
+      "text-dark": { "role": "neutral", "displayName": "Text (dark)", "canonical": "#FFFFFF" },
+      "text-secondary-dark": { "role": "neutral", "displayName": "Text Secondary (dark)", "canonical": "#D1D5DB" },
+      "text-muted-dark": { "role": "neutral", "displayName": "Text Muted (dark)", "canonical": "#9AA4B2" },
+      "bg-light": { "role": "neutral", "displayName": "Background (light)", "canonical": "#F7F7F8" },
+      "surface-light": { "role": "neutral", "displayName": "Surface (light)", "canonical": "#FFFFFF" },
+      "surface-2-light": { "role": "neutral", "displayName": "Surface Raised (light)", "canonical": "#F3F4F6" },
+      "border-light": { "role": "neutral", "displayName": "Border (light)", "canonical": "#E5E7EB" },
+      "border-strong-light": { "role": "neutral", "displayName": "Border Strong (light)", "canonical": "#D1D5DB" },
+      "text-light": { "role": "neutral", "displayName": "Text (light)", "canonical": "#111827" },
+      "text-secondary-light": { "role": "neutral", "displayName": "Text Secondary (light)", "canonical": "#4B5563" },
+      "text-muted-light": { "role": "neutral", "displayName": "Text Muted (light)", "canonical": "#6B7280" },
+      "success-dark": { "role": "status", "displayName": "Success (dark)", "canonical": "#34D399" },
+      "warning-dark": { "role": "status", "displayName": "Warning (dark)", "canonical": "#FB923C" },
+      "danger-dark": { "role": "status", "displayName": "Danger (dark)", "canonical": "#F87171" },
+      "success-light": { "role": "status", "displayName": "Success (light)", "canonical": "#15803D" },
+      "warning-light": { "role": "status", "displayName": "Warning (light)", "canonical": "#B45309" },
+      "danger-light": { "role": "status", "displayName": "Danger (light)", "canonical": "#B91C1C" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Landing hero headline only." },
+      "h1": { "displayName": "Headline / H1", "purpose": "Page title." },
+      "h2": { "displayName": "H2", "purpose": "Section heading." },
+      "h3": { "displayName": "Title / H3", "purpose": "Card title, subsection." },
+      "body-lg": { "displayName": "Body Large", "purpose": "Lead paragraph." },
+      "body": { "displayName": "Body", "purpose": "Default body text; 1.8 line-height in Arabic." },
+      "label": { "displayName": "Label", "purpose": "Form labels, small UI text." },
+      "meta": { "displayName": "Meta", "purpose": "Muted metadata, captions." },
+      "eyebrow": { "displayName": "Eyebrow", "purpose": "Small section labels — Latin uppercase only; Arabic uses normal-weight small text instead." },
+      "code": { "displayName": "Code", "purpose": "Code only — snippets, submissions, test output. Always LTR." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 10px 30px rgba(0, 0, 0, 0.28)", "purpose": "The one shadow in the system, for floating layers only (dialogs, menus, toasts) — never for cards or normal-flow content." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most important action on a screen — orange fill, dark ink, never white text.",
+      "html": "<button class=\"ds-btn-primary\">Enroll</button>",
+      "css": ".ds-btn-primary { background: #F97316; color: #111827; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: none; transition: background 0.15s; } .ds-btn-primary:hover { background: #EA6B0F; } .ds-btn-primary:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button (dark lane)",
+      "kind": "button",
+      "refersTo": "button-secondary-dark",
+      "description": "Alternate/neutral action on a dark shop-window surface.",
+      "html": "<button class=\"ds-btn-secondary-dark\">Notify me</button>",
+      "css": ".ds-btn-secondary-dark { background: transparent; color: #FFFFFF; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: 1px solid #3A4557; transition: background 0.15s; } .ds-btn-secondary-dark:hover { background: #26334A; } .ds-btn-secondary-dark:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge (success)",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill-shaped, soft-tinted status indicator. Success = open / seats available / passed / complete.",
+      "html": "<span class=\"ds-badge-success-dark\">Seats available</span>",
+      "css": ".ds-badge-success-dark { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #34D399; background: rgba(52, 211, 153, 0.08); border: 1px solid #235C46; }"
+    },
+    {
+      "name": "Course Card (dark lane)",
+      "kind": "card",
+      "refersTo": "card-dark",
+      "description": "Eyebrow + status badge on top, title, one-line muted description, meta row, then price (accent) + action button in the footer. State drives the CTA.",
+      "html": "<article class=\"ds-card-dark\"><div class=\"ds-card-dark__header\"><span class=\"ds-card-dark__eyebrow\">Programming</span><span class=\"ds-badge-success-dark\">Seats available</span></div><h3 class=\"ds-card-dark__title\">Python Fundamentals</h3><p class=\"ds-card-dark__desc\">Intro to Python basics.</p><div class=\"ds-card-dark__footer\"><span class=\"ds-card-dark__price\">1,500 EGP</span><button class=\"ds-btn-primary\">Enroll</button></div></article>",
+      "css": ".ds-card-dark { background: #1F2937; border: 0.5px solid #2B3444; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; } .ds-card-dark__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; } .ds-card-dark__eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9AA4B2; } .ds-card-dark__title { font-size: 18px; font-weight: 600; line-height: 1.4; color: #FFFFFF; margin: 0; } .ds-card-dark__desc { font-size: 15px; line-height: 1.7; color: #9AA4B2; margin: 0; } .ds-card-dark__footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 0.5px solid #2B3444; } .ds-card-dark__price { font-size: 18px; font-weight: 600; color: #F97316; }"
+    },
+    {
+      "name": "Input (light lane)",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text input with a clear accent focus ring; error state uses danger.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field__label\">Email</span><input class=\"ds-input\" type=\"email\" placeholder=\"you@example.com\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-field__label { font-size: 13px; font-weight: 600; color: #111827; } .ds-input { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 12px; font-size: 15px; color: #111827; } .ds-input:focus-visible { outline: 2px solid #F97316; outline-offset: 1px; border-color: #F97316; } .ds-input[aria-invalid=\"true\"] { border-color: #B91C1C; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Confident but calm",
+    "overview": "This is one brand doing two jobs on two surfaces, not one inconsistent theme. Dark (--bg #111827 / --surface #1F2937) is the shop window: Landing, Catalog, Course detail — the marketing/browse surfaces a first-time visitor sees before signing in. Light (--bg #F7F7F8 / --surface #FFFFFF) is for reading and work: the student dashboard, lesson view, assignments, gradebook, certificates, auth, and the admin console — everything that happens after sign-in. The same tokens, components, and Cairo typeface run through both; only the data-theme scope changes, per-surface, never per-viewer preference. Arabic is not a translation layer bolted onto an English design. Every surface must look equally intentional in Arabic (RTL) and English (LTR); if it only looks right in one direction, it isn't done. States (empty, loading, \"almost full,\" \"awaiting next batch,\" \"not started\") are designed, not afterthoughts — the CTA follows the state.",
+    "keyCharacteristics": [
+      "One disciplined accent color, four sanctioned uses only.",
+      "Two surface lanes (dark shop-window, light reading/work), both deliberate.",
+      "Cairo unifies Arabic and Latin type into one visual system, not two side-by-side ones.",
+      "Every layout decision is logical-property-driven so RTL is a mirror, not a rebuild.",
+      "Flat by default; elevation exists only for floating layers."
+    ],
+    "rules": [
+      { "name": "The Disciplined Accent Rule", "body": "Orange is used in exactly four places: price, the primary button fill, the active/selected state (e.g. an active filter chip), and the brand wordmark's \"Forge.\" Nowhere else. If a screen feels loud, remove orange before adding it — never expand orange's footprint to fix a screen that feels flat.", "section": "colors" },
+      { "name": "The Two Surfaces Rule", "body": "Dark sells, light reads. Dark is the deliberate shop-window brand surface (Landing, Catalog, Course detail); light is for reading and work (everything after sign-in). This is a confirmed, permanent split by surface, never a per-viewer dark-mode toggle.", "section": "colors" },
+      { "name": "The Accent-on-Orange Rule", "body": "Primary buttons are orange fill with dark ink (#111827), never white text, in both lanes — white-on-orange fails contrast and reads louder than intended.", "section": "colors" },
+      { "name": "The Shared Type Rule", "body": "Cairo is the UI typeface for both scripts, always. There is no Arabic-specific or English-specific font swap anywhere in the UI layer.", "section": "typography" },
+      { "name": "The Code-Stays-Code Rule", "body": "JetBrains Mono renders code and only code. It is never used for UI copy, and code itself never mirrors — it stays LTR and left-aligned even inside an RTL page.", "section": "typography" },
+      { "name": "The Western Numerals Rule", "body": "Every numeral in the product — including Arabic surfaces — uses Western digits. No Eastern-Arabic numeral glyphs anywhere.", "section": "typography" },
+      { "name": "The Logical-Only Rule", "body": "No layout decision is ever expressed in left/right terms. Every directional property is logical, so RTL is a mirror of LTR, not a second implementation.", "section": "layout" },
+      { "name": "The Flat-by-Default Rule", "body": "Surfaces are flat at rest. The single overlay shadow exists only for content that floats above the page — never for a card, panel, or anything in normal flow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Cairo for every piece of UI text, in both Arabic and English — one shared typeface is what makes bilingual pages feel like one design.",
+      "Do reserve JetBrains Mono strictly for code, and keep code LTR even inside an RTL page.",
+      "Do treat the dark lane (#111827 bg / #1F2937 surface) as the deliberate shop-window surface for Landing, Catalog, and Course detail.",
+      "Do use the light lane for every surface after sign-in: dashboard, lessons, assignments, gradebook, certificates, auth, admin.",
+      "Do confine orange to exactly four uses: price, primary CTA fill, the active/selected state, and the brand wordmark's \"Forge.\"",
+      "Do use --accent-ink (#111827), never white, as the text/icon color on any solid orange fill.",
+      "Do use logical properties (ms-/me-, ps-/pe-, start/end) for every directional layout decision.",
+      "Do use Western digits (0–9) for every numeral shown anywhere, including Arabic UI."
+    ],
+    "donts": [
+      "Don't suggest swapping Cairo or JetBrains Mono for a different typeface family — this is a confirmed, non-negotiable brand commitment, not an open design choice.",
+      "Don't dilute, soften, tint, or expand the accent orange beyond price / primary CTA / active state / brand wordmark. If a screen feels loud, remove orange before adding it — never widen orange's role to compensate for a screen that feels flat or unfinished.",
+      "Don't treat the dark Landing/Catalog/Course-detail surfaces as \"dark mode\" that needs a light toggle, a lighter default, or \"fixing\" toward the light palette — they are the deliberate shop-window brand surface, functionally distinct from the light reading/work surfaces, not an incomplete or inconsistent theme.",
+      "Don't put white text on a solid orange fill — always --accent-ink.",
+      "Don't hardcode left/right/ml-/mr- anywhere that must mirror in RTL.",
+      "Don't use Eastern-Arabic numerals (٠–٩) anywhere, including Arabic UI.",
+      "Don't add a decorative shadow to a card or any element in normal flow — shadows exist only for floating layers (menus, dialogs, toasts).",
+      "Don't invent a level·track eyebrow split, a thumbnail image, or any course-card field the catalog list endpoint doesn't actually return — card anatomy is bound to real data only."
+    ]
+  }
+}
