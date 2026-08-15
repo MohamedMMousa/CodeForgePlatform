@@ -51,6 +51,21 @@ export function getCategoryLabel(category: string, locale: Locale): string {
   return entry ? entry[locale] : titleCaseCategory(category);
 }
 
+/**
+ * Picks the "{n} seats left" form. Arabic inflects the counted noun in four
+ * bands — 1 (مفرد), 2 (مثنى), 3–10 (جمع قلة), 11+ (تمييز مفرد منصوب) — and using
+ * one template for all of them produced "2 مقعد متبقٍ" / "9 مقعد متبقٍ", which are
+ * both ungrammatical. English collapses the last three, so the same branches
+ * serve both languages. Shared by the catalog card and the course-detail cohort
+ * card so the two surfaces can't word the same state differently.
+ */
+export function getSeatsLeftTemplate(count: number, t: Dictionary): string {
+  if (count === 1) return t.courseDetail.seatsLeft_one;
+  if (count === 2) return t.courseDetail.seatsLeft_two;
+  if (count <= 10) return t.courseDetail.seatsLeft_few;
+  return t.courseDetail.seatsLeft;
+}
+
 export interface Dictionary {
   appName: string;
   tagline: string;
@@ -123,14 +138,32 @@ export interface Dictionary {
     batches: string;
     noBatches: string;
     enrollInBatch: string;
+    // Four forms for the same reason as previouslyRun* below — Arabic needs
+    // singular / dual / 3–10 / 11+. `seatsLeft` is the 11+ (and default) form.
     seatsLeft: string;
     seatsLeft_one: string;
+    seatsLeft_two: string;
+    seatsLeft_few: string;
     full: string;
     awaitingNextBatch: string;
     notifyMe: string;
     notifyMeSuccess: string;
     enrollmentClosesOn: string;
     startsOn: string;
+    endsOn: string;
+    enrollInCohort: string;
+    enrollmentClosed: string;
+    youWillJoin: string;
+    noUpcomingBatches: string;
+    notifyHeading: string;
+    instructor: string;
+    instructors: string;
+    // Four forms, not one interpolation: Arabic distinguishes singular, dual,
+    // 3–10 (مرات) and 11+ (مرة). English collapses the last three into "times".
+    previouslyRunOnce: string;
+    previouslyRunTwice: string;
+    previouslyRunFew: string;
+    previouslyRunMany: string;
   };
   enroll: {
     title: string;
@@ -662,12 +695,28 @@ const dictionaries: Record<Locale, Dictionary> = {
       enrollInBatch: "Enroll in this batch",
       seatsLeft: "{count} seats left",
       seatsLeft_one: "1 seat left",
+      seatsLeft_two: "2 seats left",
+      seatsLeft_few: "{count} seats left",
       full: "Batch full",
       awaitingNextBatch: "This batch is full. Leave your details to be notified about the next one.",
       notifyMe: "Notify me for the next batch",
       notifyMeSuccess: "Thanks — we'll reach out when the next batch opens.",
       enrollmentClosesOn: "Enrollment closes {date}",
-      startsOn: "Starts {date}"
+      startsOn: "Starts {date}",
+      endsOn: "Ends {date}",
+      // Names the batch the backend will actually enrol into — the API takes no
+      // cohort id, it always resolves the earliest bookable one itself.
+      enrollInCohort: "Enroll in the {cohort} cohort",
+      enrollmentClosed: "Enrollment closed",
+      youWillJoin: "You'll join this batch",
+      noUpcomingBatches: "No upcoming batches are scheduled yet.",
+      notifyHeading: "Get notified",
+      instructor: "Instructor",
+      instructors: "Instructors",
+      previouslyRunOnce: "Previously run once",
+      previouslyRunTwice: "Previously run twice",
+      previouslyRunFew: "Previously run {count} times",
+      previouslyRunMany: "Previously run {count} times"
     },
     enroll: {
       title: "Enroll in {name}",
@@ -1196,12 +1245,28 @@ const dictionaries: Record<Locale, Dictionary> = {
       enrollInBatch: "التسجيل في هذه الدفعة",
       seatsLeft: "{count} مقعد متبقٍ",
       seatsLeft_one: "مقعد واحد متبقٍ",
+      seatsLeft_two: "مقعدان متبقيان",
+      seatsLeft_few: "{count} مقاعد متبقية",
       full: "الدفعة مكتملة",
       awaitingNextBatch: "هذه الدفعة مكتملة. اترك بياناتك ليتم إعلامك بالدفعة القادمة.",
       notifyMe: "أعلمني بالدفعة القادمة",
       notifyMeSuccess: "شكرًا لك — سنتواصل معك عند فتح الدفعة القادمة.",
       enrollmentClosesOn: "يُغلق التسجيل في {date}",
-      startsOn: "يبدأ في {date}"
+      startsOn: "يبدأ في {date}",
+      endsOn: "ينتهي في {date}",
+      enrollInCohort: "سجّل في دفعة {cohort}",
+      enrollmentClosed: "أُغلق التسجيل",
+      youWillJoin: "ستنضم إلى هذه الدفعة",
+      noUpcomingBatches: "لا توجد دفعات قادمة مجدولة بعد.",
+      notifyHeading: "احصل على إشعار",
+      instructor: "المدرب",
+      instructors: "المدربون",
+      // Arabic plural rules: 1 (مفرد), 2 (مثنى), 3–10 (جمع قلة — مرات),
+      // 11+ (تمييز مفرد منصوب — مرة). Flagged for native review.
+      previouslyRunOnce: "أُقيمت من قبل مرة واحدة",
+      previouslyRunTwice: "أُقيمت من قبل مرتين",
+      previouslyRunFew: "أُقيمت من قبل {count} مرات",
+      previouslyRunMany: "أُقيمت من قبل {count} مرة"
     },
     enroll: {
       title: "التسجيل في {name}",

@@ -33,6 +33,22 @@ export function formatCatalogNumber(value: number, locale: Locale): string {
   return value.toLocaleString(localeTag(locale));
 }
 
+// Month + year only — used to name the cohort in the course-detail enroll CTA
+// ("Enroll in the March 2026 cohort"). Deliberately derived from the cohort's
+// startDate rather than its admin-authored `name`, which is free text, never
+// localized, and can be anything ("Batch 3"). Same Western-digit discipline as
+// formatCatalogDate above.
+export function formatCohortMonthYear(iso: string, locale: Locale): string {
+  const date = new Date(iso);
+  if (locale === "en") {
+    return `${EN_MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
+  }
+  return date.toLocaleDateString(localeTag(locale), {
+    month: "long",
+    year: "numeric"
+  });
+}
+
 // Normalizes text for client-side search matching so Arabic behaves: strips
 // harakat (U+064B–U+0652) and tatweel (U+0640), folds letter variants that
 // readers treat as equivalent (أ/إ/آ → ا, ة → ه, ى → ي), and lowercases for

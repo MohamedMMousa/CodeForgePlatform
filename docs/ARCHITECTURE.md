@@ -548,7 +548,33 @@ file uploads, rate limiting, versioning stance).
   plus a `console.warn` fire if the real catalog ever exceeds it, so growth past the cap is
   visible rather than silently truncated); category chips and search filter that one set
   client-side. `catalog/courses/[slug]` and `catalog/tracks/[slug]` (the detail pages) were
-  **not** restyled this pass — only their nav — pending surface #3 (Course detail).
+  **not** restyled this pass — only their nav. Course detail has since been rebuilt as
+  surface #3 (below); `catalog/tracks/[slug]` is still on legacy styling.
+
+  **Course-detail migration (surface #3).** `app/[locale]/catalog/courses/[slug]/` is on §2
+  tokens and `components/ui/` only. Bound strictly to what `GET /catalog/courses/{slug}`
+  returns — no syllabus, instructor bio, level, or duration section exists, because none of
+  that data exists (see §7's two deferred follow-ups). The load-bearing decision:
+  **enrollment cannot target a chosen cohort.** `SubmitEnrollmentRequestCommandHandler`
+  accepts only a course/track id and resolves the batch itself via
+  `CohortAvailability.FindOpenCohortAsync` — always the earliest-starting bookable one. So
+  the page renders **one** primary that *names* that batch ("Enroll in the March 2026
+  cohort"), and every other cohort is an informational card with no button; N per-cohort
+  Enroll buttons would have been N identical links silently enrolling you elsewhere.
+  `cohorts.ts` holds the pure partition/state logic: cancelled cohorts are dropped
+  entirely, `completed` ones collapse into a muted "previously run" footnote (completed
+  only — a cancelled batch never ran, and counting it would be a false claim), and
+  `status === "open"` cohorts whose `endDate` has passed are dropped from the cards *and*
+  from that count, since only an explicit `completed` is evidence a batch ran. Cohort
+  bookability reads `CohortListDto.isAcceptingEnrollment` rather than re-deriving the
+  predicate, so the page can never promise a seat the enrollment path rejects. Two
+  contracts were preserved verbatim through the rebuild: the `#notify` anchor the catalog
+  cards deep-link to, and the `/enroll?courseId=…&name=…&price=…&currency=…` handoff —
+  where `price` must stay the **raw** number, since `EnrollForm` parses it with `Number()`
+  and a localized/grouped string would arrive as `NaN`. A route-level `loading.tsx` was
+  added because `catalog/loading.tsx` (a six-card grid) otherwise covers this nested route
+  and flashes a catalog-shaped skeleton. `components/NotifyMeForm.tsx` was restyled onto
+  tokens in the same pass — it is used only by this page, so nothing else changed.
 
   **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
   so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
@@ -565,6 +591,27 @@ file uploads, rate limiting, versioning stance).
 
 ## 7. Deferred / Open Architectural Decisions
 
+- **Public read-only syllabus on the course-detail page** — deferred, decide when real
+  course content is authored at launch. `DESIGN_LANGUAGE.md` §4 #3 lists a
+  syllabus/modules section, and the Modules feature is fully built (Phase 2: modules →
+  sessions/materials/assessments/assignments), but none of it is publicly readable:
+  `GetPublishedCourseDetailQueryHandler` never `Include`s `Modules`, and
+  `ModulesController` is `[Authorize]`-gated with no anonymous route. Surface #3 therefore
+  shipped without the section rather than inventing one (see §6). The cheap version is a
+  **titles-only** projection (module title + order, no sessions, no materials) added to
+  `PublicCourseDetailDto` — deliberately not the full tree, which would leak the paid
+  content structure the enrollment gate exists to protect. Blocked on nothing technical;
+  it's a product call about how much of the curriculum to show before payment, and it's
+  pointless to design against the placeholder module titles that exist today.
+- **Instructor bio / photo / credentials** — deferred, same trigger as the syllabus above.
+  The public course-detail page shows instructor **names only**, because that plus email
+  is the entire dataset: `CourseInstructorDto` carries `FullName`/`Email`, and the `User`
+  entity itself has no bio, photo, title, or credentials column. This is a schema gap, not
+  a DTO mapping gap — a real instructor section needs a `User` migration **plus** admin UI
+  to populate it **plus** a decision on image storage (`IFileStorageService` is private
+  by design, so a public instructor photo needs either a public bucket or a new
+  unauthenticated streaming endpoint — neither exists). Email is deliberately **not**
+  rendered on the public page even though the DTO carries it.
 - **`impeccable` design-critique detector as a CI job** — deferred, local pre-commit
   tool only. The bundled `.claude/skills/impeccable/` detector is gitignored (not
   vendored) and reports version `4.0.3`; the only installable-in-CI form is the npm

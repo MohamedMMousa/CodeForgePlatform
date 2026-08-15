@@ -12,7 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CourseListItem } from "@/lib/api";
-import { format, getCategoryLabel, type Dictionary, type Locale } from "@/lib/i18n";
+import {
+  format,
+  getCategoryLabel,
+  getSeatsLeftTemplate,
+  type Dictionary,
+  type Locale
+} from "@/lib/i18n";
 import { formatCatalogDate, formatCatalogNumber } from "./format";
 
 // DESIGN_LANGUAGE.md §3 course-card anatomy, bound only to fields the catalog
@@ -49,11 +55,9 @@ export function CourseCard({
             <Badge variant="neutral">{t.catalog.statusAwaiting}</Badge>
           ) : cohort.status === "almost_full" ? (
             <Badge variant="warning">
-              {cohort.seatsLeft === 1
-                ? t.courseDetail.seatsLeft_one
-                : format(t.courseDetail.seatsLeft, {
-                    count: formatCatalogNumber(cohort.seatsLeft, locale)
-                  })}
+              {format(getSeatsLeftTemplate(cohort.seatsLeft, t), {
+                count: formatCatalogNumber(cohort.seatsLeft, locale)
+              })}
             </Badge>
           ) : (
             <Badge variant="success">{t.catalog.statusOpen}</Badge>
