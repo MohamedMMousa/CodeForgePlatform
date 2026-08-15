@@ -57,7 +57,10 @@ export default async function CourseDetailPage({
         {openCohorts.length === 0 ? (
           <>
             <p className="muted">{t.courseDetail.noBatches}</p>
-            <div className="notice">
+            {/* id="notify" — the catalog card's "Notify me" CTA deep-links here
+                (/catalog/courses/{slug}#notify) instead of reconstructing this
+                form from URL params. */}
+            <div id="notify" className="notice">
               <p>{t.courseDetail.awaitingNextBatch}</p>
               <NotifyMeForm locale={locale} courseId={course.id} />
             </div>

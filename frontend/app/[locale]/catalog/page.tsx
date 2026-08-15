@@ -1,184 +1,144 @@
 import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { defaultLocale, format, getDictionary, isLocale } from "@/lib/i18n";
 import { getPublishedCourses, getPublishedTracks } from "@/lib/api";
+import { CatalogBrowser } from "./CatalogBrowser";
+import { RetryButton } from "./RetryButton";
+import { formatCatalogNumber } from "./format";
 
-const PAGE_SIZE = 20;
+// Pilot-scale cap: the whole grid is driven by one list call so the category
+// chips and the search box (CatalogBrowser) can filter a single consistent
+// set client-side instead of chasing a moving page. 100 is also the API's
+// max page size (PaginationDefaults, API_CONVENTIONS.md §6). This is a
+// deliberate v1 limitation, not an oversight — replace with real pagination
+// once the catalog outgrows one page. The "showing first N of M" notice
+// below, plus the console.warn, is the signal that day has arrived; nothing
+// past the cap disappears silently.
+const CATALOG_PAGE_SIZE = 100;
 
 export default async function CatalogPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; coursesPage?: string; tracksPage?: string }>;
 }) {
   const { locale: rawLocale } = await params;
-  const { q, coursesPage: coursesPageParam, tracksPage: tracksPageParam } = await searchParams;
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).catalog;
-  const tp = getDictionary(locale).pagination;
+  const t = getDictionary(locale);
 
-  const coursesPage = Math.max(1, Number(coursesPageParam) || 1);
-  const tracksPage = Math.max(1, Number(tracksPageParam) || 1);
-
-  let courses: Awaited<ReturnType<typeof getPublishedCourses>> = {
-    items: [],
-    page: 1,
-    pageSize: PAGE_SIZE,
-    totalCount: 0
-  };
-  let tracks: Awaited<ReturnType<typeof getPublishedTracks>> = {
-    items: [],
-    page: 1,
-    pageSize: PAGE_SIZE,
-    totalCount: 0
-  };
-  let loadError = false;
+  let courses: Awaited<ReturnType<typeof getPublishedCourses>> | null = null;
+  let tracks: Awaited<ReturnType<typeof getPublishedTracks>> | null = null;
 
   try {
     [courses, tracks] = await Promise.all([
-      getPublishedCourses({ search: q, page: coursesPage, pageSize: PAGE_SIZE }),
-      getPublishedTracks({ search: q, page: tracksPage, pageSize: PAGE_SIZE })
+      getPublishedCourses({ pageSize: CATALOG_PAGE_SIZE }),
+      getPublishedTracks({ pageSize: CATALOG_PAGE_SIZE })
     ]);
   } catch {
-    loadError = true;
+    courses = null;
+    tracks = null;
   }
 
-  const pageHref = (overrides: { coursesPage?: number; tracksPage?: number }) => {
-    const query = new URLSearchParams();
-    if (q) query.set("q", q);
-    const nextCoursesPage = overrides.coursesPage ?? coursesPage;
-    const nextTracksPage = overrides.tracksPage ?? tracksPage;
-    if (nextCoursesPage > 1) query.set("coursesPage", String(nextCoursesPage));
-    if (nextTracksPage > 1) query.set("tracksPage", String(nextTracksPage));
-    const qs = query.toString();
-    return `/${locale}/catalog${qs ? `?${qs}` : ""}`;
-  };
+  if (!courses || !tracks) {
+    return (
+      <main className="mx-auto w-full max-w-6xl ps-5 pe-5 py-10">
+        <div className="flex flex-col items-start gap-4 rounded-card border border-danger-border bg-danger-soft p-6">
+          <p className="text-body text-danger">{t.catalog.loadError}</p>
+          <RetryButton label={t.catalog.retry} />
+        </div>
+      </main>
+    );
+  }
 
-  const coursesTotalPages = Math.max(1, Math.ceil(courses.totalCount / courses.pageSize));
-  const tracksTotalPages = Math.max(1, Math.ceil(tracks.totalCount / tracks.pageSize));
+  if (courses.totalCount > courses.items.length) {
+    console.warn(
+      `[catalog] truncated to ${courses.items.length} of ${courses.totalCount} published courses — ` +
+        `CATALOG_PAGE_SIZE=${CATALOG_PAGE_SIZE} is a pilot-scale cap (app/[locale]/catalog/page.tsx); ` +
+        "introduce real pagination once the catalog outgrows one page."
+    );
+  }
 
   return (
-    <main className="cf-container">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.subtitle}</p>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 ps-5 pe-5 py-10">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-h1">{t.catalog.title}</h1>
+        <p className="text-body text-text-secondary">{t.catalog.subtitle}</p>
+      </div>
 
-      <form style={{ margin: "1.25rem 0" }}>
-        <div className="field" style={{ maxWidth: 420 }}>
-          <input type="search" name="q" placeholder={t.searchPlaceholder} defaultValue={q ?? ""} />
-        </div>
-      </form>
-
-      {loadError && <div className="notice err">{t.loadError}</div>}
-
-      {!loadError && tracks.items.length > 0 && (
-        <section style={{ marginBottom: "2rem" }}>
-          <h2>{t.tracksHeading}</h2>
-          <div className="cf-grid">
+      {tracks.items.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-h2">{t.catalog.tracksHeading}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {tracks.items.map((track) => (
-              <Link
-                key={track.id}
-                href={`/${locale}/catalog/tracks/${track.slug}`}
-                className="card"
-              >
-                <span className="badge">{t.trackBadge}</span>
-                <h3>{track.title}</h3>
-                {track.description && <p className="muted">{track.description}</p>}
-                <p className="muted">
-                  {t.coursesInTrack.replace("{count}", String(track.courseCount))}
-                </p>
-                <p className="price">
-                  {track.price} {track.currency}
-                </p>
-              </Link>
-            ))}
-          </div>
-          {tracksTotalPages > 1 && (
-            <div className="pagination">
-              <span className="muted">
-                {format(tp.showingCount, {
-                  count: `${(tracksPage - 1) * tracks.pageSize + 1}-${Math.min(tracksPage * tracks.pageSize, tracks.totalCount)}`,
-                  total: tracks.totalCount
-                })}
-              </span>
-              <div className="pagination-controls">
-                <Link
-                  href={pageHref({ tracksPage: tracksPage - 1 })}
-                  className="btn secondary"
-                  aria-disabled={tracksPage <= 1}
-                  tabIndex={tracksPage <= 1 ? -1 : undefined}
-                >
-                  {tp.previous}
-                </Link>
-                <span className="muted">{format(tp.pageOf, { page: tracksPage, totalPages: tracksTotalPages })}</span>
-                <Link
-                  href={pageHref({ tracksPage: tracksPage + 1 })}
-                  className="btn secondary"
-                  aria-disabled={tracksPage >= tracksTotalPages}
-                  tabIndex={tracksPage >= tracksTotalPages ? -1 : undefined}
-                >
-                  {tp.next}
-                </Link>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      {!loadError && (
-        <section>
-          <h2>{t.coursesHeading}</h2>
-          {courses.items.length === 0 ? (
-            <p className="muted">{t.empty}</p>
-          ) : (
-            <>
-              <div className="cf-grid">
-                {courses.items.map((course) => (
-                  <Link
-                    key={course.id}
-                    href={`/${locale}/catalog/courses/${course.slug}`}
-                    className="card"
-                  >
-                    <h3>{course.title}</h3>
-                    {course.description && <p className="muted">{course.description}</p>}
-                    <p className="price">
-                      {course.price} {course.currency}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-              {coursesTotalPages > 1 && (
-                <div className="pagination">
-                  <span className="muted">
-                    {format(tp.showingCount, {
-                      count: `${(coursesPage - 1) * courses.pageSize + 1}-${Math.min(coursesPage * courses.pageSize, courses.totalCount)}`,
-                      total: courses.totalCount
+              // Deliberately subordinate to a course card, not a peer of one
+              // (§3: one primary per screen) — `size="sm"` tightens padding,
+              // the title drops from h3 to a plain semibold body size, the
+              // description shrinks to `meta`, and the price keeps the accent
+              // colour (an allowed use, §1) but at body weight instead of h3.
+              // No badge, no primary button, ever.
+              <Card key={track.id} size="sm" className="relative bg-surface-2">
+                <CardHeader>
+                  <span className="eyebrow text-text-muted">{t.catalog.trackBadge}</span>
+                  <CardTitle className="text-body-lg font-semibold">
+                    {/* `!` on the text colours: globals.css's legacy, unlayered
+                        `a { color: var(--accent-2) }` beats any `@layer
+                        utilities` class regardless of specificity — see
+                        components/ShopNav.tsx for the full explanation. */}
+                    <Link
+                      href={`/${locale}/catalog/tracks/${track.slug}`}
+                      className="!text-text after:absolute after:inset-0 hover:!text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    >
+                      {track.title}
+                    </Link>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-1.5">
+                  {track.description ? (
+                    <CardDescription className="text-meta line-clamp-1">
+                      {track.description}
+                    </CardDescription>
+                  ) : null}
+                  <span className="text-meta text-text-muted">
+                    {format(t.catalog.coursesInTrack, {
+                      count: formatCatalogNumber(track.courseCount, locale)
                     })}
                   </span>
-                  <div className="pagination-controls">
-                    <Link
-                      href={pageHref({ coursesPage: coursesPage - 1 })}
-                      className="btn secondary"
-                      aria-disabled={coursesPage <= 1}
-                      tabIndex={coursesPage <= 1 ? -1 : undefined}
-                    >
-                      {tp.previous}
+                </CardContent>
+                <CardFooter className="justify-between">
+                  <span className="text-body font-semibold text-accent">
+                    {formatCatalogNumber(track.price, locale)} {track.currency}
+                  </span>
+                  <Button asChild variant="secondary" size="sm" className="relative z-10">
+                    <Link href={`/${locale}/catalog/tracks/${track.slug}`}>
+                      {t.catalog.viewTrack}
                     </Link>
-                    <span className="muted">{format(tp.pageOf, { page: coursesPage, totalPages: coursesTotalPages })}</span>
-                    <Link
-                      href={pageHref({ coursesPage: coursesPage + 1 })}
-                      className="btn secondary"
-                      aria-disabled={coursesPage >= coursesTotalPages}
-                      tabIndex={coursesPage >= coursesTotalPages ? -1 : undefined}
-                    >
-                      {tp.next}
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </section>
       )}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h2">{t.catalog.coursesHeading}</h2>
+        <CatalogBrowser courses={courses.items} locale={locale} t={t} />
+        {courses.totalCount > courses.items.length && (
+          <p className="text-meta text-text-muted">
+            {format(t.catalog.showingFirstOfTotal, {
+              count: formatCatalogNumber(courses.items.length, locale),
+              total: formatCatalogNumber(courses.totalCount, locale)
+            })}
+          </p>
+        )}
+      </section>
     </main>
   );
 }

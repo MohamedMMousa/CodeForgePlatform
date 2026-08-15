@@ -13,6 +13,7 @@ import { RoleNav } from "@/components/RoleNav";
 import { PasswordChangeGate } from "@/components/PasswordChangeGate";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { DirectionProvider } from "@/components/DirectionProvider";
+import { SiteHeader } from "@/components/SiteHeader";
 
 // Cairo is the UI typeface for both scripts, so bilingual pages share visual
 // DNA rather than looking like a translation of an English design
@@ -72,47 +73,52 @@ export default async function LocaleLayout({
         <DirectionProvider dir={dir(locale)}>
           <AuthProvider initialSession={initialSession} canRecover={canRecover}>
             <PasswordChangeGate locale={locale} />
-            <header className="topbar">
-              <Link className="brand" href={`/${locale}`}>
-                {/* Two theme-variant assets, toggled by the `dark`/`light`
-                    custom variants in globals.css rather than JS — the same
-                    per-surface mechanism the rest of the design system uses.
-                    270x237 native size; 36x32 preserves that ratio at
-                    roughly the old icon's scale. */}
-                <Image
-                  src="/logo-dark.png"
-                  alt=""
-                  width={36}
-                  height={32}
-                  className="hidden dark:block"
-                />
-                <Image
-                  src="/logo-light.png"
-                  alt=""
-                  width={36}
-                  height={32}
-                  className="hidden light:block"
-                />
-                <span>
-                  {locale === "en" ? (
-                    <>
-                      Code<span className="accent">Forge</span>
-                    </>
-                  ) : (
-                    t.appName
-                  )}
-                  <div className="tagline">{t.tagline}</div>
-                </span>
-              </Link>
-              <nav className="nav-links">
-                <Link href={`/${locale}/catalog`}>{t.nav.catalog}</Link>
-                <Link href={`/${locale}/contact`}>{t.nav.contact}</Link>
-                <RoleNav locale={locale} t={t} />
-                <Suspense fallback={null}>
-                  <LocaleSwitcher locale={locale} label={t.nav.switchTo} />
-                </Suspense>
-              </nav>
-            </header>
+            {/* SiteHeader swaps this for the dark shop-window ShopNav on the
+                /catalog subtree; everywhere else it renders exactly this
+                legacy topbar, unmodified — see components/SiteHeader.tsx. */}
+            <SiteHeader locale={locale} t={t}>
+              <header className="topbar">
+                <Link className="brand" href={`/${locale}`}>
+                  {/* Two theme-variant assets, toggled by the `dark`/`light`
+                      custom variants in globals.css rather than JS — the same
+                      per-surface mechanism the rest of the design system uses.
+                      270x237 native size; 36x32 preserves that ratio at
+                      roughly the old icon's scale. */}
+                  <Image
+                    src="/logo-dark.png"
+                    alt=""
+                    width={36}
+                    height={32}
+                    className="hidden dark:block"
+                  />
+                  <Image
+                    src="/logo-light.png"
+                    alt=""
+                    width={36}
+                    height={32}
+                    className="hidden light:block"
+                  />
+                  <span>
+                    {locale === "en" ? (
+                      <>
+                        Code<span className="accent">Forge</span>
+                      </>
+                    ) : (
+                      t.appName
+                    )}
+                    <div className="tagline">{t.tagline}</div>
+                  </span>
+                </Link>
+                <nav className="nav-links">
+                  <Link href={`/${locale}/catalog`}>{t.nav.catalog}</Link>
+                  <Link href={`/${locale}/contact`}>{t.nav.contact}</Link>
+                  <RoleNav locale={locale} t={t} />
+                  <Suspense fallback={null}>
+                    <LocaleSwitcher locale={locale} label={t.nav.switchTo} />
+                  </Suspense>
+                </nav>
+              </header>
+            </SiteHeader>
             {children}
           </AuthProvider>
         </DirectionProvider>

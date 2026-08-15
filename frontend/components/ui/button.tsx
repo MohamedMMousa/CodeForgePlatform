@@ -36,16 +36,27 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // The `!` on every text colour here is load-bearing, not decoration:
+        // globals.css's legacy section has an UNLAYERED `a { color:
+        // var(--accent-2) }` (pre-design-system default link colour). Tailwind
+        // utilities live inside `@layer utilities`, and unlayered CSS beats
+        // layered CSS regardless of specificity — so with `asChild` rendering
+        // this as an `<a>` (a Link, as the catalog surface does throughout),
+        // the plain (non-important) utility below was silently losing to that
+        // legacy rule and every button-as-link rendered in accent-2 orange
+        // instead of its real variant colour. `!important` is the only lever
+        // that wins against an unlayered rule. Harmless for the plain
+        // `<button>` case (nothing else contests `color` there).
         primary:
-          "bg-accent text-accent-ink font-bold hover:bg-accent-hover focus-visible:ring-accent",
+          "bg-accent !text-accent-ink font-bold hover:bg-accent-hover focus-visible:ring-accent",
         secondary:
-          "border-border-strong bg-transparent text-text font-semibold hover:bg-surface-2 focus-visible:ring-accent",
+          "border-border-strong bg-transparent !text-text font-semibold hover:bg-surface-2 focus-visible:ring-accent",
         ghost:
-          "bg-transparent text-accent-text font-semibold hover:bg-surface-2 focus-visible:ring-accent",
+          "bg-transparent !text-accent-text font-semibold hover:bg-surface-2 focus-visible:ring-accent",
         danger:
-          "border-danger bg-transparent text-danger font-semibold hover:bg-danger-soft focus-visible:ring-danger",
+          "border-danger bg-transparent !text-danger font-semibold hover:bg-danger-soft focus-visible:ring-danger",
         "danger-solid":
-          "bg-danger text-danger-ink font-bold hover:bg-danger-hover focus-visible:ring-danger"
+          "bg-danger !text-danger-ink font-bold hover:bg-danger-hover focus-visible:ring-danger"
       },
       size: {
         sm: "h-8 px-3 text-label",

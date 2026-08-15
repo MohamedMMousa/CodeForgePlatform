@@ -325,6 +325,24 @@
   body {
     font-variant-numeric: lining-nums;
   }
+
+  /* Impeccable audit finding (catalog surface, 2026-08-15): no
+     prefers-reduced-motion handling existed anywhere. The app's own motion
+     vocabulary is small and all non-essential — the loading skeleton's
+     `animate-pulse` and hover `transition-colors` states — so collapsing
+     both to effectively-instant is safe here without hiding a state change
+     a user needs to see (contrast the audit's own warning against a blind
+     global kill on an app with real progress/feedback animation, which
+     this one doesn't have). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 /* The `eyebrow` treatment is uppercase in Latin only — Arabic has no letter

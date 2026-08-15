@@ -13,6 +13,44 @@ export function dir(locale: Locale): "ltr" | "rtl" {
   return locale === "ar" ? "rtl" : "ltr";
 }
 
+/**
+ * `Course.Category` (and by extension `CourseListDto.category`) is free-text
+ * admin input — there's no backend enum/constants list backing it (see
+ * `ARCHITECTURE.md`'s catalog-migration note) — so it can't live in
+ * `Dictionary` the way UI copy does: the same raw value needs a stable
+ * bilingual label wherever it's shown (catalog chips, course-card eyebrow).
+ * This is a starter set covering categories a MENA programming academy is
+ * likely to use; it is deliberately NOT exhaustive. An admin-authored
+ * category outside this map falls through to `titleCaseCategory` below
+ * rather than leaking a lowercase slug into either language — the durable
+ * fix is localized category labels in the data model, tracked as deferred
+ * debt in `ARCHITECTURE.md`.
+ */
+const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
+  programming: { en: "Programming", ar: "البرمجة" },
+  "web-development": { en: "Web Development", ar: "تطوير الويب" },
+  "mobile-development": { en: "Mobile Development", ar: "تطوير تطبيقات الجوال" },
+  "data-science": { en: "Data Science", ar: "علم البيانات" },
+  "artificial-intelligence": { en: "Artificial Intelligence", ar: "الذكاء الاصطناعي" },
+  cybersecurity: { en: "Cybersecurity", ar: "الأمن السيبراني" },
+  design: { en: "Design", ar: "التصميم" },
+  business: { en: "Business", ar: "إدارة الأعمال" }
+};
+
+/** "web-development" / "web development" -> "Web Development". Locale-agnostic —
+ * it exists only to keep an unmapped raw value from reading as a lowercase slug. */
+function titleCaseCategory(value: string): string {
+  return value
+    .replace(/[-_]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function getCategoryLabel(category: string, locale: Locale): string {
+  const entry = CATEGORY_LABELS[category.trim().toLowerCase()];
+  return entry ? entry[locale] : titleCaseCategory(category);
+}
+
 export interface Dictionary {
   appName: string;
   tagline: string;
@@ -65,6 +103,19 @@ export interface Dictionary {
     viewDetails: string;
     empty: string;
     loadError: string;
+    viewTrack: string;
+    allCategories: string;
+    categoriesUnavailable: string;
+    noSearchResults: string;
+    retry: string;
+    showingFirstOfTotal: string;
+    statusOpen: string;
+    statusAwaiting: string;
+    datesAnnouncedSoon: string;
+    enroll: string;
+    notifyMeShort: string;
+    clearFilters: string;
+    filterResultCount: string;
   };
   courseDetail: {
     back: string;
@@ -582,13 +633,26 @@ const dictionaries: Record<Locale, Dictionary> = {
       title: "Course Catalog",
       subtitle: "Live, instructor-led programming tracks and courses.",
       searchPlaceholder: "Search courses…",
-      tracksHeading: "Tracks",
+      tracksHeading: "Learning tracks",
       coursesHeading: "Courses",
       trackBadge: "Track",
       coursesInTrack: "{count} courses",
       viewDetails: "View details",
-      empty: "No courses match your search yet.",
-      loadError: "Could not load the catalog. Please try again."
+      empty: "No cohorts are open right now — check back soon.",
+      loadError: "Could not load the catalog. Please try again.",
+      viewTrack: "View track",
+      allCategories: "All",
+      categoriesUnavailable: "Categories aren't available yet.",
+      noSearchResults: "No courses match your search or filters.",
+      retry: "Try again",
+      showingFirstOfTotal: "Showing the first {count} of {total} courses.",
+      statusOpen: "Seats available",
+      statusAwaiting: "Awaiting next batch",
+      datesAnnouncedSoon: "Dates announced soon",
+      enroll: "Enroll",
+      notifyMeShort: "Notify me",
+      clearFilters: "Clear filters",
+      filterResultCount: "{count} of {total} courses match"
     },
     courseDetail: {
       back: "Back to catalog",
@@ -1108,8 +1172,21 @@ const dictionaries: Record<Locale, Dictionary> = {
       trackBadge: "مسار",
       coursesInTrack: "{count} دورات",
       viewDetails: "عرض التفاصيل",
-      empty: "لا توجد دورات مطابقة لبحثك حتى الآن.",
-      loadError: "تعذّر تحميل الدليل. يرجى المحاولة مرة أخرى."
+      empty: "لا توجد دفعات متاحة حاليًا — يرجى المحاولة لاحقًا.",
+      loadError: "تعذّر تحميل الدليل. يرجى المحاولة مرة أخرى.",
+      viewTrack: "عرض المسار",
+      allCategories: "الكل",
+      categoriesUnavailable: "التصنيفات غير متاحة حاليًا.",
+      noSearchResults: "لا توجد دورات مطابقة لبحثك أو عوامل التصفية.",
+      retry: "أعد المحاولة",
+      showingFirstOfTotal: "عرض أول {count} من {total} دورة.",
+      statusOpen: "مقاعد متاحة",
+      statusAwaiting: "بانتظار الدفعة القادمة",
+      datesAnnouncedSoon: "سيتم الإعلان عن المواعيد قريبًا",
+      enroll: "سجّل الآن",
+      notifyMeShort: "أعلمني",
+      clearFilters: "مسح عوامل التصفية",
+      filterResultCount: "{count} من {total} دورة مطابقة"
     },
     courseDetail: {
       back: "العودة إلى الدليل",

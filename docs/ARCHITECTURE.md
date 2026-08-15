@@ -540,6 +540,29 @@ file uploads, rate limiting, versioning stance).
   empty the migration is done. See `docs/assets/brand-guide.png` for the original brand
   reference.
 
+  **Catalog migration (surface #2, first surface rebuilt).** `app/[locale]/catalog/page.tsx`
+  and its cards (`CourseCard.tsx`, `CatalogBrowser.tsx`) are on §2 tokens and the
+  `components/ui/` primitives only — no legacy `cf-*`/`.card`/`.btn` classes remain on that
+  page. `GET /catalog/courses` drives the whole grid from one server-side call
+  (`CATALOG_PAGE_SIZE = 100`, a deliberate pilot-scale cap — a "showing first N of M" notice
+  plus a `console.warn` fire if the real catalog ever exceeds it, so growth past the cap is
+  visible rather than silently truncated); category chips and search filter that one set
+  client-side. `catalog/courses/[slug]` and `catalog/tracks/[slug]` (the detail pages) were
+  **not** restyled this pass — only their nav — pending surface #3 (Course detail).
+
+  **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
+  so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
+  inherited one — making a new dark shop-window Nav (§3 "Nav") exclusive to that subtree the
+  structurally "correct" way would mean moving every other route directory into a sibling
+  group, a whole-app change that was deliberately deferred. Instead, `components/SiteHeader.tsx`
+  (client, `usePathname()`) wraps the legacy topbar as `children` and swaps in
+  `components/ShopNav.tsx` for `/catalog` and everything under it; every non-catalog route
+  renders the exact same topbar JSX as before, now passed through unchanged. `ShopNav` is
+  deliberately **not** session-aware (no `RoleNav`) — a signed-in visitor still sees "Sign in"
+  on the catalog. Both the route-group deferral and the missing session-awareness are accepted
+  v1 gaps, to revisit when the auth surfaces (§4 #9) or a later surface justify the bigger
+  routing change.
+
 ## 7. Deferred / Open Architectural Decisions
 
 - **`impeccable` design-critique detector as a CI job** — deferred, local pre-commit
@@ -551,6 +574,30 @@ file uploads, rate limiting, versioning stance).
   judgment, not correctness, and it would be the only CI job depending on a
   non-vendored third-party bundle. Revisit once the npm package catches up to the
   local bundle version, or if the detector is deliberately vendored into the repo.
+- **Legacy unlayered `a { color: var(--accent-2) }` outranks the token system** —
+  found and worked around, not fixed, during the catalog migration (§6). The rule
+  lives in `globals.css`'s legacy section and is deliberately unlayered like the old
+  `.container`/`.grid`/`.table` block (§6) — but unlike those, it isn't a bare
+  class-name collision, it's a plain `a` element selector, so it silently wins
+  against *any* `text-*` colour utility on *any* `<a>`/`Link` anywhere in the app,
+  including new design-system surfaces, because unlayered CSS outranks
+  `@layer utilities` regardless of specificity. This surfaced when the catalog
+  became the first surface to render a `Link` needing a colour other than the
+  legacy default (nav links, card title links, and every `Button asChild` wrapping
+  a `Link`) — each rendered accent-2 orange instead of its intended token colour
+  until fixed. **Current fix, intentionally scoped and temporary:** `!important`
+  added to the contested `text-*` classes, only where the catalog surface actually
+  renders a coloured `Link` (`components/ui/button.tsx`'s variants, `ShopNav.tsx`,
+  `CourseCard.tsx`, the track card in `catalog/page.tsx`) — see the comments at each
+  site. **Durable fix, deliberately not done now:** move the legacy `a { color }`
+  rule into a cascade layer (or scope it to a `.cf-legacy`-style selector matching
+  only pre-design-system pages), then remove every `!important` this workaround
+  added. Do this as part of the route-group conversion session (§6's "Nav swap
+  mechanism" note — the `(shop)`/`(app)` split already deferred there), not
+  piecemeal — the same reasoning that kept the `.container`/`.grid`/`.table` rename
+  isolated to its own pass: a global CSS-cascade change touches every legacy page at
+  once, so it deserves its own dedicated, fully-verified session rather than being
+  bundled into whatever surface happens to trip over it next.
 - **Python auto-grader engine** — Piston (`emkc.org`) was chosen in Phase 3 (free,
   no Docker needed in this dev environment), and `PistonCodeExecutionService` was
   built and verified working. Mid-phase, Piston's public API went whitelist-only

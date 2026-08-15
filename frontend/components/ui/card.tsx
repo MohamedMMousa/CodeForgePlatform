@@ -35,11 +35,12 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        // `[display:grid]`, not the `grid` utility. `.grid` is also a legacy
-        // class in globals.css, and that block is unlayered — it outranks
-        // @layer utilities, so the `grid` class here would drag in the catalog
-        // grid's own template-columns and 1.25rem gap. See the warning on the
-        // legacy section of globals.css.
+        // `[display:grid]`, not the `grid` utility — no functional need to
+        // change this now that the collision is resolved. The legacy
+        // `.container`/`.grid`/`.table` classes in globals.css were renamed to
+        // `.cf-container`/`.cf-grid`/`.cf-table` (see globals.css §6), so the
+        // real Tailwind `grid` utility is safe to use here; this arbitrary
+        // property is simply what was already here before that fix landed.
         "@container/card-header [display:grid] auto-rows-min items-start gap-2 px-(--card-px)",
         // `minmax(0,1fr)`, not `1fr`. A bare `1fr` is `minmax(auto,1fr)`, whose
         // auto floor is the eyebrow/title's min-content — so a long eyebrow
@@ -61,9 +62,16 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+// Real heading element, not a styled div — a screen reader's heading-navigation
+// command must be able to jump card-to-card. Defaults to h3 (the level §3's
+// course-card anatomy specifies); pass `as` to fit a different outline.
+function CardTitle({
+  className,
+  as: Comp = "h3",
+  ...props
+}: React.ComponentProps<"h3"> & { as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" }) {
   return (
-    <div
+    <Comp
       data-slot="card-title"
       className={cn("text-h3 text-text", className)}
       {...props}

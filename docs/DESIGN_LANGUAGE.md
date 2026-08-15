@@ -175,7 +175,7 @@ Run per surface before calling it done:
 
 **Guardrails (non-negotiable):** (a) logical properties from line one — no `left`/`right`/`ml`/`mr`; (b) restyle every shadcn primitive to §2 tokens; (c) verify each Radix-based component (dropdown, popover, dialog) actually mirrors in RTL as it's adopted.
 
-**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 has not started; every surface still uses its pre-design-system styling.
+**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 is underway: surface #2 (**Catalog**) is migrated — see `ARCHITECTURE.md` §6's catalog-migration note for the nav mechanism used and its known limitations. Every other surface (Landing, Course detail, and everything below it in §4) still uses its pre-design-system styling.
 
 **What guardrail (c) actually catches.** Setting `dir="rtl"` on `<html>` is *not* enough for Radix. It resolves direction from React context, not the DOM, and portals its floating layers to `document.body` — so a select panel or dialog renders `dir="ltr"` inside a correct Arabic page and mirrors the wrong way. `components/DirectionProvider.tsx` in the root layout is the fix. Nothing in the type checker or the build catches this; it only shows up by opening the component under `/ar` and looking at which side things land on. Re-run that check for every new Radix primitive.
 
