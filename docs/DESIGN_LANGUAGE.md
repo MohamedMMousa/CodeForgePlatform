@@ -137,7 +137,7 @@ Ordered by build priority. "Mode" = which surface family it belongs to.
 | 2 | **Catalog** | Dark | Filter chips (track/level) + calm card grid. Card state drives CTA. |
 | 3 | **Course detail** | Dark | Shop-window sell page: overview, syllabus/modules, instructor, cohort + price, enroll. Last dark surface before sign-in. |
 | 4 | **Student dashboard** | Light | The home after sign-in: enrolled cohorts, next live session, progress, pending tasks. Calm, scannable. |
-| 5 | **Course / lesson view** | Light | The reading surface where students live. Module nav (start-side), lesson body (long Arabic reading — light + 1.8 line-height), materials, mark-complete. |
+| 5 | **Course content / sessions** | Light | The enrolled student's content space: module nav (start-side), session list where the session **type** (live / recorded / in-person) drives the treatment, materials, and a session detail view. |
 | 6 | **Assignments** | Light | Brief + code submission (JetBrains Mono, LTR) + status badge + auto-grade result when available. |
 | 7 | **Gradebook** | Light | Table component: attendance + scores, Western numerals, clear pass/progress badges. |
 | 8 | **Certificates / verify** | Light | Two-tier certificate view + public verify page. Trust-forward, clean. |
@@ -177,7 +177,7 @@ Run per surface before calling it done:
 
 **Guardrails (non-negotiable):** (a) logical properties from line one — no `left`/`right`/`ml`/`mr`; (b) restyle every shadcn primitive to §2 tokens; (c) verify each Radix-based component (dropdown, popover, dialog) actually mirrors in RTL as it's adopted.
 
-**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 is underway: surfaces #2 (**Catalog**), #3 (**Course detail**), and #4 (**Student dashboard**) are migrated — see `ARCHITECTURE.md` §6's catalog-, course-detail-, and dashboard-migration notes for the nav mechanism used and the known limitations of each. Dashboard is the first surface built on the light lane (§2.3) — see the accent-on-background note there. Every other surface (Landing, and everything below Student dashboard in §4) still uses its pre-design-system styling.
+**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 is underway: surfaces #2 (**Catalog**), #3 (**Course detail**), #4 (**Student dashboard**), and #5 (**Course content / sessions**) are migrated — see `ARCHITECTURE.md` §6's migration notes for the nav mechanism used and the known limitations of each. Dashboard is the first surface built on the light lane (§2.3) — see the accent-on-background note there. Every other surface (Landing, and everything below Course content in §4) still uses its pre-design-system styling.
 
 **Course detail shipped without its syllabus and instructor sections**, which §4 #3 lists. That is a data gap, not an omission: `GET /catalog/courses/{slug}` exposes no modules at all, and the `User` entity has no bio/photo/credentials columns, so both sections would have to be invented rather than designed. Both are recorded as deferred backend follow-ups in `ARCHITECTURE.md` §7, to decide when real course content is authored at launch. The instructor section that *did* ship is names only — the whole public dataset. Treat this paragraph as retired once those two follow-ups land.
 
@@ -190,3 +190,5 @@ Run per surface before calling it done:
 ## 7. Definition of done (design)
 
 A surface is done when: the §5 checklist passes, it uses only tokens from §2, its components follow §3, and it matches its §4 intent. Functional "done" is still `verify.mjs` green, per the architecture docs. Design gate and functional gate are separate — both must pass.
+
+**Surface #5's original row described a surface CodeForge doesn't have.** Earlier drafts of §4 #5 called for "lesson body (long Arabic reading)" and "mark-complete" — copied from a self-paced-course template before the live-cohort model was fully reflected here. `PRODUCT.md` is explicit that CodeForge is "explicitly not a self-paced video library," and `docs/SRS.md` states certification is derived from attendance + assessment grades, never video-watch completion. Neither a long-form reading body nor mark-complete has, or should have, backing: there is no `Lesson` entity and no body field on `Session` (only a short plain-text `Description` and a `VideoUrl`), and `SessionProgress` is Phase-0 schema with no writer and no reader anywhere in the application. Both are **intentionally not built, not deferred** — they contradict the product this is, not a gap waiting on backend work. §4's row above reflects the corrected intent: session-type-driven navigation, not a reading view.

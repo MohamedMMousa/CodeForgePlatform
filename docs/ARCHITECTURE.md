@@ -608,6 +608,29 @@ file uploads, rate limiting, versioning stance).
   `DESIGN_LANGUAGE.md` §4 #4 names — course progress-% and cross-course pending tasks — are
   deliberately absent; see the two new deferred entries below rather than inventing the data.
 
+  **Course-content migration (surface #5).** `app/[locale]/my-courses/[courseId]/` (rewritten)
+  and its new `sessions/[sessionId]/` child route are on §2.3 light tokens and `components/ui/`
+  only, replacing the flat legacy dump that used to live at the course-id route directly — there
+  was no per-session route before this. This is **not** a lesson-reading surface: §4 #5 was
+  amended (see `DESIGN_LANGUAGE.md` §7) once it became clear CodeForge has no `Lesson` entity, no
+  long-form body field, and no working `SessionProgress` write-path — a "lesson" is a `Session`
+  row typed `live`/`in_person`/`recorded_lesson`, and its only content-bearing field is a short
+  plain-text `Description` plus a `VideoUrl`. Both pages call the same
+  `GET /my-courses/{courseId}/content` tree endpoint the dashboard's course cards link into,
+  and the detail page locates itself inside that tree (course title, module title, and
+  prev/next siblings all come free) rather than adding a `getSessionById` wrapper around the
+  context-free `GET /sessions/{id}`. Two levels, not one: an overview (module nav start-side +
+  every module's sessions, quiet assessment/assignment rows, module resources, a rebuilt grades
+  panel) and a session detail page that owns the screen's one primary action.
+  `app/[locale]/my-courses/[courseId]/sessionState.ts` is the single source of truth for how
+  session **type** and real-time **state** combine into a badge and an action (§3 "state drives
+  the CTA") — both pages import it so they can't disagree. One finding worth flagging for later
+  surfaces: a *past* `live`/`in_person` session's `VideoUrl` is its recording (confirmed in
+  `DATABASE.md` and `docs/SRS.md`), a real and distinct case from a `recorded_lesson`'s `VideoUrl`
+  — the legacy page collapsed both into one generic "watch video" link regardless of whether the
+  session was even in the future yet, which this rebuild's state machine no longer allows (no
+  Join and no Watch render on a linkless or not-yet-relevant session, per §3).
+
   **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
   so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
   inherited one — making a new dark shop-window Nav (§3 "Nav") exclusive to that subtree the
@@ -632,13 +655,17 @@ file uploads, rate limiting, versioning stance).
   bundled with this: `useSessionGate`'s dashboard call currently allows any authenticated role,
   not just students, and there is still no post-login redirect to `/dashboard` — `login/page.tsx`
   just shows an inline success message. Revisit alongside the other auth surfaces (§4 #9).
-- **Student dashboard progress-%** — blocked on `SessionProgress` being dead code, not on a
-  missing query. The entity (`Id, StudentId, SessionId, CompletedAt`) exists in the schema and
-  in `ICodeForgeDbContext`, but no command ever writes a row and no query ever reads one — the
-  table is permanently empty under current code. `DESIGN_LANGUAGE.md` §4 #4 asks for a progress
-  indicator on the student dashboard; it was deliberately not built, because there is no
-  "lesson completed" signal anywhere to show. Needs a write-path (a mark-complete action wired
-  to session/material views) before a read-side query is worth adding.
+- **Student dashboard progress-%, and session mark-complete generally — not a product concept,
+  not pending backend work.** `SessionProgress` (`Id, StudentId, SessionId, CompletedAt`) exists
+  in the schema and in `ICodeForgeDbContext`, but no command ever writes a row and no query ever
+  reads one — the table is permanently empty under current code, and it is vestigial Phase-0
+  schema, not an unfinished feature. Earlier `DESIGN_LANGUAGE.md` drafts asked for a progress
+  indicator on the dashboard and a mark-complete action on surface #5; both were removed from the
+  spec (see `DESIGN_LANGUAGE.md` §7) once cross-checked against `PRODUCT.md` ("explicitly not a
+  self-paced video library") and `docs/SRS.md` (certification is derived from attendance +
+  assessment grades, never video-watch completion). A write-path for `SessionProgress` would
+  contradict the live-cohort model this product is, so none should be built — this entry exists
+  only to record why the table stays empty, not as a queued follow-up.
 - **Student dashboard pending tasks (cross-course)** — blocked on there being no aggregate
   endpoint, not on missing data. Assignment/submission fields are real and populated
   (`Assignment.DueAt`, `AssignmentSubmission.AutoGradingStatus`/`FinalScore`, etc.), but every

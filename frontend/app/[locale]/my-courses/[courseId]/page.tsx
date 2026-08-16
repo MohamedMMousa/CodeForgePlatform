@@ -2,199 +2,301 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useSessionGate } from "@/components/SessionGuard";
 import {
   ApiRequestError,
   MaterialItem,
   MyCourseContent,
-  MyCourseGrades,
-  downloadAuthenticatedFile,
   getMyCourseContent,
   getMyCourseGrades,
-  getSessionMaterials
+  getModuleMaterials
 } from "@/lib/api";
-import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
-import { externalHref } from "@/lib/url";
+import { defaultLocale, getDictionary, isLocale, type Dictionary, type Locale } from "@/lib/i18n";
+import { GradesPanel, type GradesState } from "./GradesPanel";
+import { MaterialList } from "./MaterialList";
+import { ModuleNav } from "./ModuleNav";
+import { SessionRow } from "./SessionRow";
+import { CourseContentSkeleton } from "./skeletons";
 
-export default function MyCoursePage({
+// DESIGN_LANGUAGE.md §4 #5 — the enrolled student's course content / session-
+// navigation space. NOT a lesson-reading surface: CodeForge is live-cohort
+// (PRODUCT.md), there is no Lesson entity and no long-form body field, and
+// SessionProgress/"mark complete" is vestigial Phase-0 schema with no reader
+// or writer (ARCHITECTURE.md §7) — neither is built here, on purpose.
+//
+// Replaces the flat legacy dump at this route: module nav (start-side) +
+// every module's sessions, quick links to assessments/assignments, module
+// resources, and a rebuilt grades panel. Session type + real-time state
+// drives each row's badges (see ./sessionState.ts); the row itself carries
+// no action — the single primary lives on the session detail page.
+type ContentErrorKind = "not-found" | "access-denied" | "generic";
+
+function errorTitle(kind: ContentErrorKind, t: Dictionary["courseContent"]): string {
+  if (kind === "not-found") return t.notFoundTitle;
+  if (kind === "access-denied") return t.accessDeniedTitle;
+  return t.loadError;
+}
+
+function errorHint(kind: ContentErrorKind, t: Dictionary["courseContent"]): string | null {
+  if (kind === "not-found") return t.notFoundHint;
+  if (kind === "access-denied") return t.accessDeniedHint;
+  return null;
+}
+
+function ModuleResources({
+  resources,
+  locale,
+  t
+}: {
+  resources: MaterialItem[] | "error" | undefined;
+  locale: Locale;
+  t: Dictionary["courseContent"];
+}) {
+  if (resources === undefined) {
+    return (
+      <div className="h-16 w-full animate-pulse rounded-card bg-surface-2" aria-hidden="true" />
+    );
+  }
+  if (resources === "error") {
+    return <p className="text-body text-text-muted">{t.loadError}</p>;
+  }
+  return (
+    <MaterialList materials={resources} emptyText={t.noResources} locale={locale} t={t} />
+  );
+}
+
+export default function CourseContentPage({
   params
 }: {
   params: Promise<{ locale: string; courseId: string }>;
 }) {
   const { locale: rawLocale, courseId } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).student;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.courseContent;
 
   const { session } = useAuth();
   const [content, setContent] = useState<MyCourseContent | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
-  const [sessionMaterials, setSessionMaterials] = useState<Record<string, MaterialItem[]>>({});
-  const [grades, setGrades] = useState<MyCourseGrades | null>(null);
-  const [showGrades, setShowGrades] = useState(false);
+  const [errorKind, setErrorKind] = useState<ContentErrorKind | null>(null);
+  const [moduleResources, setModuleResources] = useState<
+    Record<string, MaterialItem[] | "error" | undefined>
+  >({});
+  const [gradesState, setGradesState] = useState<GradesState>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
 
+  // The page's spine. A failure here replaces the whole page with a designed
+  // panel, branched by status so a genuinely-unenrolled student sees
+  // "you don't have access" rather than the server's raw English detail —
+  // CourseContentAuthorization throws UnauthorizedAccessException, which
+  // ExceptionHandlingMiddleware maps to 401, not 403 (API_CONVENTIONS.md).
   useEffect(() => {
     if (!session) return;
+    let active = true;
+
+    setErrorKind(null);
+    setContent(null);
+    setModuleResources({});
+
     getMyCourseContent(courseId)
-      .then(setContent)
-      .catch((err) => setError(err instanceof ApiRequestError ? err.message : t.loadError));
-  }, [session, courseId, t.loadError]);
+      .then((data) => {
+        if (!active) return;
+        setContent(data);
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err instanceof ApiRequestError && err.info.status === 404) {
+          setErrorKind("not-found");
+        } else if (err instanceof ApiRequestError && (err.info.status === 401 || err.info.status === 403)) {
+          setErrorKind("access-denied");
+        } else {
+          setErrorKind("generic");
+        }
+      });
 
-  async function toggleMaterials(id: string) {
-    if (expandedSession === id) {
-      setExpandedSession(null);
-      return;
-    }
-    setExpandedSession(id);
-    if (!session || sessionMaterials[id]) return;
-    const materials = await getSessionMaterials(id).catch(() => []);
-    setSessionMaterials((prev) => ({ ...prev, [id]: materials }));
-  }
+    return () => {
+      active = false;
+    };
+  }, [session, courseId, reloadKey]);
 
-  function typeLabel(type: string) {
-    if (type === "live") return t.live;
-    if (type === "in_person") return t.inPerson;
-    return t.recordedLesson;
-  }
+  // One call per module, allSettled so one module's failure degrades only its
+  // own resources block (§5 partial-failure rule).
+  useEffect(() => {
+    if (!content || content.modules.length === 0) return;
+    let active = true;
 
-  async function toggleGrades() {
+    Promise.allSettled(content.modules.map((module) => getModuleMaterials(module.id))).then(
+      (results) => {
+        if (!active) return;
+        const next: Record<string, MaterialItem[] | "error"> = {};
+        content.modules.forEach((module, index) => {
+          const result = results[index];
+          next[module.id] = result.status === "fulfilled" ? result.value : "error";
+        });
+        setModuleResources(next);
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [content]);
+
+  // Its own failure state, entirely separate from content — a grades outage
+  // never blocks the page a student came here for.
+  useEffect(() => {
     if (!session) return;
-    setShowGrades(!showGrades);
-    if (!showGrades && !grades) {
-      await getMyCourseGrades(courseId).then(setGrades).catch(() => undefined);
-    }
-  }
+    let active = true;
+    setGradesState({ status: "loading" });
+
+    getMyCourseGrades(courseId)
+      .then((grades) => {
+        if (!active) return;
+        setGradesState({ status: "ready", grades });
+      })
+      .catch(() => {
+        if (!active) return;
+        setGradesState({ status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session, courseId, reloadKey]);
 
   const gate = useSessionGate({ locale });
   if (!gate.ok) return gate.fallback;
 
+  const loading = !errorKind && content === null;
+
   return (
-    <main className="cf-container">
-      <Link href={`/${locale}/dashboard`}>{t.back}</Link>
-      {error && <p className="notice err">{error}</p>}
-      {content === null && !error && <p className="muted">…</p>}
+    <main data-theme="light" className="min-h-screen bg-bg [&_:is(h1,h2,h3,h4,p,ul,ol)]:m-0">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 ps-5 pe-5 py-10">
+        <Link
+          href={`/${locale}/dashboard`}
+          // hover:!text-text, not !text-accent-text (course-detail's dark-lane
+          // pattern): this link sits directly on --bg, and §2.3's light-lane
+          // rule makes accent-text AA-safe only on --surface, inside a card.
+          className="inline-flex w-fit items-center gap-2 text-label !text-text-muted hover:!text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
+          {t.backToDashboard}
+        </Link>
 
-      {content && (
-        <>
-          <h1>{content.courseTitle}</h1>
-          <button className="btn secondary" onClick={toggleGrades}>
-            {showGrades ? t.back : t.grades}
-          </button>
-          {showGrades && grades && (
-            <div className="card" style={{ marginTop: "0.75rem" }}>
-              <p>{t.attendance}: {grades.attendanceRate}%</p>
-              {grades.assessments.length === 0 && grades.assignments.length === 0 && (
-                <p className="muted">{t.noGrades}</p>
-              )}
-              {grades.assessments.map((a) => (
-                <p key={a.assessmentId}>
-                  {a.title}: {a.bestScore ?? "—"} {a.passed === true ? `(${t.passed})` : a.passed === false ? `(${t.failed})` : ""}
-                </p>
-              ))}
-              {grades.assignments.map((a) => (
-                <p key={a.assignmentId}>{a.title}: {a.finalScore ?? "—"}</p>
-              ))}
+        {errorKind ? (
+          <div className="flex flex-col items-start gap-4 rounded-card border border-danger-border bg-danger-soft p-6">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-h3 text-danger">{errorTitle(errorKind, t)}</h1>
+              {errorHint(errorKind, t) ? (
+                <p className="text-body text-danger">{errorHint(errorKind, t)}</p>
+              ) : null}
             </div>
-          )}
+            <Button variant="secondary" onClick={() => setReloadKey((key) => key + 1)}>
+              {t.retry}
+            </Button>
+          </div>
+        ) : loading || !content ? (
+          <CourseContentSkeleton />
+        ) : (
+          <>
+            <h1 className="text-h1 text-text">{content.courseTitle}</h1>
 
-          <h2 style={{ marginTop: "1.5rem" }}>{t.courseContent}</h2>
-          {content.modules.length === 0 && <p className="muted">{t.noModules}</p>}
+            {content.modules.length === 0 ? (
+              <div className="flex flex-col gap-2 rounded-card border border-border bg-surface p-6">
+                <h2 className="text-h3 text-text">{t.emptyModulesTitle}</h2>
+                <p className="text-body text-text-secondary">{t.emptyModulesHint}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8 sm:flex-row">
+                <ModuleNav modules={content.modules} t={t} />
 
-          {content.modules.map((m) => (
-            <div key={m.id} style={{ marginBottom: "2rem" }}>
-              <h3>{m.title}</h3>
-              {m.description && <p className="muted">{m.description}</p>}
+                <div className="flex min-w-0 flex-1 flex-col gap-10">
+                  {content.modules.map((module) => {
+                    const links = [
+                      ...module.assessments.map((assessment) => ({
+                        id: assessment.id,
+                        title: assessment.title,
+                        href: `/${locale}/my-courses/${courseId}/assessments/${assessment.id}`,
+                        badge:
+                          assessment.type === "exam"
+                            ? dictionary.student.exam
+                            : dictionary.student.quiz
+                      })),
+                      ...module.assignments.map((assignment) => ({
+                        id: assignment.id,
+                        title: assignment.title,
+                        href: `/${locale}/my-courses/${courseId}/assignments/${assignment.id}`,
+                        badge: dictionary.student.assignment
+                      }))
+                    ];
 
-              {m.sessions.map((s) => (
-                <div key={s.id} className="card" style={{ marginBottom: "0.75rem" }}>
-                  <span className="badge">{typeLabel(s.type)}</span>
-                  <h4>{s.title}</h4>
-                  {s.description && <p className="muted">{s.description}</p>}
-                  {s.scheduledAt && <p>{new Date(s.scheduledAt).toLocaleString(locale)}</p>}
-
-                  {s.type === "live" && s.joinLink && (
-                    <a className="btn" href={externalHref(s.joinLink)} target="_blank" rel="noreferrer">
-                      {t.join}
-                    </a>
-                  )}
-                  {s.type === "in_person" && s.location && (
-                    <p>{t.viewLocation}: {s.location}</p>
-                  )}
-                  {s.videoUrl && (
-                    <a className="btn secondary" href={externalHref(s.videoUrl)} target="_blank" rel="noreferrer">
-                      {t.watchVideo}
-                    </a>
-                  )}
-
-                  {s.materialCount > 0 && (
-                    <div style={{ marginTop: "0.5rem" }}>
-                      <button className="btn secondary" onClick={() => toggleMaterials(s.id)}>
-                        {t.materials} ({s.materialCount})
-                      </button>
-                      {expandedSession === s.id && (
-                        <div style={{ marginTop: "0.5rem" }}>
-                          {(sessionMaterials[s.id] ?? []).map((mat) => (
-                            <div key={mat.id} className="card" style={{ marginBottom: "0.5rem" }}>
-                              <span className="badge">{mat.type}</span> <strong>{mat.title}</strong>
-                              {mat.type === "text" && <p>{mat.body}</p>}
-                              {mat.type === "link" && (
-                                <p>
-                                  <a href={mat.linkUrl ?? "#"} target="_blank" rel="noreferrer">
-                                    {mat.linkUrl}
-                                  </a>
-                                </p>
-                              )}
-                              {mat.type === "file" && mat.fileDownloadUrl && (
-                                <p>
-                                  <button
-                                    className="btn secondary"
-                                    onClick={() =>
-                                      session && downloadAuthenticatedFile(mat.fileDownloadUrl!).catch(() => {})
-                                    }
-                                  >
-                                    {t.downloadFile}
-                                  </button>
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                    return (
+                      <section
+                        key={module.id}
+                        id={`module-${module.id}`}
+                        className="flex scroll-mt-6 flex-col gap-4"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <h2 className="text-h2 text-text">{module.title}</h2>
+                          {module.description ? (
+                            <p className="text-body text-text-secondary">{module.description}</p>
+                          ) : null}
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {module.sessions.length === 0 ? (
+                          <p className="text-body text-text-muted">{t.emptySessionsInModule}</p>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            {module.sessions.map((moduleSession) => (
+                              <SessionRow
+                                key={moduleSession.id}
+                                session={moduleSession}
+                                courseId={courseId}
+                                locale={locale}
+                                t={t}
+                                student={dictionary.student}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {links.length > 0 ? (
+                          <div className="flex flex-col">
+                            {links.map((link) => (
+                              <Link
+                                key={link.id}
+                                href={link.href}
+                                className="flex items-center justify-between gap-3 border-b border-border py-2 !text-text-secondary last:border-0 hover:!text-text"
+                              >
+                                <span className="text-body">{link.title}</span>
+                                <Badge variant="neutral">{link.badge}</Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="flex flex-col gap-2">
+                          <h3 className="text-h3 text-text">{t.resources}</h3>
+                          <ModuleResources
+                            resources={moduleResources[module.id]}
+                            locale={locale}
+                            t={t}
+                          />
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+            )}
 
-              {m.assessments.map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/${locale}/my-courses/${courseId}/assessments/${a.id}`}
-                  className="card"
-                  style={{ display: "block", marginBottom: "0.75rem", textDecoration: "none" }}
-                >
-                  <span className="badge">{a.type === "quiz" ? t.quiz : t.exam}</span>
-                  <h4>{a.title}</h4>
-                  {a.timeLimitMinutes && <p className="muted">{t.timeLimit}: {a.timeLimitMinutes} min</p>}
-                </Link>
-              ))}
-
-              {m.assignments.map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/${locale}/my-courses/${courseId}/assignments/${a.id}`}
-                  className="card"
-                  style={{ display: "block", marginBottom: "0.75rem", textDecoration: "none" }}
-                >
-                  <span className="badge">{t.assignment}</span>
-                  <h4>{a.title}</h4>
-                  {a.dueAt && <p className="muted">{t.dueDate}: {new Date(a.dueAt).toLocaleString(locale)}</p>}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </>
-      )}
+            <GradesPanel state={gradesState} locale={locale} t={t} />
+          </>
+        )}
+      </div>
     </main>
   );
 }

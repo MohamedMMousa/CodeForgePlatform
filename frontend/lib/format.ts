@@ -81,6 +81,18 @@ export function daysUntil(iso: string, now: Date = new Date()): number {
   return Math.round((targetMidnight.getTime() - nowMidnight.getTime()) / 86_400_000);
 }
 
+/** MaterialDto.fileSizeKb is always kilobytes; switches to MB above 1024 so a
+ *  slide deck reads "2.4 MB" rather than "2416 KB". The unit itself ("KB"/"MB")
+ *  is Latin shorthand in both languages — SI unit symbols aren't translated —
+ *  only the number goes through the locale's digit set. */
+export function formatFileSize(sizeKb: number, locale: Locale): string {
+  if (sizeKb < 1024) {
+    return `${formatCatalogNumber(Math.round(sizeKb), locale)} KB`;
+  }
+  const mb = Math.round((sizeKb / 1024) * 10) / 10;
+  return `${formatCatalogNumber(mb, locale)} MB`;
+}
+
 // Normalizes text for client-side search matching so Arabic behaves: strips
 // harakat (U+064B–U+0652) and tatweel (U+0640), folds letter variants that
 // readers treat as equivalent (أ/إ/آ → ا, ة → ه, ى → ي), and lowercases for

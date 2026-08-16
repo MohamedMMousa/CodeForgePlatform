@@ -66,6 +66,24 @@ export function getSeatsLeftTemplate(count: number, t: Dictionary): string {
   return t.courseDetail.seatsLeft;
 }
 
+/** Same four-band Arabic plural shape as getSeatsLeftTemplate, for a
+ *  session's material count (surface #5). */
+export function getMaterialCountTemplate(count: number, t: Dictionary["courseContent"]): string {
+  if (count === 1) return t.materialsCount_one;
+  if (count === 2) return t.materialsCount_two;
+  if (count <= 10) return t.materialsCount_few;
+  return t.materialsCount;
+}
+
+/** Same four-band Arabic plural shape, for a session's/time-limit's minute
+ *  count (surface #5). Replaces the legacy page's hardcoded English "min". */
+export function getDurationTemplate(minutes: number, t: Dictionary["courseContent"]): string {
+  if (minutes === 1) return t.durationMinutes_one;
+  if (minutes === 2) return t.durationMinutes_two;
+  if (minutes <= 10) return t.durationMinutes_few;
+  return t.durationMinutes;
+}
+
 export interface Dictionary {
   appName: string;
   tagline: string;
@@ -192,6 +210,70 @@ export interface Dictionary {
     noAnnouncements: string;
     loadError: string;
     retry: string;
+  };
+  // Surface #5 — the enrolled student's course content / session-navigation
+  // space (NOT a lesson-reading surface: there is no Lesson entity and no
+  // long-form body field — see DESIGN_LANGUAGE.md §4 #5 and §7). Own
+  // namespace per the `dashboard` precedent above; session-type labels
+  // (live/in_person/recorded_lesson) are deliberately NOT duplicated here —
+  // both pages reuse `student.live`/`inPerson`/`recordedLesson`, exactly as
+  // NextSessionPanel already does for the dashboard.
+  courseContent: {
+    backToDashboard: string;
+    backToCourse: string;
+    modules: string;
+    emptyModulesTitle: string;
+    emptyModulesHint: string;
+    emptySessionsInModule: string;
+    resources: string;
+    noResources: string;
+    liveNow: string;
+    today: string;
+    tomorrow: string;
+    join: string;
+    watchRecording: string;
+    watchLesson: string;
+    locatedAt: string;
+    // Arabic plural bands (1 / 2 / 3–10 / 11+), same shape as
+    // getSeatsLeftTemplate above.
+    materialsCount: string;
+    materialsCount_one: string;
+    materialsCount_two: string;
+    materialsCount_few: string;
+    materials: string;
+    noMaterials: string;
+    downloadFile: string;
+    openLink: string;
+    materialTypeFile: string;
+    materialTypeLink: string;
+    materialTypeText: string;
+    fileMeta: string;
+    durationMinutes: string;
+    durationMinutes_one: string;
+    durationMinutes_two: string;
+    durationMinutes_few: string;
+    previous: string;
+    next: string;
+    /** The course itself 404s (a stale/bad courseId) — distinct from a valid
+     *  course whose sessionId isn't in its tree, which is sessionNotFound*. */
+    notFoundTitle: string;
+    notFoundHint: string;
+    sessionNotFoundTitle: string;
+    sessionNotFoundHint: string;
+    accessDeniedTitle: string;
+    accessDeniedHint: string;
+    loadError: string;
+    retry: string;
+    gradesTitle: string;
+    gradesAttendance: string;
+    gradesAssessmentsHeading: string;
+    gradesAssignmentsHeading: string;
+    gradesNoAssessments: string;
+    gradesNoAssignments: string;
+    gradesScore: string;
+    gradesStatus: string;
+    gradesPassed: string;
+    gradesFailed: string;
   };
   enroll: {
     title: string;
@@ -773,6 +855,60 @@ const dictionaries: Record<Locale, Dictionary> = {
       loadError: "We could not load your dashboard.",
       retry: "Try again"
     },
+    courseContent: {
+      backToDashboard: "Back to dashboard",
+      backToCourse: "Back to course content",
+      modules: "Modules",
+      emptyModulesTitle: "Content is not published yet",
+      emptyModulesHint:
+        "Your instructor hasn't added any modules to this course yet. Check back soon.",
+      emptySessionsInModule: "No sessions in this module yet.",
+      resources: "Module resources",
+      noResources: "No shared resources for this module yet.",
+      liveNow: "Live now",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      join: "Join session",
+      watchRecording: "Watch recording",
+      watchLesson: "Watch lesson",
+      locatedAt: "Location: {location}",
+      materialsCount: "{count} materials",
+      materialsCount_one: "1 material",
+      materialsCount_two: "2 materials",
+      materialsCount_few: "{count} materials",
+      materials: "Materials",
+      noMaterials: "No materials for this session yet.",
+      downloadFile: "Download",
+      openLink: "Open link",
+      materialTypeFile: "File",
+      materialTypeLink: "Link",
+      materialTypeText: "Note",
+      fileMeta: "{type} · {size}",
+      durationMinutes: "{count} minutes",
+      durationMinutes_one: "1 minute",
+      durationMinutes_two: "2 minutes",
+      durationMinutes_few: "{count} minutes",
+      previous: "Previous",
+      next: "Next",
+      notFoundTitle: "This course could not be found",
+      notFoundHint: "It may have been removed, or the link may be incorrect.",
+      sessionNotFoundTitle: "Session not found",
+      sessionNotFoundHint: "This session may have been removed. Go back to the course content.",
+      accessDeniedTitle: "You don't have access to this course",
+      accessDeniedHint: "If you believe this is a mistake, contact your program admin.",
+      loadError: "We could not load this course's content.",
+      retry: "Try again",
+      gradesTitle: "Grades",
+      gradesAttendance: "Attendance",
+      gradesAssessmentsHeading: "Assessments",
+      gradesAssignmentsHeading: "Assignments",
+      gradesNoAssessments: "No assessments yet.",
+      gradesNoAssignments: "No assignments yet.",
+      gradesScore: "Score",
+      gradesStatus: "Status",
+      gradesPassed: "Passed",
+      gradesFailed: "Failed"
+    },
     enroll: {
       title: "Enroll in {name}",
       fullName: "Full name",
@@ -1348,6 +1484,64 @@ const dictionaries: Record<Locale, Dictionary> = {
       noAnnouncements: "لا توجد إعلانات بعد.",
       loadError: "تعذّر تحميل لوحة التحكم.",
       retry: "أعد المحاولة"
+    },
+    courseContent: {
+      backToDashboard: "العودة إلى لوحة التحكم",
+      backToCourse: "العودة إلى محتوى الدورة",
+      modules: "الوحدات",
+      emptyModulesTitle: "لم يُنشر المحتوى بعد",
+      emptyModulesHint: "لم يُضِف مدربك أي وحدات لهذه الدورة بعد. تحقق مرة أخرى قريبًا.",
+      emptySessionsInModule: "لا توجد جلسات في هذه الوحدة بعد.",
+      resources: "موارد الوحدة",
+      noResources: "لا توجد موارد مشتركة لهذه الوحدة بعد.",
+      liveNow: "مباشر الآن",
+      today: "اليوم",
+      tomorrow: "غدًا",
+      join: "انضم إلى الجلسة",
+      watchRecording: "مشاهدة التسجيل",
+      watchLesson: "مشاهدة الدرس",
+      locatedAt: "المكان: {location}",
+      // Arabic plural rules for مادة (fem.): 1 مفرد, 2 مثنى, 3–10 جمع قلة,
+      // 11+ تمييز مفرد منصوب. Flagged for native review, same as
+      // previouslyRun* above.
+      materialsCount: "{count} مادة",
+      materialsCount_one: "مادة واحدة",
+      materialsCount_two: "مادتان",
+      materialsCount_few: "{count} مواد",
+      materials: "المواد",
+      noMaterials: "لا توجد مواد لهذه الجلسة بعد.",
+      downloadFile: "تحميل",
+      openLink: "فتح الرابط",
+      materialTypeFile: "ملف",
+      materialTypeLink: "رابط",
+      materialTypeText: "ملاحظة",
+      fileMeta: "{type} · {size}",
+      // Same four-band pattern for دقيقة (fem.): 1 مفرد, 2 مثنى, 3–10 جمع قلة,
+      // 11+ تمييز مفرد منصوب.
+      durationMinutes: "{count} دقيقة",
+      durationMinutes_one: "دقيقة واحدة",
+      durationMinutes_two: "دقيقتان",
+      durationMinutes_few: "{count} دقائق",
+      previous: "السابق",
+      next: "التالي",
+      notFoundTitle: "تعذّر العثور على هذه الدورة",
+      notFoundHint: "ربما تمت إزالتها، أو أن الرابط غير صحيح.",
+      sessionNotFoundTitle: "الجلسة غير موجودة",
+      sessionNotFoundHint: "ربما تمت إزالة هذه الجلسة. عد إلى محتوى الدورة.",
+      accessDeniedTitle: "لا تملك صلاحية الوصول إلى هذه الدورة",
+      accessDeniedHint: "إذا كنت تعتقد أن هذا خطأ، تواصل مع مسؤول البرنامج.",
+      loadError: "تعذّر تحميل محتوى هذه الدورة.",
+      retry: "أعد المحاولة",
+      gradesTitle: "الدرجات",
+      gradesAttendance: "الحضور",
+      gradesAssessmentsHeading: "الاختبارات",
+      gradesAssignmentsHeading: "الواجبات",
+      gradesNoAssessments: "لا توجد اختبارات بعد.",
+      gradesNoAssignments: "لا توجد واجبات بعد.",
+      gradesScore: "الدرجة",
+      gradesStatus: "الحالة",
+      gradesPassed: "ناجح",
+      gradesFailed: "راسب"
     },
     enroll: {
       title: "التسجيل في {name}",
