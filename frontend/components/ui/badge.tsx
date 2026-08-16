@@ -21,7 +21,13 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        neutral: "border-border bg-surface-2 text-text-muted",
+        // --text-secondary, not --text-muted. On the light lane the neutral
+        // badge is the one place a muted grey lands on --surface-2 rather than
+        // on a page/card background: #6B7280 on #F3F4F6 is 4.39:1, under AA for
+        // 12px text, with no large-text exemption available. --text-secondary
+        // (#4B5563) takes the same pairing to 6.9:1. Dark is unaffected in kind
+        // — #D1D5DB on #26334A was already passing and only gets lighter.
+        neutral: "border-border bg-surface-2 text-text-secondary",
         success: "border-success-border bg-success-soft text-success",
         warning: "border-warning-border bg-warning-soft text-warning",
         danger: "border-danger-border bg-danger-soft text-danger"

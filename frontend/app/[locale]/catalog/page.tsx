@@ -12,7 +12,7 @@ import { defaultLocale, format, getDictionary, isLocale } from "@/lib/i18n";
 import { getPublishedCourses, getPublishedTracks } from "@/lib/api";
 import { CatalogBrowser } from "./CatalogBrowser";
 import { RetryButton } from "./RetryButton";
-import { formatCatalogNumber } from "./format";
+import { formatCatalogNumber } from "@/lib/format";
 
 // Pilot-scale cap: the whole grid is driven by one list call so the category
 // chips and the search box (CatalogBrowser) can filter a single consistent

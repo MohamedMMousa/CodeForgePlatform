@@ -165,6 +165,34 @@ export interface Dictionary {
     previouslyRunFew: string;
     previouslyRunMany: string;
   };
+  // DESIGN_LANGUAGE.md §4 #4 — the student dashboard. Its own namespace rather
+  // than more keys on `student`, which is shared copy the my-courses pages also
+  // read; this surface's headings and empty states are written for it alone.
+  dashboard: {
+    title: string;
+    nextSession: string;
+    today: string;
+    tomorrow: string;
+    join: string;
+    locatedAt: string;
+    noSessionScheduled: string;
+    noSessionScheduledHint: string;
+    notEnrolled: string;
+    notEnrolledHint: string;
+    browseCatalog: string;
+    myCourses: string;
+    cohortDates: string;
+    openCourse: string;
+    progress: string;
+    progressCourse: string;
+    progressAttendance: string;
+    progressAssessments: string;
+    progressUnavailable: string;
+    announcements: string;
+    noAnnouncements: string;
+    loadError: string;
+    retry: string;
+  };
   enroll: {
     title: string;
     fullName: string;
@@ -718,6 +746,33 @@ const dictionaries: Record<Locale, Dictionary> = {
       previouslyRunFew: "Previously run {count} times",
       previouslyRunMany: "Previously run {count} times"
     },
+    dashboard: {
+      title: "Dashboard",
+      nextSession: "Next live session",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      join: "Join session",
+      locatedAt: "Location: {location}",
+      noSessionScheduled: "No live session scheduled",
+      noSessionScheduledHint:
+        "Your next class will appear here as soon as it is scheduled.",
+      notEnrolled: "You are not enrolled in a cohort yet",
+      notEnrolledHint:
+        "Once your enrollment request is approved, your cohort and its live sessions appear here.",
+      browseCatalog: "Browse courses",
+      myCourses: "My courses",
+      cohortDates: "{start} – {end}",
+      openCourse: "Open course",
+      progress: "Progress & attendance",
+      progressCourse: "Course",
+      progressAttendance: "Attendance",
+      progressAssessments: "Assessments passed",
+      progressUnavailable: "Unavailable",
+      announcements: "Announcements",
+      noAnnouncements: "No announcements yet.",
+      loadError: "We could not load your dashboard.",
+      retry: "Try again"
+    },
     enroll: {
       title: "Enroll in {name}",
       fullName: "Full name",
@@ -1267,6 +1322,32 @@ const dictionaries: Record<Locale, Dictionary> = {
       previouslyRunTwice: "أُقيمت من قبل مرتين",
       previouslyRunFew: "أُقيمت من قبل {count} مرات",
       previouslyRunMany: "أُقيمت من قبل {count} مرة"
+    },
+    dashboard: {
+      title: "لوحة التحكم",
+      nextSession: "الجلسة المباشرة القادمة",
+      today: "اليوم",
+      tomorrow: "غدًا",
+      join: "انضم إلى الجلسة",
+      locatedAt: "المكان: {location}",
+      noSessionScheduled: "لا توجد جلسة مباشرة مجدولة",
+      noSessionScheduledHint: "ستظهر محاضرتك القادمة هنا فور جدولتها.",
+      notEnrolled: "لم تنضم إلى أي دفعة بعد",
+      notEnrolledHint:
+        "بمجرد الموافقة على طلب تسجيلك، ستظهر هنا دفعتك وجلساتها المباشرة.",
+      browseCatalog: "تصفح الدورات",
+      myCourses: "دوراتي",
+      cohortDates: "{start} – {end}",
+      openCourse: "افتح الدورة",
+      progress: "التقدم والحضور",
+      progressCourse: "الدورة",
+      progressAttendance: "الحضور",
+      progressAssessments: "الاختبارات المجتازة",
+      progressUnavailable: "غير متاح",
+      announcements: "الإعلانات",
+      noAnnouncements: "لا توجد إعلانات بعد.",
+      loadError: "تعذّر تحميل لوحة التحكم.",
+      retry: "أعد المحاولة"
     },
     enroll: {
       title: "التسجيل في {name}",

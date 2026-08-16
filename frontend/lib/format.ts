@@ -49,6 +49,38 @@ export function formatCohortMonthYear(iso: string, locale: Locale): string {
   });
 }
 
+// Clock time only. `hourCycle: "h23"` rather than the locale default because a
+// student reading "07:30" must not have to work out am/pm for a class they are
+// trying not to miss, and because ar-EG's default 12-hour form appends Arabic
+// day-period words that make the string considerably longer than its English
+// equivalent in a layout where the two must balance.
+export function formatTime(iso: string, locale: Locale): string {
+  return new Date(iso).toLocaleTimeString(localeTag(locale), {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  });
+}
+
+/** Weekday + date + time, for the dashboard's next-session moment. The weekday
+ *  is what makes a schedule readable at a glance ("Sunday 14 Sep 2026, 19:00"). */
+export function formatDateTime(iso: string, locale: Locale): string {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString(localeTag(locale), { weekday: "long" });
+  return `${weekday} ${formatCatalogDate(iso, locale)}, ${formatTime(iso, locale)}`;
+}
+
+/** Calendar-days between `iso` and now, by local midnight rather than by elapsed
+ *  hours — a session 20 hours away is "tomorrow" to a reader if it falls after
+ *  midnight, and 0/1 are the only values the UI distinguishes. Egypt is a single
+ *  timezone (GMT+2), so local-midnight bucketing needs no zone handling. */
+export function daysUntil(iso: string, now: Date = new Date()): number {
+  const target = new Date(iso);
+  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((targetMidnight.getTime() - nowMidnight.getTime()) / 86_400_000);
+}
+
 // Normalizes text for client-side search matching so Arabic behaves: strips
 // harakat (U+064B–U+0652) and tatweel (U+0640), folds letter variants that
 // readers treat as equivalent (أ/إ/آ → ا, ة → ه, ى → ي), and lowercases for

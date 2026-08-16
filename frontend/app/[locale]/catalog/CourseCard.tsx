@@ -19,7 +19,7 @@ import {
   type Dictionary,
   type Locale
 } from "@/lib/i18n";
-import { formatCatalogDate, formatCatalogNumber } from "./format";
+import { formatCatalogDate, formatCatalogNumber } from "@/lib/format";
 
 // DESIGN_LANGUAGE.md §3 course-card anatomy, bound only to fields the catalog
 // list endpoint actually returns — no thumbnail (text-only per §3), no

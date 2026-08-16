@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import type { CohortInfo } from "@/lib/api";
 import { format, getSeatsLeftTemplate, type Dictionary, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { formatCatalogDate, formatCatalogNumber } from "../../format";
+import { formatCatalogDate, formatCatalogNumber } from "@/lib/format";
 import { getCohortDisplayState } from "./cohorts";
 
 // One batch, presented as information. No enroll button lives here on purpose:

@@ -83,6 +83,8 @@
 
 **Accent-on-orange rule:** primary buttons are orange fill with **dark ink (`--accent-ink`)**, not white text, in both modes — white-on-orange fails contrast and reads louder than we want. When orange is used as *text* on a white surface, use `--accent-text` (`#C2560C`), not `--accent`.
 
+**Light-lane accent-on-background rule (found building surface #4):** `--accent-text` is only AA-safe on `--surface` (white, 4.54:1). On the light `--bg` (`#F7F7F8`) it drops to ~4.24:1 and fails. Orange-as-text must sit inside a card, never directly on the light page background. The dark lane has no equivalent restriction — `--accent-text` equals `--accent` there and is legible on `--bg` regardless.
+
 ### 2.4 Spacing, radius, elevation
 
 - **Spacing scale (px):** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64. Use these steps only.
@@ -175,7 +177,7 @@ Run per surface before calling it done:
 
 **Guardrails (non-negotiable):** (a) logical properties from line one — no `left`/`right`/`ml`/`mr`; (b) restyle every shadcn primitive to §2 tokens; (c) verify each Radix-based component (dropdown, popover, dialog) actually mirrors in RTL as it's adopted.
 
-**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 is underway: surfaces #2 (**Catalog**) and #3 (**Course detail**) are migrated — see `ARCHITECTURE.md` §6's catalog- and course-detail-migration notes for the nav mechanism used and the known limitations of each. Every other surface (Landing, and everything below Course detail in §4) still uses its pre-design-system styling.
+**Status:** steps 1 and 2 are done — see `IMPLEMENTATION_ROADMAP.md`'s "Design System — Foundation" entry. Step 3 is underway: surfaces #2 (**Catalog**), #3 (**Course detail**), and #4 (**Student dashboard**) are migrated — see `ARCHITECTURE.md` §6's catalog-, course-detail-, and dashboard-migration notes for the nav mechanism used and the known limitations of each. Dashboard is the first surface built on the light lane (§2.3) — see the accent-on-background note there. Every other surface (Landing, and everything below Student dashboard in §4) still uses its pre-design-system styling.
 
 **Course detail shipped without its syllabus and instructor sections**, which §4 #3 lists. That is a data gap, not an omission: `GET /catalog/courses/{slug}` exposes no modules at all, and the `User` entity has no bio/photo/credentials columns, so both sections would have to be invented rather than designed. Both are recorded as deferred backend follow-ups in `ARCHITECTURE.md` §7, to decide when real course content is authored at launch. The instructor section that *did* ship is names only — the whole public dataset. Treat this paragraph as retired once those two follow-ups land.
 

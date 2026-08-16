@@ -6,7 +6,7 @@ import { defaultLocale, format, getCategoryLabel, getDictionary, isLocale } from
 import { ApiRequestError, getPublishedCourseDetail } from "@/lib/api";
 import NotifyMeForm from "@/components/NotifyMeForm";
 import { RetryButton } from "../../RetryButton";
-import { formatCatalogDate, formatCatalogNumber, formatCohortMonthYear } from "../../format";
+import { formatCatalogDate, formatCatalogNumber, formatCohortMonthYear } from "@/lib/format";
 import { CohortCard } from "./CohortCard";
 import { getPreviouslyRunTemplate, partitionCohorts } from "./cohorts";
 

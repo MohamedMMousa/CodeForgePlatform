@@ -7,7 +7,7 @@ import type { CourseListItem } from "@/lib/api";
 import { format, getCategoryLabel, type Dictionary, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { CourseCard } from "./CourseCard";
-import { formatCatalogNumber, normalizeSearchText } from "./format";
+import { formatCatalogNumber, normalizeSearchText } from "@/lib/format";
 
 const SEARCH_PARAM = "q";
 const CATEGORY_PARAM = "category";

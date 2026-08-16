@@ -576,6 +576,38 @@ file uploads, rate limiting, versioning stance).
   and flashes a catalog-shaped skeleton. `components/NotifyMeForm.tsx` was restyled onto
   tokens in the same pass — it is used only by this page, so nothing else changed.
 
+  **Dashboard migration (surface #4) — the first light-lane surface.** `app/[locale]/dashboard/`
+  is on §2.3 light tokens and `components/ui/` only, with `data-theme="light"` set on the page's
+  root `<main>` (which also carries `min-h-screen bg-bg`, so the light background fills the
+  viewport instead of letting the root layout's dark `body` show through under a short page).
+  Nothing before this surface had ever rendered the light token set — two contrast issues only
+  the light lane exposes were found and fixed in the process, both worth knowing before building
+  surface #5 onward:
+  1. **`--accent-text` (`#C2560C`) is only AA-safe on `--surface`, not on `--bg`.** On white it's
+     4.54:1; on the light `--bg` (`#F7F7F8`) it drops to ~4.24:1 and fails. Orange-as-text must
+     stay inside a white card on this lane — it never sat directly on a page background before,
+     so the dark lane's equivalent rule (`--accent-text` = `--accent`, already legible on
+     `#111827`) never had to account for this.
+  2. **`components/ui/badge.tsx`'s neutral variant failed AA in light.** `text-text-muted` on
+     `bg-surface-2` is `#6B7280` on `#F3F4F6`, ~4.39:1 at 12px/600 — under the 4.5:1 floor with
+     no large-text exemption. Fixed by moving the neutral variant to `text-text-secondary`
+     (`#4B5563`, ~6.9:1). This is a shared-primitive change, so it also affects the dark lane's
+     "awaiting next batch" badges on the catalog page — checked directly: `#D1D5DB` on `#26334A`
+     is ~8.6:1, still comfortably passing, just a shade brighter than `text-muted`'s ~5.6:1. No
+     visual regression, no behavior change to what a neutral badge means (§3).
+  The page is a **rebuild-in-place**: `useAuth()`/`useSessionGate({ locale })` and the
+  `getUpcomingItems()`/`getMyCourses()` contracts are unchanged from before the rebuild. It also
+  keeps inheriting the legacy dark topbar (`RoleNav` inlined in `app/[locale]/layout.tsx`) — a
+  dark app bar over a light work surface is an accepted interim seam, not a bug; the
+  authenticated shell/nav rebuild is its own deferred item below, out of scope here on purpose.
+  Layout hierarchy: next-live-session panel (the screen's one primary — §3 — a live-cohort
+  academy's single most important dashboard fact) leads, then enrolled courses, then a compact
+  attendance/assessments table from `GET /my-courses/{courseId}/grades` (one call per enrolled
+  course, `Promise.allSettled` so one course's failure degrades only its own row), then a quiet
+  announcements list reusing data the upcoming-items call already returns. Two sections
+  `DESIGN_LANGUAGE.md` §4 #4 names — course progress-% and cross-course pending tasks — are
+  deliberately absent; see the two new deferred entries below rather than inventing the data.
+
   **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
   so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
   inherited one — making a new dark shop-window Nav (§3 "Nav") exclusive to that subtree the
@@ -591,6 +623,31 @@ file uploads, rate limiting, versioning stance).
 
 ## 7. Deferred / Open Architectural Decisions
 
+- **Authenticated shell/nav rebuild** — deferred, out of scope for the dashboard rebuild
+  (surface #4) on purpose. Every signed-in page, including the now-light-lane dashboard, still
+  inherits the legacy dark topbar with `RoleNav` inlined in `app/[locale]/layout.tsx` — there is
+  no `AppShell`/`DashboardLayout` component, and no design-system-styled authenticated nav
+  exists yet (`ShopNav` is catalog-only and deliberately not session-aware — see the nav-swap
+  note above). A dark app bar over a light work surface is an accepted interim look. Also
+  bundled with this: `useSessionGate`'s dashboard call currently allows any authenticated role,
+  not just students, and there is still no post-login redirect to `/dashboard` — `login/page.tsx`
+  just shows an inline success message. Revisit alongside the other auth surfaces (§4 #9).
+- **Student dashboard progress-%** — blocked on `SessionProgress` being dead code, not on a
+  missing query. The entity (`Id, StudentId, SessionId, CompletedAt`) exists in the schema and
+  in `ICodeForgeDbContext`, but no command ever writes a row and no query ever reads one — the
+  table is permanently empty under current code. `DESIGN_LANGUAGE.md` §4 #4 asks for a progress
+  indicator on the student dashboard; it was deliberately not built, because there is no
+  "lesson completed" signal anywhere to show. Needs a write-path (a mark-complete action wired
+  to session/material views) before a read-side query is worth adding.
+- **Student dashboard pending tasks (cross-course)** — blocked on there being no aggregate
+  endpoint, not on missing data. Assignment/submission fields are real and populated
+  (`Assignment.DueAt`, `AssignmentSubmission.AutoGradingStatus`/`FinalScore`, etc.), but every
+  existing query is scoped to one course or one assignment
+  (`GetMyCourseContentQuery`/`GetMyCourseGradesQuery`/`GetMySubmissionsQuery`) — nothing returns
+  "everything due across all of a student's enrolled courses" in one call. `DESIGN_LANGUAGE.md`
+  §4 #4 asks for a pending-tasks section; it was deliberately not built rather than doing
+  client-side N-call stitching for a first light-lane surface. Needs either a new backend
+  aggregate query or an accepted client-side fan-out pattern, decided once, not per surface.
 - **Public read-only syllabus on the course-detail page** — deferred, decide when real
   course content is authored at launch. `DESIGN_LANGUAGE.md` §4 #3 lists a
   syllabus/modules section, and the Modules feature is fully built (Phase 2: modules →
