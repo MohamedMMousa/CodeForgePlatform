@@ -114,18 +114,23 @@ export default function AssignmentSubmissionPage({
             <div className="card" style={{ marginTop: "1rem" }}>
               <h3>{t.yourResults}</h3>
               {result.isLate && <p className="notice err">{t.late}</p>}
-              {result.autoGradingStatus === "failed" && <p className="notice err">{t.gradingFailed}</p>}
-              {result.autoGradingStatus === "completed" && (
-                <p>{t.autoScore}: {result.autoScore ?? "—"}%</p>
+              {result.autoScore != null ? (
+                <p>{t.autoScore}: {result.autoScore}%</p>
+              ) : (
+                <p className="notice">{t.awaitingGrading}</p>
               )}
-              <h4>{t.testResults}</h4>
-              {result.testResults.map((r) => (
-                <p key={r.testCaseId}>
-                  {r.isHidden ? t.hiddenTest : ""} {r.passed ? "✓" : "✗"}
-                  {!r.isHidden && r.actualOutput && <> — <code>{r.actualOutput}</code></>}
-                  {!r.isHidden && r.errorMessage && <> — <code>{r.errorMessage}</code></>}
-                </p>
-              ))}
+              {result.testResults.length > 0 && (
+                <>
+                  <h4>{t.testResults}</h4>
+                  {result.testResults.map((r) => (
+                    <p key={r.testCaseId}>
+                      {r.isHidden ? t.hiddenTest : ""} {r.passed ? "✓" : "✗"}
+                      {!r.isHidden && r.actualOutput && <> — <code>{r.actualOutput}</code></>}
+                      {!r.isHidden && r.errorMessage && <> — <code>{r.errorMessage}</code></>}
+                    </p>
+                  ))}
+                </>
+              )}
             </div>
           )}
 

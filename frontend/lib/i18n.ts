@@ -470,6 +470,7 @@ export interface Dictionary {
     autoScore: string;
     grading: string;
     gradingFailed: string;
+    awaitingGrading: string;
     testResults: string;
     hiddenTest: string;
     grades: string;
@@ -1104,6 +1105,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       autoScore: "Auto-graded score",
       grading: "Grading…",
       gradingFailed: "Auto-grading failed — your instructor will grade this manually.",
+      awaitingGrading: "Submitted — awaiting grading by your instructor.",
       testResults: "Test results",
       hiddenTest: "Hidden test",
       grades: "My grades",
@@ -1738,6 +1740,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       autoScore: "الدرجة التلقائية",
       grading: "جارٍ التصحيح…",
       gradingFailed: "فشل التصحيح التلقائي — سيقوم المدرّس بتصحيح هذا يدويًا.",
+      awaitingGrading: "تم الإرسال — بانتظار تصحيح المدرّس.",
       testResults: "نتائج الاختبار",
       hiddenTest: "اختبار مخفي",
       grades: "درجاتي",
