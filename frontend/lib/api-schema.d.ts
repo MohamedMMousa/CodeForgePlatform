@@ -6423,6 +6423,7 @@ export interface components {
             /** Format: date-time */
             submittedAt: string;
             isLate: boolean;
+            code: string;
             /** Format: int32 */
             autoScore?: number | null;
             autoGradingStatus: string;
@@ -6431,6 +6432,9 @@ export interface components {
             manualFeedback?: string | null;
             /** Format: int32 */
             finalScore?: number | null;
+            /** Format: date-time */
+            gradedAt?: string | null;
+            passed?: boolean | null;
             testResults: components["schemas"]["TestResultDto"][];
         };
         SubmissionSummaryDto: {

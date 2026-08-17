@@ -36,7 +36,7 @@ namespace CodeForge.Application.Assignments.GetSubmissionResult
                 CourseContentAuthorization.EnsureCanManage(_currentUserService, submission.Assignment.Module.Course, currentUserId);
             }
 
-            return SubmissionResultMapping.ToDto(submission);
+            return SubmissionResultMapping.ToDto(submission, submission.Assignment.PassScore);
         }
 
         private Guid GetCurrentUserId()

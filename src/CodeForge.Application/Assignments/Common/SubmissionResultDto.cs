@@ -7,10 +7,13 @@ namespace CodeForge.Application.Assignments.Common
         int AttemptNumber,
         DateTime SubmittedAt,
         bool IsLate,
+        string Code,
         int? AutoScore,
         string AutoGradingStatus,
         int? ManualScore,
         string? ManualFeedback,
         int? FinalScore,
+        DateTime? GradedAt,
+        bool? Passed,
         List<TestResultDto> TestResults);
 }

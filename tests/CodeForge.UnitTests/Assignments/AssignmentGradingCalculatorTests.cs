@@ -35,5 +35,29 @@ namespace CodeForge.UnitTests.Assignments
         {
             AssignmentGradingCalculator.CalculateAutoScore(new List<AssignmentGradingCalculator.TestCaseOutcome>()).Should().Be(0);
         }
+
+        [Fact]
+        public void ComputePassed_NotGraded_ReturnsNull()
+        {
+            AssignmentGradingCalculator.ComputePassed(finalScore: null, passScore: 70).Should().BeNull();
+        }
+
+        [Fact]
+        public void ComputePassed_NoPassThreshold_ReturnsNull()
+        {
+            AssignmentGradingCalculator.ComputePassed(finalScore: 95, passScore: null).Should().BeNull();
+        }
+
+        [Fact]
+        public void ComputePassed_ScoreAtThreshold_ReturnsTrue()
+        {
+            AssignmentGradingCalculator.ComputePassed(finalScore: 70, passScore: 70).Should().BeTrue();
+        }
+
+        [Fact]
+        public void ComputePassed_ScoreBelowThreshold_ReturnsFalse()
+        {
+            AssignmentGradingCalculator.ComputePassed(finalScore: 69, passScore: 70).Should().BeFalse();
+        }
     }
 }

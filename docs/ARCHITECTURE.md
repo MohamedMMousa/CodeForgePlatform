@@ -737,7 +737,23 @@ file uploads, rate limiting, versioning stance).
   either Piston whitelists this use case, a self-hosted Judge0/Piston instance is
   stood up (Docker is available in this dev environment as of the operational-
   readiness work — see §3 below — so this is no longer blocked on that), or another
-  engine is chosen.
+  engine is chosen. **The student-facing graded-result read path is complete
+  backend-side regardless of the auto-grader's status** (surface #6 prep, backend
+  slice): `GetSubmissionResultQuery`/`SubmissionResultDto`
+  (`Application/Assignments/Common/`) now carry `GradedAt`, the submitted `Code`
+  (previously write-only — persisted but on no DTO anywhere), and a computed `Passed`
+  (`AssignmentGradingCalculator.ComputePassed`, compute-don't-store — `Assignment`/
+  `AssignmentSubmission` have no `Passed` column, unlike `QuizAttempt.Passed` which is
+  stored). Null discipline mirrors `NextCohortSelector`'s "nothing bookable → null, not
+  a fake status": `Passed` is `null` whenever `FinalScore` is `null` (not graded yet) or
+  `Assignment.PassScore` is `null` (no threshold set), never a fake pass. All three
+  producers (`SubmitAssignmentCommandHandler`, `GradeSubmissionCommandHandler`,
+  `GetSubmissionResultQueryHandler`) already had the assignment's `PassScore` loaded
+  for authorization/business logic, so this needed no new query. **Still unwired from
+  the frontend** — `getSubmissionResult()` (`frontend/lib/api.ts`) remains a dead
+  export, called from nowhere; the legacy assignment page only ever sees the DTO from
+  its own live submit response, never a re-fetched graded result. Wiring it is part of
+  the surface #6 frontend rebuild, not done here.
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.

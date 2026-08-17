@@ -138,7 +138,7 @@ Ordered by build priority. "Mode" = which surface family it belongs to.
 | 3 | **Course detail** | Dark | Shop-window sell page: overview, syllabus/modules, instructor, cohort + price, enroll. Last dark surface before sign-in. |
 | 4 | **Student dashboard** | Light | The home after sign-in: enrolled cohorts, next live session, progress, pending tasks. Calm, scannable. |
 | 5 | **Course content / sessions** | Light | The enrolled student's content space: module nav (start-side), session list where the session **type** (live / recorded / in-person) drives the treatment, materials, and a session detail view. |
-| 6 | **Assignments** | Light | Brief + code submission (JetBrains Mono, LTR) + status badge + auto-grade result when available. |
+| 6 | **Assignments** | Light | Brief + code submission (JetBrains Mono, LTR) + status badge + manual grading result; auto-grade intentionally not surfaced until an execution backend exists. |
 | 7 | **Gradebook** | Light | Table component: attendance + scores, Western numerals, clear pass/progress badges. |
 | 8 | **Certificates / verify** | Light | Two-tier certificate view + public verify page. Trust-forward, clean. |
 | 9 | **Auth (sign in / enrollment request)** | Light | **Encode the real enrollment model in the UI:** anonymous enrollment request → admin approves → account auto-created + temp password emailed. First-time users need a request path, not just a sign-in box. |

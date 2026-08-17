@@ -4,7 +4,7 @@ namespace CodeForge.Application.Assignments.Common
 {
     public static class SubmissionResultMapping
     {
-        public static SubmissionResultDto ToDto(AssignmentSubmission submission)
+        public static SubmissionResultDto ToDto(AssignmentSubmission submission, int? assignmentPassScore)
         {
             var results = submission.TestResults.Select(r =>
             {
@@ -21,11 +21,14 @@ namespace CodeForge.Application.Assignments.Common
                 submission.AttemptNumber,
                 submission.SubmittedAt,
                 submission.IsLate,
+                submission.Code,
                 submission.AutoScore,
                 submission.AutoGradingStatus,
                 submission.ManualScore,
                 submission.ManualFeedback,
                 submission.FinalScore,
+                submission.GradedAt,
+                AssignmentGradingCalculator.ComputePassed(submission.FinalScore, assignmentPassScore),
                 results);
         }
     }

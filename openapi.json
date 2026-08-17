@@ -9689,6 +9689,7 @@
         "required": [
           "attemptNumber",
           "autoGradingStatus",
+          "code",
           "isLate",
           "submissionId",
           "submittedAt",
@@ -9711,6 +9712,9 @@
           "isLate": {
             "type": "boolean"
           },
+          "code": {
+            "type": "string"
+          },
           "autoScore": {
             "type": "integer",
             "format": "int32",
@@ -9731,6 +9735,15 @@
           "finalScore": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "gradedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "passed": {
+            "type": "boolean",
             "nullable": true
           },
           "testResults": {

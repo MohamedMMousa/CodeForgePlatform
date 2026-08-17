@@ -123,7 +123,7 @@ namespace CodeForge.Application.Assignments.SubmitAssignment
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return SubmissionResultMapping.ToDto(submission);
+            return SubmissionResultMapping.ToDto(submission, assignment.PassScore);
         }
 
         private Guid GetCurrentUserId()

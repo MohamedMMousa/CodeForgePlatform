@@ -67,7 +67,7 @@ namespace CodeForge.Application.Assignments.GradeSubmission
                     }),
                 cancellationToken);
 
-            return SubmissionResultMapping.ToDto(submission);
+            return SubmissionResultMapping.ToDto(submission, submission.Assignment.PassScore);
         }
 
         private Guid GetCurrentUserId()
