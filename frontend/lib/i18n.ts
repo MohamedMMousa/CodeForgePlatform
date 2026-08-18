@@ -467,12 +467,12 @@ export interface Dictionary {
     submitting: string;
     dueDate: string;
     late: string;
-    autoScore: string;
-    grading: string;
-    gradingFailed: string;
+    submittedOn: string;
     awaitingGrading: string;
-    testResults: string;
-    hiddenTest: string;
+    gradedOn: string;
+    feedback: string;
+    pastAttempts: string;
+    sampleTests: string;
     grades: string;
     noGrades: string;
     certificates: string;
@@ -1102,12 +1102,12 @@ const dictionaries: Record<Locale, Dictionary> = {
       submitting: "Submitting…",
       dueDate: "Due date",
       late: "Late",
-      autoScore: "Auto-graded score",
-      grading: "Grading…",
-      gradingFailed: "Auto-grading failed — your instructor will grade this manually.",
+      submittedOn: "Submitted",
       awaitingGrading: "Submitted — awaiting grading by your instructor.",
-      testResults: "Test results",
-      hiddenTest: "Hidden test",
+      gradedOn: "Graded on",
+      feedback: "Instructor feedback",
+      pastAttempts: "Past attempts",
+      sampleTests: "Example test cases",
       grades: "My grades",
       noGrades: "No grades yet.",
       certificates: "My certificates",
@@ -1737,12 +1737,12 @@ const dictionaries: Record<Locale, Dictionary> = {
       submitting: "جارٍ الإرسال…",
       dueDate: "تاريخ التسليم",
       late: "متأخر",
-      autoScore: "الدرجة التلقائية",
-      grading: "جارٍ التصحيح…",
-      gradingFailed: "فشل التصحيح التلقائي — سيقوم المدرّس بتصحيح هذا يدويًا.",
+      submittedOn: "تاريخ الإرسال",
       awaitingGrading: "تم الإرسال — بانتظار تصحيح المدرّس.",
-      testResults: "نتائج الاختبار",
-      hiddenTest: "اختبار مخفي",
+      gradedOn: "تاريخ التصحيح",
+      feedback: "ملاحظات المدرّس",
+      pastAttempts: "المحاولات السابقة",
+      sampleTests: "أمثلة على حالات الاختبار",
       grades: "درجاتي",
       noGrades: "لا توجد درجات بعد.",
       certificates: "شهاداتي",

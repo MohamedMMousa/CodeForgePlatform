@@ -2,6 +2,18 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 import { useAuth } from "@/lib/auth";
 import { useSessionGate } from "@/components/SessionGuard";
 import {
@@ -11,9 +23,33 @@ import {
   SubmissionSummary,
   getAssignmentForSubmission,
   getMySubmissions,
+  getSubmissionResult,
   submitAssignment
 } from "@/lib/api";
-import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { defaultLocale, getDictionary, isLocale, type Dictionary, type Locale } from "@/lib/i18n";
+import { formatCatalogNumber, formatDateTime } from "@/lib/format";
+import { AssignmentDetailSkeleton } from "../../skeletons";
+
+// Surface #6: auto-grading has no working engine (DeferredCodeExecutionService
+// always throws, see ARCHITECTURE.md §7) and is not rendered anywhere on this
+// page — no score, no status, no test-results panel. The only real result is
+// manual grading, read via GetSubmissionResultQuery (previously a dead export,
+// wired here). Passed is tri-state and only ever comes from the backend's
+// compute-don't-store calculator: null means "no verdict yet", never a fake pass.
+type ContentErrorKind = "not-found" | "access-denied" | "generic";
+type HistoryState = "loading" | "error" | SubmissionSummary[];
+
+function errorTitle(kind: ContentErrorKind, t: Dictionary["courseContent"]): string {
+  if (kind === "not-found") return t.notFoundTitle;
+  if (kind === "access-denied") return t.accessDeniedTitle;
+  return t.loadError;
+}
+
+function errorHint(kind: ContentErrorKind, t: Dictionary["courseContent"]): string | null {
+  if (kind === "not-found") return t.notFoundHint;
+  if (kind === "access-denied") return t.accessDeniedHint;
+  return null;
+}
 
 export default function AssignmentSubmissionPage({
   params
@@ -22,38 +58,81 @@ export default function AssignmentSubmissionPage({
 }) {
   const { locale: rawLocale, courseId, assignmentId } = use(params);
   const locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-  const t = getDictionary(locale).student;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.student;
+  const tc = dictionary.courseContent;
 
   const { session } = useAuth();
   const [assignment, setAssignment] = useState<AssignmentForSubmission | null>(null);
-  const [submissions, setSubmissions] = useState<SubmissionSummary[] | null>(null);
+  const [errorKind, setErrorKind] = useState<ContentErrorKind | null>(null);
+  const [history, setHistory] = useState<HistoryState>("loading");
+  const [latestResult, setLatestResult] = useState<SubmissionResult | null>(null);
   const [code, setCode] = useState("");
-  const [result, setResult] = useState<SubmissionResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  function onError(err: unknown) {
-    setError(err instanceof ApiRequestError ? err.message : t.loadError);
-  }
-
-  function reload() {
+  useEffect(() => {
     if (!session) return;
-    getAssignmentForSubmission(assignmentId).then(setAssignment).catch(onError);
-    getMySubmissions(assignmentId).then(setSubmissions).catch(onError);
-  }
+    let active = true;
 
-  useEffect(reload, [session, assignmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+    setErrorKind(null);
+    setAssignment(null);
+    setHistory("loading");
+    setLatestResult(null);
+
+    getAssignmentForSubmission(assignmentId)
+      .then((data) => {
+        if (!active) return;
+        setAssignment(data);
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err instanceof ApiRequestError && err.info.status === 404) {
+          setErrorKind("not-found");
+        } else if (err instanceof ApiRequestError && (err.info.status === 401 || err.info.status === 403)) {
+          setErrorKind("access-denied");
+        } else {
+          setErrorKind("generic");
+        }
+      });
+
+    getMySubmissions(assignmentId)
+      .then(async (submissions) => {
+        if (!active) return;
+        setHistory(submissions);
+        if (submissions.length === 0) return;
+        try {
+          // Server-ordered by AttemptNumber descending — [0] is the latest.
+          // Only the latest gets the full graded-result detail; every other
+          // past attempt stays summary-only, so this is one extra call, not N+1.
+          const result = await getSubmissionResult(submissions[0].submissionId);
+          if (active) setLatestResult(result);
+        } catch {
+          // Degrades this section only (§5 partial-failure rule) — the brief
+          // and submission form still work without the result detail.
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setHistory("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session, assignmentId, reloadKey]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!session) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
-      const res = await submitAssignment(assignmentId, code);
-      setResult(res);
-      reload();
+      await submitAssignment(assignmentId, code);
+      setReloadKey((key) => key + 1);
     } catch (err) {
-      onError(err);
+      setSubmitError(err instanceof ApiRequestError ? err.message : tc.loadError);
     } finally {
       setSubmitting(false);
     }
@@ -62,91 +141,211 @@ export default function AssignmentSubmissionPage({
   const gate = useSessionGate({ locale });
   if (!gate.ok) return gate.fallback;
 
+  const loading = !errorKind && assignment === null;
+  const attemptsExhausted =
+    assignment != null && assignment.maxAttempts != null && assignment.attemptsUsed >= assignment.maxAttempts;
+  const pastAttempts = Array.isArray(history) ? history.slice(1) : [];
+
   return (
-    <main className="cf-container">
-      <Link href={`/${locale}/my-courses/${courseId}`}>{t.back}</Link>
-      {error && <p className="notice err">{error}</p>}
-      {assignment === null && !error && <p className="muted">…</p>}
+    <main data-theme="light" className="min-h-screen bg-bg [&_:is(h1,h2,h3,h4,p,ul,ol)]:m-0">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 ps-5 pe-5 py-10">
+        <Link
+          href={`/${locale}/my-courses/${courseId}`}
+          className="inline-flex w-fit items-center gap-2 text-label !text-text-muted hover:!text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
+          {tc.backToCourse}
+        </Link>
 
-      {assignment && (
-        <>
-          <span className="badge">{t.assignment}</span>
-          <h1>{assignment.title}</h1>
-          <h3>{t.instructions}</h3>
-          <p>{assignment.description}</p>
-          {assignment.dueAt && <p className="muted">{t.dueDate}: {new Date(assignment.dueAt).toLocaleString(locale)}</p>}
-          <p className="muted">
-            {t.attemptsUsed}: {assignment.attemptsUsed} {t.of} {assignment.maxAttempts ?? "∞"}
-          </p>
-
-          {assignment.sampleTestCases.length > 0 && (
-            <div className="card" style={{ marginBottom: "1rem" }}>
-              <h4>{t.testResults}</h4>
-              {assignment.sampleTestCases.map((tc) => (
-                <div key={tc.id} style={{ marginBottom: "0.5rem" }}>
-                  <p><code>{tc.input || "—"}</code> → <code>{tc.expectedOutput}</code></p>
-                </div>
-              ))}
+        {errorKind ? (
+          <div className="flex flex-col items-start gap-4 rounded-card border border-danger-border bg-danger-soft p-6">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-h3 text-danger">{errorTitle(errorKind, tc)}</h1>
+              {errorHint(errorKind, tc) ? (
+                <p className="text-body text-danger">{errorHint(errorKind, tc)}</p>
+              ) : null}
             </div>
-          )}
-
-          {assignment.maxAttempts != null && assignment.attemptsUsed >= assignment.maxAttempts ? (
-            <p className="notice err">{t.noAttemptsLeft}</p>
-          ) : (
-            <form onSubmit={onSubmit} className="card">
-              <div className="field">
-                <label>{t.yourCode}</label>
-                <textarea
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  rows={12}
-                  style={{ fontFamily: "monospace" }}
-                  required
-                />
+            <Button variant="secondary" onClick={() => setReloadKey((key) => key + 1)}>
+              {tc.retry}
+            </Button>
+          </div>
+        ) : loading || !assignment ? (
+          <AssignmentDetailSkeleton />
+        ) : (
+          <>
+            <div className="flex flex-col items-start gap-4 rounded-card border border-border bg-surface p-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="neutral">{t.assignment}</Badge>
               </div>
-              <button className="btn" type="submit" disabled={submitting}>
-                {submitting ? t.submitting : t.submitAssignment}
-              </button>
-            </form>
-          )}
 
-          {result && (
-            <div className="card" style={{ marginTop: "1rem" }}>
-              <h3>{t.yourResults}</h3>
-              {result.isLate && <p className="notice err">{t.late}</p>}
-              {result.autoScore != null ? (
-                <p>{t.autoScore}: {result.autoScore}%</p>
-              ) : (
-                <p className="notice">{t.awaitingGrading}</p>
-              )}
-              {result.testResults.length > 0 && (
-                <>
-                  <h4>{t.testResults}</h4>
-                  {result.testResults.map((r) => (
-                    <p key={r.testCaseId}>
-                      {r.isHidden ? t.hiddenTest : ""} {r.passed ? "✓" : "✗"}
-                      {!r.isHidden && r.actualOutput && <> — <code>{r.actualOutput}</code></>}
-                      {!r.isHidden && r.errorMessage && <> — <code>{r.errorMessage}</code></>}
-                    </p>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
+              <h1 className="text-h1 text-text">{assignment.title}</h1>
 
-          {submissions && submissions.length > 0 && (
-            <div style={{ marginTop: "1.5rem" }}>
-              <h3>{t.attempt}</h3>
-              {submissions.map((s) => (
-                <p key={s.submissionId} className="muted">
-                  {t.attempt} {s.attemptNumber} — {new Date(s.submittedAt).toLocaleString(locale)}
-                  {s.isLate ? ` (${t.late})` : ""} — {t.score}: {s.finalScore ?? "—"}
+              <div className="flex flex-col gap-1">
+                <h2 className="text-h3 text-text">{t.instructions}</h2>
+                <p className="text-body text-text-secondary">{assignment.description}</p>
+              </div>
+
+              {assignment.dueAt ? (
+                <p className="text-meta text-text-muted">
+                  {t.dueDate}: {formatDateTime(assignment.dueAt, locale)}
                 </p>
-              ))}
+              ) : null}
+
+              <p className="text-meta text-text-muted">
+                {t.attemptsUsed}: {formatCatalogNumber(assignment.attemptsUsed, locale)} {t.of}{" "}
+                {assignment.maxAttempts != null ? formatCatalogNumber(assignment.maxAttempts, locale) : "∞"}
+              </p>
+
+              {assignment.sampleTestCases.length > 0 ? (
+                <div className="flex w-full flex-col gap-2">
+                  <h3 className="text-h3 text-text">{t.sampleTests}</h3>
+                  <div className="flex flex-col gap-2">
+                    {assignment.sampleTestCases.map((tcase) => (
+                      <div
+                        key={tcase.id}
+                        className="rounded-control border border-border bg-surface-2 px-3 py-2"
+                      >
+                        <p className="text-body text-text-secondary">
+                          <code>{tcase.input || "—"}</code> {"→"} <code>{tcase.expectedOutput}</code>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          )}
-        </>
-      )}
+
+            {history === "loading" ? (
+              <div className="h-24 w-full animate-pulse rounded-card bg-surface-2" aria-hidden="true" />
+            ) : history === "error" ? (
+              <p className="text-body text-text-muted">{tc.loadError}</p>
+            ) : (
+              <>
+                {latestResult ? (
+                  <ResultPanel result={latestResult} locale={locale} t={t} />
+                ) : history.length > 0 ? (
+                  <div className="h-16 w-full animate-pulse rounded-card bg-surface-2" aria-hidden="true" />
+                ) : null}
+
+                {pastAttempts.length > 0 ? (
+                  <section className="flex flex-col gap-3">
+                    <h2 className="text-h2 text-text">{t.pastAttempts}</h2>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t.attempt}</TableHead>
+                          <TableHead>{t.submittedOn}</TableHead>
+                          <TableHead numeric>{t.score}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pastAttempts.map((s) => (
+                          <TableRow key={s.submissionId}>
+                            <TableCell className="text-text">
+                              <span className="flex items-center gap-2">
+                                {formatCatalogNumber(s.attemptNumber, locale)}
+                                {s.isLate ? <Badge variant="warning">{t.late}</Badge> : null}
+                              </span>
+                            </TableCell>
+                            <TableCell>{formatDateTime(s.submittedAt, locale)}</TableCell>
+                            <TableCell numeric>
+                              {s.finalScore != null ? formatCatalogNumber(s.finalScore, locale) : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </section>
+                ) : null}
+              </>
+            )}
+
+            {attemptsExhausted ? (
+              <p className="rounded-card border border-border bg-surface p-6 text-body text-text-secondary">
+                {t.noAttemptsLeft}
+              </p>
+            ) : (
+              <form
+                onSubmit={onSubmit}
+                className="flex flex-col items-start gap-4 rounded-card border border-border bg-surface p-6"
+              >
+                <div className="flex w-full flex-col gap-2">
+                  <label htmlFor="assignment-code" className="text-label text-text">
+                    {t.yourCode}
+                  </label>
+                  {/* Code is always LTR, even on this Arabic page (§2.1) — the one
+                      deliberate direction exception here, same category as the
+                      global code-block rule and the dialog transform. */}
+                  <Textarea
+                    id="assignment-code"
+                    dir="ltr"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    maxLength={50000}
+                    rows={14}
+                    required
+                  />
+                </div>
+                {submitError ? <p className="text-body text-danger">{submitError}</p> : null}
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? t.submitting : t.submitAssignment}
+                </Button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
     </main>
+  );
+}
+
+function ResultPanel({
+  result,
+  locale,
+  t
+}: {
+  result: SubmissionResult;
+  locale: Locale;
+  t: Dictionary["student"];
+}) {
+  const graded = result.gradedAt != null;
+
+  return (
+    <div className="flex flex-col items-start gap-4 rounded-card border border-border bg-surface p-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-h2 text-text">{t.yourResults}</h2>
+        {result.passed === true ? <Badge variant="success">{t.passed}</Badge> : null}
+        {result.passed === false ? <Badge variant="danger">{t.failed}</Badge> : null}
+        {result.isLate ? <Badge variant="warning">{t.late}</Badge> : null}
+      </div>
+
+      {graded ? (
+        <>
+          {result.finalScore != null ? (
+            <p className="text-h3 text-text">
+              {t.score}: {formatCatalogNumber(result.finalScore, locale)}
+            </p>
+          ) : null}
+          <p className="text-meta text-text-muted">
+            {t.gradedOn}: {formatDateTime(result.gradedAt!, locale)}
+          </p>
+          {result.manualFeedback ? (
+            <div className="flex flex-col gap-1">
+              <h3 className="text-h3 text-text">{t.feedback}</h3>
+              <p className="text-body text-text-secondary">{result.manualFeedback}</p>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-body text-text-secondary">{t.awaitingGrading}</p>
+      )}
+
+      <div className="flex w-full flex-col gap-1">
+        <h3 className="text-h3 text-text">{t.yourCode}</h3>
+        <pre className="w-full overflow-x-auto whitespace-pre-wrap rounded-control border border-border bg-surface-2 p-3 text-code">
+          {result.code}
+        </pre>
+      </div>
+    </div>
   );
 }

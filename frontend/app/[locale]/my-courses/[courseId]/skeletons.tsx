@@ -53,3 +53,18 @@ export function SessionDetailSkeleton() {
     </div>
   );
 }
+
+export function AssignmentDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-hidden="true">
+      <div className="h-4 w-40 animate-pulse rounded-control bg-surface-2" />
+      <div className="flex flex-col items-start gap-4 rounded-card border border-border bg-surface p-6">
+        <div className="h-6 w-24 animate-pulse rounded-pill bg-surface-2" />
+        <div className="h-7 w-72 max-w-full animate-pulse rounded-control bg-surface-2" />
+        <div className="h-5 w-52 max-w-full animate-pulse rounded-control bg-surface-2" />
+        <div className="h-16 w-full animate-pulse rounded-control bg-surface-2" />
+      </div>
+      <div className="h-48 w-full animate-pulse rounded-card bg-surface-2" />
+    </div>
+  );
+}

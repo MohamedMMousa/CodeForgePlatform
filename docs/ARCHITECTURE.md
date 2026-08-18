@@ -631,6 +631,33 @@ file uploads, rate limiting, versioning stance).
   session was even in the future yet, which this rebuild's state machine no longer allows (no
   Join and no Watch render on a linkless or not-yet-relevant session, per §3).
 
+  **Assignments migration (surface #6).**
+  `app/[locale]/my-courses/[courseId]/assignments/[assignmentId]/page.tsx` (rewritten) is on §2.3
+  light tokens and `components/ui/` only, replacing the legacy `.cf-container`/`.card`/`.btn` page
+  (and the urgent-fix bandage that preceded this rebuild). Auto-grading is not rendered anywhere on
+  this page — no score, no status, no test-results panel — since `DeferredCodeExecutionService`
+  always throws and there is no working engine to show a result from (§7's "Python auto-grader
+  engine" entry). The only result surfaced is manual grading, read via `getSubmissionResult()`
+  (`frontend/lib/api.ts`) — previously a dead export, wired here for the first time, called once
+  per page load against the latest submission only (`getMySubmissions()`'s server-ordered `[0]`),
+  not once per historical attempt, so this stays a fixed number of calls regardless of attempt
+  count. `Passed` is rendered tri-state exactly as the backend computes it: a `success`/`danger`
+  badge when non-null, nothing when null (ungraded, or no pass threshold set) — never a fake
+  verdict. `components/ui/textarea.tsx` is new, the first design-system code-input control in the
+  app: it mirrors `input.tsx`'s token language but does **not** default to `dir="ltr"` itself, since
+  most textareas elsewhere (contact form, admin/instructor free text) must stay direction-neutral.
+  This page passes `dir="ltr"` explicitly on its own `<Textarea>` — the one deliberate direction
+  exception here, same category as the code-block and dialog-transform exceptions already
+  documented in `globals.css`, and load-bearing for an *editable* field in a way the existing
+  `code`/`pre` CSS-only rule isn't (native `dir` is the actual bidi/cursor-behavior switch while
+  typing, not just a paint-time trick). The submitted-code read-back uses a plain `<pre>`, which
+  gets LTR for free from that existing global rule. `AssignmentForSubmissionDto` still has no
+  `IsPractice` field (flagged in the original surface #6 prep report and left alone by the backend
+  slice) — not added here either; this doesn't risk a fake result because a practice assignment
+  (no `PassScore`) already yields `Passed: null` from the existing compute-don't-store discipline,
+  and this page already renders a null `Passed` as "no badge" — so the missing `IsPractice` field
+  is an inert gap, not a path to a false result.
+
   **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
   so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
   inherited one — making a new dark shop-window Nav (§3 "Nav") exclusive to that subtree the
@@ -749,11 +776,9 @@ file uploads, rate limiting, versioning stance).
   `Assignment.PassScore` is `null` (no threshold set), never a fake pass. All three
   producers (`SubmitAssignmentCommandHandler`, `GradeSubmissionCommandHandler`,
   `GetSubmissionResultQueryHandler`) already had the assignment's `PassScore` loaded
-  for authorization/business logic, so this needed no new query. **Still unwired from
-  the frontend** — `getSubmissionResult()` (`frontend/lib/api.ts`) remains a dead
-  export, called from nowhere; the legacy assignment page only ever sees the DTO from
-  its own live submit response, never a re-fetched graded result. Wiring it is part of
-  the surface #6 frontend rebuild, not done here.
+  for authorization/business logic, so this needed no new query. **Now wired to the
+  frontend** — the surface #6 rebuild (§6) calls `getSubmissionResult()`, previously a
+  dead export, once per page load against the latest submission.
 - **Multi-tenancy posture** (single academy vs. future franchises) — undecided;
   flagged as a risk in `SRS.md`. Current schema and code assume a single tenant; avoid
   decisions that would make multi-tenancy materially harder without discussing first.
