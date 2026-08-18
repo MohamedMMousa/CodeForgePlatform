@@ -1,3 +1,4 @@
+using CodeForge.Application.Assignments.Common;
 using CodeForge.Application.Common.Constants;
 using CodeForge.Domain.Entities;
 
@@ -28,7 +29,8 @@ namespace CodeForge.Application.Gradebook.Common
                 var latest = studentSubmissions.OrderByDescending(s => s.AttemptNumber).FirstOrDefault();
                 var autoGradingStatus = latest?.AutoGradingStatus ?? AssignmentGradingStatuses.Pending;
                 var manuallyGraded = studentSubmissions.Any(s => s.GradedAt != null);
-                return new AssignmentGradeDto(assignment.Id, assignment.Title, finalScore, autoGradingStatus, manuallyGraded);
+                var passed = AssignmentGradingCalculator.ComputePassed(finalScore, assignment.PassScore);
+                return new AssignmentGradeDto(assignment.Id, assignment.Title, finalScore, passed, autoGradingStatus, manuallyGraded);
             }).ToList();
         }
     }

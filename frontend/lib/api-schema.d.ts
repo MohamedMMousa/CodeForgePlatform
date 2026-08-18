@@ -5395,6 +5395,7 @@ export interface components {
             title: string;
             /** Format: int32 */
             finalScore?: number | null;
+            passed?: boolean | null;
             autoGradingStatus: string;
             manuallyGraded: boolean;
         };

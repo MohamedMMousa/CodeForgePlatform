@@ -6289,6 +6289,10 @@
             "format": "int32",
             "nullable": true
           },
+          "passed": {
+            "type": "boolean",
+            "nullable": true
+          },
           "autoGradingStatus": {
             "type": "string"
           },
