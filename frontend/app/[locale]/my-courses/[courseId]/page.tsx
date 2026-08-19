@@ -293,7 +293,7 @@ export default function CourseContentPage({
               </div>
             )}
 
-            <GradesPanel state={gradesState} locale={locale} t={t} />
+            <GradesPanel state={gradesState} courseId={courseId} locale={locale} t={t} />
           </>
         )}
       </div>

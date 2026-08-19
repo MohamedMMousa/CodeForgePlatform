@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -49,7 +50,17 @@ export function ProgressSummary({ courses, grades, locale, t }: Props) {
 
               return (
                 <TableRow key={course.courseId}>
-                  <TableCell className="text-text">{course.title}</TableCell>
+                  <TableCell>
+                    {/* The row is this course's grades summary, so its title links
+                        to the full gradebook. Inside a card, so accent-text is AA
+                        (§2.3). */}
+                    <Link
+                      href={`/${locale}/my-courses/${course.courseId}/gradebook`}
+                      className="!text-text hover:!text-accent-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    >
+                      {course.title}
+                    </Link>
+                  </TableCell>
 
                   {grades === null ? (
                     <TableCell colSpan={2} numeric>

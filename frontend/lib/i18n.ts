@@ -274,6 +274,39 @@ export interface Dictionary {
     gradesStatus: string;
     gradesPassed: string;
     gradesFailed: string;
+    gradesViewFull: string;
+    gradesPassedCount: string;
+  };
+  gradebook: {
+    title: string;
+    backToCourse: string;
+    attendanceHeading: string;
+    attendanceRate: string;
+    assessmentsHeading: string;
+    assignmentsHeading: string;
+    colSession: string;
+    colDate: string;
+    colStatus: string;
+    colType: string;
+    colScore: string;
+    colAttempts: string;
+    colResult: string;
+    statusPresent: string;
+    statusAbsent: string;
+    statusLate: string;
+    statusExcused: string;
+    statusNotMarked: string;
+    passed: string;
+    failed: string;
+    noAttendance: string;
+    noAssessments: string;
+    noAssignments: string;
+    notFoundTitle: string;
+    notFoundHint: string;
+    accessDeniedTitle: string;
+    accessDeniedHint: string;
+    loadError: string;
+    retry: string;
   };
   enroll: {
     title: string;
@@ -908,7 +941,43 @@ const dictionaries: Record<Locale, Dictionary> = {
       gradesScore: "Score",
       gradesStatus: "Status",
       gradesPassed: "Passed",
-      gradesFailed: "Failed"
+      gradesFailed: "Failed",
+      gradesViewFull: "View full gradebook",
+      // TODO(i18n-review): "{passed}/{total} passed" — the Arabic counterpart
+      // labels a fraction, not a counted noun, so it sidesteps the four-band
+      // plural inflection; confirm the phrasing reads naturally with a native.
+      gradesPassedCount: "{passed}/{total} passed"
+    },
+    gradebook: {
+      title: "Gradebook",
+      backToCourse: "Back to course",
+      attendanceHeading: "Attendance",
+      attendanceRate: "Attendance rate: {rate}%",
+      assessmentsHeading: "Assessments",
+      assignmentsHeading: "Assignments",
+      colSession: "Session",
+      colDate: "Date",
+      colStatus: "Status",
+      colType: "Type",
+      colScore: "Score",
+      colAttempts: "Attempts",
+      colResult: "Result",
+      statusPresent: "Present",
+      statusAbsent: "Absent",
+      statusLate: "Late",
+      statusExcused: "Excused",
+      statusNotMarked: "Not marked yet",
+      passed: "Passed",
+      failed: "Failed",
+      noAttendance: "No attendance recorded yet.",
+      noAssessments: "No assessments yet.",
+      noAssignments: "No assignments yet.",
+      notFoundTitle: "Course not found",
+      notFoundHint: "It may have been removed, or the link may be incorrect.",
+      accessDeniedTitle: "You don't have access to this course",
+      accessDeniedHint: "If you believe this is a mistake, contact your program admin.",
+      loadError: "We could not load your gradebook.",
+      retry: "Try again"
     },
     enroll: {
       title: "Enroll in {name}",
@@ -1543,7 +1612,41 @@ const dictionaries: Record<Locale, Dictionary> = {
       gradesScore: "الدرجة",
       gradesStatus: "الحالة",
       gradesPassed: "ناجح",
-      gradesFailed: "راسب"
+      gradesFailed: "راسب",
+      gradesViewFull: "عرض سجل الدرجات كاملاً",
+      // TODO(i18n-review): fraction label, not a counted noun — see the en note.
+      gradesPassedCount: "{passed}/{total} ناجح"
+    },
+    gradebook: {
+      title: "سجل الدرجات",
+      backToCourse: "العودة إلى الدورة",
+      attendanceHeading: "الحضور",
+      attendanceRate: "نسبة الحضور: {rate}%",
+      assessmentsHeading: "الاختبارات",
+      assignmentsHeading: "الواجبات",
+      colSession: "الجلسة",
+      colDate: "التاريخ",
+      colStatus: "الحالة",
+      colType: "النوع",
+      colScore: "الدرجة",
+      colAttempts: "المحاولات",
+      colResult: "النتيجة",
+      statusPresent: "حاضر",
+      statusAbsent: "غائب",
+      statusLate: "متأخر",
+      statusExcused: "معذور",
+      statusNotMarked: "لم تُرصد بعد",
+      passed: "ناجح",
+      failed: "راسب",
+      noAttendance: "لا يوجد حضور مُسجّل بعد.",
+      noAssessments: "لا توجد اختبارات بعد.",
+      noAssignments: "لا توجد واجبات بعد.",
+      notFoundTitle: "الدورة غير موجودة",
+      notFoundHint: "ربما تمت إزالتها، أو أن الرابط غير صحيح.",
+      accessDeniedTitle: "لا تملك صلاحية الوصول إلى هذه الدورة",
+      accessDeniedHint: "إذا كنت تعتقد أن هذا خطأ، تواصل مع مسؤول البرنامج.",
+      loadError: "تعذّر تحميل سجل درجاتك.",
+      retry: "أعد المحاولة"
     },
     enroll: {
       title: "التسجيل في {name}",

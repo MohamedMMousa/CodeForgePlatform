@@ -658,6 +658,36 @@ file uploads, rate limiting, versioning stance).
   and this page already renders a null `Passed` as "no badge" — so the missing `IsPractice` field
   is an inert gap, not a path to a false result.
 
+  **Gradebook (surface #7) — the reference table implementation.**
+  `app/[locale]/my-courses/[courseId]/gradebook/page.tsx` (net-new route) is on §2.3 light tokens
+  and `components/ui/` only. It is the app's **first real table surface**, so it establishes the
+  reference use of `components/ui/table.tsx`, which already carried the full §3 treatment (`eyebrow`
+  column headers, hairline `border-border` separators, `px-4 py-3` padding, opt-in `--surface-2`
+  zebra via `<Table zebra>`, and `numeric` end-align per direction with `tabular-nums`) — the
+  gradebook is simply the first to use all of it, zebra included. No new primitive was needed.
+  It assembles two already-proven, per-course endpoints, one call each with per-section
+  degradation (§5): `GET /my-courses/{id}/grades` (assessments + assignments — both now badge
+  pass/fail after the step-1 `AssignmentGradeDto.Passed` slice; a null `Passed` renders as "—",
+  never a fake verdict) drives the Assessments + Assignments tables, and
+  `GET /my-courses/{id}/attendance` — **built in Phase 3 but unused until here** — drives the
+  per-session Attendance table plus the aggregate rate. A page-level fatal error shows only when
+  *both* calls fail (they share `CourseContentAuthorization.EnsureCanView`, so an unenrolled
+  student 401s on both and lands on access-denied); otherwise a failed call degrades only its own
+  section. `gradebook/attendanceStatus.ts` is the single status→badge map (mirroring surface #5's
+  `sessionState.ts`): present→success, late→warning (the rate calculator still credits late as
+  present, so the badge flags lateness without implying a miss), excused→neutral, absent→danger,
+  and a **null status renders as muted "not marked yet" text, never an absence badge** — the one
+  hard requirement, since an unmarked held session must not read as a miss.
+  **Consolidation:** the full per-item grades tables used to live on the course-content page
+  (surface #5) inside `GradesPanel.tsx`, parked there explicitly "rather than deferred to surface
+  #7." They are canonical **here** now; `GradesPanel` was trimmed to a compact summary (attendance
+  rate + passed/total counts) that links in via "View full gradebook →", so the full table lives
+  in exactly one place and can't drift. The dashboard's `ProgressSummary` rows link through as
+  well (each row is that course's grades summary). New i18n lives under a self-contained
+  `gradebook` dictionary section (en + ar); count phrasings use `{passed}/{total}` / `{rate}%`
+  numeric forms that sidestep Arabic's four-band noun inflection, with a `TODO(i18n-review)`
+  flag on the one fraction label for a native-speaker pass.
+
   **Nav swap mechanism.** The legacy topbar is inlined in this layout's `<body>` (see above),
   so a nested route-group layout for `/catalog` could only ever *add* a nav, not remove the
   inherited one — making a new dark shop-window Nav (§3 "Nav") exclusive to that subtree the
@@ -702,6 +732,17 @@ file uploads, rate limiting, versioning stance).
   §4 #4 asks for a pending-tasks section; it was deliberately not built rather than doing
   client-side N-call stitching for a first light-lane surface. Needs either a new backend
   aggregate query or an accepted client-side fan-out pattern, decided once, not per surface.
+- **Student-facing overall "on-track / eligible-to-pass" course badge — intentionally not built,
+  not pending work.** The gradebook (surface #7) shows per-item pass/fail and the attendance rate,
+  but no single course-level "you're on track to pass / eligible" verdict. The only pass/eligibility
+  logic in the codebase — `CourseEligibilityEvaluator` (attendance threshold + assessment-pass over
+  *graded* quizzes) — is scoped to admin certificate issuance and the instructor certificate-
+  candidate list, and is **not** exposed on any student-facing endpoint. Surfacing it to students
+  would mean either exposing that admin logic (a product/policy decision about telling a student
+  mid-cohort whether they'll pass) or inventing a second, parallel rule — so the gradebook shows
+  only the honest signals it has and no overall badge. Revisit only if the product deliberately
+  decides students should see a live eligibility indicator; if so, expose the existing evaluator
+  rather than duplicating its rule, so a student's view can't disagree with the certificate.
 - **Public read-only syllabus on the course-detail page** — deferred, decide when real
   course content is authored at launch. `DESIGN_LANGUAGE.md` §4 #3 lists a
   syllabus/modules section, and the Modules feature is fully built (Phase 2: modules →
