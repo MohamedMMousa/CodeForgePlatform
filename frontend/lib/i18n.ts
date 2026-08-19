@@ -94,6 +94,17 @@ export interface Dictionary {
     signIn: string;
     newHereHint: string;
   };
+  landing: {
+    eyebrow: string;
+    headline: string;
+    subhead: string;
+    browseCohorts: string;
+    howItWorks: string;
+    codeSnippetLabel: string;
+    trustLiveLabel: string;
+    trustBilingual: string;
+    trustCertificate: string;
+  };
   login: {
     title: string;
     email: string;
@@ -775,6 +786,18 @@ const dictionaries: Record<Locale, Dictionary> = {
       signIn: "Sign in",
       newHereHint: "New here? Browse courses and enroll — no account needed."
     },
+    landing: {
+      eyebrow: "Now enrolling — live cohorts",
+      headline: "Live coding cohorts that turn curious students into real builders.",
+      subhead:
+        "CodeForge Academy runs live, cohort-based programming tracks for school and university students — taught in Arabic and English, with a certificate at the finish line.",
+      browseCohorts: "Browse cohorts",
+      howItWorks: "How it works",
+      codeSnippetLabel: "Example lesson code",
+      trustLiveLabel: "live classes",
+      trustBilingual: "Arabic & English",
+      trustCertificate: "Certificate on completion"
+    },
     login: {
       title: "Sign in",
       email: "Email",
@@ -1442,6 +1465,19 @@ const dictionaries: Record<Locale, Dictionary> = {
       browseCourses: "تصفّح الدورات",
       signIn: "تسجيل الدخول",
       newHereHint: "جديد هنا؟ تصفح الدورات وسجّل الآن — بدون حاجة لإنشاء حساب."
+    },
+    // AR landing copy — drafted Arabic-first, flagged for native review before launch.
+    landing: {
+      eyebrow: "التسجيل مفتوح الآن — دفعات مباشرة",
+      headline: "دفعات برمجة مباشرة تحوّل شغف الطلاب إلى مهارات حقيقية.",
+      subhead:
+        "تقدّم أكاديمية كود فورج مسارات برمجة مباشرة بنظام الدفعات لطلاب المدارس والجامعات — باللغتين العربية والإنجليزية، مع شهادة عند إتمام المسار.",
+      browseCohorts: "تصفّح الدفعات",
+      howItWorks: "كيف تعمل الأكاديمية",
+      codeSnippetLabel: "مثال على شيفرة برمجية",
+      trustLiveLabel: "دروس مباشرة",
+      trustBilingual: "بالعربية والإنجليزية",
+      trustCertificate: "شهادة عند الإتمام"
     },
     login: {
       title: "تسجيل الدخول",

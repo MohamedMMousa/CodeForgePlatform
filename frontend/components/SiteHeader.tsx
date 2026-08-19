@@ -17,12 +17,12 @@ import type { Dictionary, Locale } from "@/lib/i18n";
  * deferred.
  *
  * This is the cheaper alternative: read the current path once, client-side,
- * and render `ShopNav` for `/catalog` and everything under it, or fall
- * through to `children` — the legacy topbar JSX, passed through unmodified
- * (still server-rendered; a Server Component can be handed to a Client
- * Component as `children` without itself becoming client code) — everywhere
- * else. Non-catalog routes get byte-identical output to before this
- * component existed.
+ * and render `ShopNav` for the shop-window routes (the landing "/" and the
+ * `/catalog` subtree), or fall through to `children` — the legacy topbar JSX,
+ * passed through unmodified (still server-rendered; a Server Component can be
+ * handed to a Client Component as `children` without itself becoming client
+ * code) — everywhere else. Non-shop-window routes get byte-identical output to
+ * before this component existed.
  */
 export function SiteHeader({
   locale,
@@ -34,10 +34,13 @@ export function SiteHeader({
   children: React.ReactNode;
 }) {
   const pathname = usePathname() ?? `/${locale}`;
-  const isCatalogRoute =
-    pathname === `/${locale}/catalog` || pathname.startsWith(`/${locale}/catalog/`);
+  const isShopWindowRoute =
+    // Landing (surface #1) joins the catalog subtree on the dark ShopNav.
+    pathname === `/${locale}` ||
+    pathname === `/${locale}/catalog` ||
+    pathname.startsWith(`/${locale}/catalog/`);
 
-  if (isCatalogRoute) {
+  if (isShopWindowRoute) {
     return <ShopNav locale={locale} t={t} />;
   }
 

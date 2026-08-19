@@ -1,6 +1,10 @@
-import Link from "next/link";
 import { defaultLocale, getDictionary, isLocale } from "@/lib/i18n";
+import { Hero } from "./Hero";
 
+// Landing (DESIGN_LANGUAGE.md §4 #1) — dark shop-window surface. Inherits the
+// root layout's data-theme="dark", so no per-surface theme attribute is needed.
+// Part 1 is the hero; later parts add the content sections below it, so this
+// stays a thin section-composer.
 export default async function HomePage({
   params
 }: {
@@ -11,20 +15,8 @@ export default async function HomePage({
   const t = getDictionary(locale);
 
   return (
-    <main className="cf-container">
-      <div className="card">
-        <h1>{t.home.welcome}</h1>
-        <p className="muted">{t.home.description}</p>
-        <p className="muted">{t.home.newHereHint}</p>
-        <p style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          <Link className="btn" href={`/${locale}/catalog`}>
-            {t.home.browseCourses}
-          </Link>
-          <Link className="btn secondary" href={`/${locale}/login`}>
-            {t.home.signIn}
-          </Link>
-        </p>
-      </div>
+    <main className="bg-bg">
+      <Hero locale={locale} t={t} />
     </main>
   );
 }
