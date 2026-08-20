@@ -617,6 +617,9 @@ export interface Dictionary {
     verifyNotFound: string;
     verifiedCertificate: string;
     loadError: string;
+    retry: string;
+    printHeading: string;
+    printVerifyHint: string;
   };
   admin: {
     title: string;
@@ -1343,7 +1346,10 @@ const dictionaries: Record<Locale, Dictionary> = {
       verifyRevoked: "This certificate has been revoked.",
       verifyNotFound: "No certificate matches that code.",
       verifiedCertificate: "Verified certificate",
-      loadError: "Could not load certificates. Please try again."
+      loadError: "Could not load certificates. Please try again.",
+      retry: "Try again",
+      printHeading: "Certificate of {tier}",
+      printVerifyHint: "Verify this certificate online at:"
     },
     admin: {
       title: "Admin",
@@ -2069,7 +2075,10 @@ const dictionaries: Record<Locale, Dictionary> = {
       verifyRevoked: "تم إلغاء هذه الشهادة.",
       verifyNotFound: "لا توجد شهادة مطابقة لهذا الرمز.",
       verifiedCertificate: "شهادة موثّقة",
-      loadError: "تعذّر تحميل الشهادات. حاول مرة أخرى."
+      loadError: "تعذّر تحميل الشهادات. حاول مرة أخرى.",
+      retry: "أعد المحاولة",
+      printHeading: "شهادة {tier}",
+      printVerifyHint: "تحقق من هذه الشهادة عبر الإنترنت على:"
     },
     admin: {
       title: "الإدارة",

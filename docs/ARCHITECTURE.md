@@ -732,6 +732,28 @@ file uploads, rate limiting, versioning stance).
   `EnrollmentRequestsController`'s real flow rather than implying an instant checkout. Surfaces 3
   and 9 (§4 note) remain open.
 
+  **Certificates / verify (surface #8).** `app/[locale]/my-certificates/page.tsx` and
+  `app/[locale]/verify/page.tsx` are on §2.3 light tokens and `components/ui/` only. Unlike
+  surfaces #4–#7, both pages were **already fully functional** before this pass — real
+  endpoints (`GET /my-certificates`, `GET /certificates/verify/{code}`), real auth (the
+  standard `useSessionGate({ locale })` gate on the student page, genuinely none on verify),
+  full i18n — so this is a pure restyle: every hook, data contract, and endpoint carried over
+  unchanged. `lib/certificateDisplay.ts` is the tier/verify-status → badge mapping (mirrors
+  `sessionState.ts`/`attendanceStatus.ts`), shared by both pages since they're independent
+  top-level routes with no common parent to co-locate the file under. The shared
+  `components/Pagination.tsx` was deliberately left alone (still legacy-styled, still used by
+  8 other not-yet-migrated admin/instructor pages) — `my-certificates` uses a small local
+  pager instead rather than restyling a component with a wider, unrelated blast radius. The
+  one functional addition: printing a certificate (`my-certificates`'s Print button) now
+  renders a dedicated `CertificatePrintDocument.tsx` via `@media print` instead of printing
+  the raw page — the app's first print stylesheet (`globals.css`). It uses literal
+  black/white paper colours rather than `--surface`/`--bg` tokens (a printed certificate is a
+  fixed physical document, not a themed screen surface) — and, since Tailwind's default
+  colour palette is stripped from this app's theme, those literals had to be arbitrary hex
+  values (`text-[#000]`), not the `black`/`white` class names, which silently no-op here.
+  `print-color-adjust: exact` is also forced globally under `@media print`, without which
+  Chromium's ink-saving default washes the certificate's border/text out to pale grey.
+
 ## 7. Deferred / Open Architectural Decisions
 
 - **Authenticated shell/nav rebuild** — deferred, out of scope for the dashboard rebuild
@@ -774,6 +796,17 @@ file uploads, rate limiting, versioning stance).
   only the honest signals it has and no overall badge. Revisit only if the product deliberately
   decides students should see a live eligibility indicator; if so, expose the existing evaluator
   rather than duplicating its rule, so a student's view can't disagree with the certificate.
+- **Downloadable certificate PDF** — deferred, out of scope for the surface #8 restyle on
+  purpose. `my-certificates`'s Print button produces a clean, document-like certificate via
+  `@media print` (browser print-to-PDF works today), but there is no server-generated PDF
+  **endpoint** — no `IPdfGenerator`-style interface, nothing behind `POST/GET
+  certificates/{id}/pdf`. Revisit if the product wants a certificate a student can download
+  without going through their browser's print dialog.
+- **Certificate detail route (`my-certificates/[id]`)** — deferred, not built in the surface
+  #8 restyle. The backing pieces already exist and are unused: `GET certificates/{id:guid}`
+  (owner/admin/instructor) on the backend, and `getCertificateById()` (`frontend/lib/api.ts`)
+  on the frontend — a ready-made hook for this route if a future pass wants a dedicated
+  single-certificate page instead of the list-only view.
 - **Public read-only syllabus on the course-detail page** — deferred, decide when real
   course content is authored at launch. `DESIGN_LANGUAGE.md` §4 #3 lists a
   syllabus/modules section, and the Modules feature is fully built (Phase 2: modules →
