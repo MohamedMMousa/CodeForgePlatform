@@ -104,6 +104,56 @@ export interface Dictionary {
     trustLiveLabel: string;
     trustBilingual: string;
     trustCertificate: string;
+    // "How it works" section (closes the enrollment-model-explainer debt for
+    // the landing — DESIGN_LANGUAGE.md §4 note).
+    hiwHeading: string;
+    hiwSubhead: string;
+    hiwStep1Title: string;
+    hiwStep1Body: string;
+    hiwStep2Title: string;
+    hiwStep2Body: string;
+    hiwStep3Title: string;
+    hiwStep3Body: string;
+    hiwStep4Title: string;
+    hiwStep4Body: string;
+    // "Why CodeForge" card grid — verifiable claims only.
+    whyHeading: string;
+    whySubhead: string;
+    whyCard1Title: string;
+    whyCard1Body: string;
+    whyCard2Title: string;
+    whyCard2Body: string;
+    whyCard3Title: string;
+    whyCard3Body: string;
+    whyCard4Title: string;
+    whyCard4Body: string;
+    whyCard5Title: string;
+    whyCard5Body: string;
+    whyCard6Title: string;
+    whyCard6Body: string;
+    // "Programs" — the one data-driven section (GET /catalog/courses).
+    programsHeading: string;
+    programsSubhead: string;
+    programsViewAll: string;
+    // "Learning journey" — illustrative brand storytelling, not live data.
+    journeyHeading: string;
+    journeySubhead: string;
+    journeyStep1Title: string;
+    journeyStep1Body: string;
+    journeyStep2Title: string;
+    journeyStep2Body: string;
+    journeyStep3Title: string;
+    journeyStep3Body: string;
+    journeyStep4Title: string;
+    journeyStep4Body: string;
+    journeyStep5Title: string;
+    journeyStep5Body: string;
+    // Final CTA band + footer.
+    ctaHeading: string;
+    ctaSubhead: string;
+    footerTagline: string;
+    footerNavLabel: string;
+    footerCopyright: string;
   };
   login: {
     title: string;
@@ -796,7 +846,51 @@ const dictionaries: Record<Locale, Dictionary> = {
       codeSnippetLabel: "Example lesson code",
       trustLiveLabel: "live classes",
       trustBilingual: "Arabic & English",
-      trustCertificate: "Certificate on completion"
+      trustCertificate: "Certificate on completion",
+      hiwHeading: "How it works",
+      hiwSubhead: "No account needed to get started — here's the whole path from browsing to your first live class.",
+      hiwStep1Title: "Browse cohorts",
+      hiwStep1Body: "Explore live tracks and courses, and see the next cohort's dates and seats.",
+      hiwStep2Title: "Request enrollment",
+      hiwStep2Body: "Submit an enrollment request for the cohort you want — no account required yet.",
+      hiwStep3Title: "We review & approve",
+      hiwStep3Body: "Our team reviews your request and confirms your seat.",
+      hiwStep4Title: "Get access & start",
+      hiwStep4Body: "Your account is created automatically and your login is emailed to you — you're in the next live class.",
+      whyHeading: "Why CodeForge",
+      whySubhead: "What makes a live cohort worth showing up for.",
+      whyCard1Title: "Real, live instructors",
+      whyCard1Body: "Every class is taught live by a real instructor — not a pre-recorded video course.",
+      whyCard2Title: "Small, focused groups",
+      whyCard2Body: "Cohorts are sized to keep classes interactive, not a lecture hall.",
+      whyCard3Title: "Build real projects",
+      whyCard3Body: "You leave with projects for your portfolio, not just finished exercises.",
+      whyCard4Title: "Arabic & English",
+      whyCard4Body: "Learn in the language that's comfortable for you — both are first-class.",
+      whyCard5Title: "Certificate on completion",
+      whyCard5Body: "Finish the attendance and assessment requirements and earn a verifiable certificate.",
+      whyCard6Title: "Built for MENA students",
+      whyCard6Body: "Tracks designed for school and university students across Egypt and the region.",
+      programsHeading: "Programs",
+      programsSubhead: "A few of the live tracks currently open for enrollment.",
+      programsViewAll: "View all cohorts",
+      journeyHeading: "The learning journey",
+      journeySubhead: "From your first line of code to a portfolio you can show off.",
+      journeyStep1Title: "Foundations",
+      journeyStep1Body: "Core programming concepts, taught from scratch — no experience assumed.",
+      journeyStep2Title: "Core skills",
+      journeyStep2Body: "Build fluency with the language and tools your track is built around.",
+      journeyStep3Title: "Real projects",
+      journeyStep3Body: "Apply what you've learned to projects that mirror real-world work.",
+      journeyStep4Title: "Capstone",
+      journeyStep4Body: "Ship a complete project that pulls the whole track together.",
+      journeyStep5Title: "Certificate & portfolio",
+      journeyStep5Body: "Finish with a certificate and a portfolio piece you actually built.",
+      ctaHeading: "Ready to start building?",
+      ctaSubhead: "Browse the cohorts open for enrollment right now.",
+      footerTagline: "Live, cohort-based programming tracks for school and university students.",
+      footerNavLabel: "Footer",
+      footerCopyright: "© {year} CodeForge Academy. All rights reserved."
     },
     login: {
       title: "Sign in",
@@ -1477,7 +1571,51 @@ const dictionaries: Record<Locale, Dictionary> = {
       codeSnippetLabel: "مثال على شيفرة برمجية",
       trustLiveLabel: "دروس مباشرة",
       trustBilingual: "بالعربية والإنجليزية",
-      trustCertificate: "شهادة عند الإتمام"
+      trustCertificate: "شهادة عند الإتمام",
+      hiwHeading: "كيف تعمل الأكاديمية",
+      hiwSubhead: "لا تحتاج إلى حساب لتبدأ — إليك المسار كاملًا من التصفّح إلى أول حصة مباشرة.",
+      hiwStep1Title: "تصفّح الدفعات",
+      hiwStep1Body: "استكشف المسارات والدورات المباشرة، وشاهد مواعيد الدفعة القادمة والمقاعد المتاحة.",
+      hiwStep2Title: "سجّل طلب التسجيل",
+      hiwStep2Body: "أرسل طلب تسجيل للدفعة التي تريدها — دون الحاجة لإنشاء حساب بعد.",
+      hiwStep3Title: "نراجع الطلب ونوافق عليه",
+      hiwStep3Body: "يراجع فريقنا طلبك ويؤكد مقعدك.",
+      hiwStep4Title: "احصل على الوصول وابدأ",
+      hiwStep4Body: "يُنشأ حسابك تلقائيًا وتصلك بيانات الدخول عبر البريد الإلكتروني — وتكون جاهزًا لأول حصة مباشرة.",
+      whyHeading: "لماذا كود فورج",
+      whySubhead: "ما الذي يجعل الحصة المباشرة تستحق الحضور.",
+      whyCard1Title: "مدرّبون حقيقيون ومباشرون",
+      whyCard1Body: "كل حصة يقدّمها مدرّب حقيقي مباشرةً — وليست دورة فيديو مسجّلة مسبقًا.",
+      whyCard2Title: "مجموعات صغيرة ومركّزة",
+      whyCard2Body: "حجم الدفعة مدروس ليبقى التفاعل حقيقيًا، لا مجرد محاضرة كبيرة.",
+      whyCard3Title: "مشاريع حقيقية",
+      whyCard3Body: "تخرج بمشاريع تضيفها إلى ملفك الشخصي، لا مجرد تمارين منتهية.",
+      whyCard4Title: "بالعربية والإنجليزية",
+      whyCard4Body: "تعلّم باللغة التي تريحك — كلتاهما لغة أساسية في الأكاديمية.",
+      whyCard5Title: "شهادة عند الإتمام",
+      whyCard5Body: "أكمل متطلبات الحضور والتقييم واحصل على شهادة يمكن التحقق منها.",
+      whyCard6Title: "مصمّمة لطلاب المنطقة",
+      whyCard6Body: "مسارات مصمّمة لطلاب المدارس والجامعات في مصر والمنطقة.",
+      programsHeading: "البرامج",
+      programsSubhead: "بعض المسارات المباشرة المتاحة للتسجيل حاليًا.",
+      programsViewAll: "عرض كل الدفعات",
+      journeyHeading: "رحلة التعلّم",
+      journeySubhead: "من أول سطر برمجي تكتبه إلى ملف أعمال تفخر بعرضه.",
+      journeyStep1Title: "الأساسيات",
+      journeyStep1Body: "مفاهيم البرمجة الأساسية، من الصفر — لا حاجة لخبرة سابقة.",
+      journeyStep2Title: "المهارات الأساسية",
+      journeyStep2Body: "اكتسب إتقانًا في اللغة والأدوات التي يقوم عليها مسارك.",
+      journeyStep3Title: "مشاريع حقيقية",
+      journeyStep3Body: "طبّق ما تعلّمته على مشاريع تحاكي العمل الحقيقي.",
+      journeyStep4Title: "المشروع الختامي",
+      journeyStep4Body: "أنجز مشروعًا كاملًا يجمع كل ما تعلّمته في المسار.",
+      journeyStep5Title: "الشهادة وملف الأعمال",
+      journeyStep5Body: "أنهِ المسار بشهادة وقطعة فعلية لملف أعمالك.",
+      ctaHeading: "جاهز لتبدأ البناء؟",
+      ctaSubhead: "تصفّح الدفعات المتاحة للتسجيل الآن.",
+      footerTagline: "مسارات برمجة مباشرة بنظام الدفعات لطلاب المدارس والجامعات.",
+      footerNavLabel: "روابط تذييل الصفحة",
+      footerCopyright: "© {year} أكاديمية كود فورج. جميع الحقوق محفوظة."
     },
     login: {
       title: "تسجيل الدخول",

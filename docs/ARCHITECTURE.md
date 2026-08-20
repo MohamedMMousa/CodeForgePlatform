@@ -694,12 +694,43 @@ file uploads, rate limiting, versioning stance).
   structurally "correct" way would mean moving every other route directory into a sibling
   group, a whole-app change that was deliberately deferred. Instead, `components/SiteHeader.tsx`
   (client, `usePathname()`) wraps the legacy topbar as `children` and swaps in
-  `components/ShopNav.tsx` for `/catalog` and everything under it; every non-catalog route
-  renders the exact same topbar JSX as before, now passed through unchanged. `ShopNav` is
-  deliberately **not** session-aware (no `RoleNav`) — a signed-in visitor still sees "Sign in"
-  on the catalog. Both the route-group deferral and the missing session-awareness are accepted
-  v1 gaps, to revisit when the auth surfaces (§4 #9) or a later surface justify the bigger
-  routing change.
+  `components/ShopNav.tsx` for the shop-window routes — originally just `/catalog` and
+  everything under it, extended by the landing migration below to also match the home route
+  (`/${locale}` exactly); every other route still renders the exact same topbar JSX as before,
+  passed through unchanged. `ShopNav` is deliberately **not** session-aware (no `RoleNav`) — a
+  signed-in visitor still sees "Sign in" on both the catalog and the landing. Both the
+  route-group deferral and the missing session-awareness are accepted v1 gaps, to revisit when
+  the auth surfaces (§4 #9) or a later surface justify the bigger routing change.
+
+  **Landing migration (surface #1), built in two parts.** `app/[locale]/page.tsx` and its new
+  co-located section components (`Hero.tsx`, `HowItWorks.tsx`, `WhyCodeForge.tsx`,
+  `Programs.tsx`, `LearningJourney.tsx`, `LandingCta.tsx`, `LandingFooter.tsx`) are on §2 dark
+  tokens and `components/ui/` only, replacing the placeholder `.cf-container`/`.card`/`.btn`
+  home page. Part 1 shipped the hero, the `SiteHeader` nav-swap extension above, and three
+  reusable, reduced-motion-aware primitives now living in `components/motion/`: `Reveal`
+  (IntersectionObserver fade-rise, fires once, unobserves), `CountUp` (rAF count-up, once,
+  Western numerals via `formatCatalogNumber`), and `TypeOnce` (self-typing code, once, stays LTR/
+  JetBrains Mono inside the Arabic page via the existing global `pre`/`code` rule). All three
+  read `prefers-reduced-motion` directly in a layout effect — before first paint — rather than
+  relying only on the existing global CSS rule (`globals.css`'s duration-zeroing block), because
+  that rule does nothing for JS-driven rAF/`setInterval`/IntersectionObserver work. Part 2 added
+  the content sections below the hero, every one wrapped in `Reveal`; **Programs is the only
+  data-driven section** — a server-side `getPublishedCourses` call (same try/catch-to-null
+  pattern as `catalog/page.tsx`) feeds a slice into the existing `CourseCard`
+  (`catalog/CourseCard.tsx`), reused as-is so the landing's featured courses can never disagree
+  with the catalog's own badge/CTA/price state; an empty or failed fetch hides the whole section
+  rather than rendering a broken shell. Every other part-2 section (How it works, Why CodeForge,
+  Learning journey, the final CTA band, the footer) is static i18n copy — no invented stats, no
+  `CountUp` without a real number behind it. The "Why CodeForge" cards' hover state is
+  deliberately not a shadow (§2.4 forbids decorative card shadows) — it raises via the token
+  system's own hover-surface vocabulary (`bg-surface` → `hover:bg-surface-2`, `border-border` →
+  `hover:border-border-strong`) plus a small translate, neutralized by the same global
+  reduced-motion rule. **Closes the landing's share of the enrollment-model-explainer debt**
+  (§4's note, and `DESIGN_LANGUAGE.md` §4): the "How it works" section (`id="how-it-works"`, the
+  hero's secondary CTA target, previously a dead anchor until this landed) spells out
+  browse → request → admin review/approve → auto-created account, honestly matching
+  `EnrollmentRequestsController`'s real flow rather than implying an instant checkout. Surfaces 3
+  and 9 (§4 note) remain open.
 
 ## 7. Deferred / Open Architectural Decisions
 
