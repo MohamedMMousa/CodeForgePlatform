@@ -161,10 +161,7 @@ export interface Dictionary {
     password: string;
     submit: string;
     signingIn: string;
-    success: string;
-    mustChange: string;
     failed: string;
-    sessionExpired: string;
   };
   changePassword: {
     title: string;
@@ -389,6 +386,10 @@ export interface Dictionary {
     submitting: string;
     success: string;
     error: string;
+    /** No courseId/trackId in the query string — arrived at /enroll without
+     * picking a course or track first (the only entry point is a course-detail
+     * "Enroll" link). Distinct from `error` (a failed submission). */
+    missingTarget: string;
   };
   lead: {
     title: string;
@@ -901,10 +902,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       password: "Password",
       submit: "Sign in",
       signingIn: "Signing in…",
-      success: "Signed in as {name} ({role}).",
-      mustChange: "You must change your password before continuing.",
-      failed: "Invalid email or password.",
-      sessionExpired: "Your session expired. Please sign in again."
+      failed: "Invalid email or password."
     },
     changePassword: {
       title: "Change your password",
@@ -1117,8 +1115,10 @@ const dictionaries: Record<Locale, Dictionary> = {
       paymentProofHint: "Upload a screenshot or PDF receipt of your payment (JPG, PNG, WEBP or PDF).",
       submit: "Submit enrollment request",
       submitting: "Submitting…",
-      success: "Your enrollment request was submitted. We'll review your payment proof and email you once approved.",
-      error: "Could not submit your request. Please check the form and try again."
+      success:
+        "Your enrollment request was submitted. Once we review your payment proof and approve it, we'll create your account automatically and email you your login details.",
+      error: "Could not submit your request. Please check the form and try again.",
+      missingTarget: "Choose a course or track from the catalog to start an enrollment request."
     },
     lead: {
       title: "Get in touch",
@@ -1629,10 +1629,7 @@ const dictionaries: Record<Locale, Dictionary> = {
       password: "كلمة المرور",
       submit: "تسجيل الدخول",
       signingIn: "جارٍ تسجيل الدخول…",
-      success: "تم تسجيل الدخول باسم {name} ({role}).",
-      mustChange: "يجب تغيير كلمة المرور قبل المتابعة.",
-      failed: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
-      sessionExpired: "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى."
+      failed: "البريد الإلكتروني أو كلمة المرور غير صحيحة."
     },
     changePassword: {
       title: "تغيير كلمة المرور",
@@ -1846,8 +1843,12 @@ const dictionaries: Record<Locale, Dictionary> = {
       paymentProofHint: "ارفع لقطة شاشة أو ملف PDF لإيصال الدفع (JPG أو PNG أو WEBP أو PDF).",
       submit: "إرسال طلب التسجيل",
       submitting: "جارٍ الإرسال…",
-      success: "تم إرسال طلب التسجيل. سنراجع إثبات الدفع ونرسل لك بريدًا إلكترونيًا عند الموافقة.",
-      error: "تعذّر إرسال طلبك. يرجى التحقق من النموذج والمحاولة مرة أخرى."
+      // TODO(i18n-review): drafted, not yet reviewed by a native speaker.
+      success:
+        "تم إرسال طلب التسجيل. بعد مراجعة إثبات الدفع والموافقة عليه، سيُنشأ حسابك تلقائيًا وسنرسل لك بيانات الدخول عبر البريد الإلكتروني.",
+      error: "تعذّر إرسال طلبك. يرجى التحقق من النموذج والمحاولة مرة أخرى.",
+      // TODO(i18n-review): drafted, not yet reviewed by a native speaker.
+      missingTarget: "اختر دورة أو مسارًا من الكتالوج لبدء طلب التسجيل."
     },
     lead: {
       title: "تواصل معنا",

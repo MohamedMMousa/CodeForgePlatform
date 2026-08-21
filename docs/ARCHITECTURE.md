@@ -754,6 +754,47 @@ file uploads, rate limiting, versioning stance).
   `print-color-adjust: exact` is also forced globally under `@media print`, without which
   Chromium's ink-saving default washes the certificate's border/text out to pale grey.
 
+  **Auth — sign in / enrollment request (surface #9), step 1 of 3.** `app/[locale]/login/page.tsx`
+  and `app/[locale]/enroll/EnrollForm.tsx` are on §2.3 light tokens and `components/ui/` only.
+  This step is scoped to the two pages themselves — the legacy dark topbar they render inside
+  is untouched (that's step 2, the authenticated shell/nav rebuild below), and no mobile-nav or
+  touch-target work (step 3) is included. `submitEnrollmentRequest()`'s multipart contract
+  (`FullName`/`Email`/`PhoneNumber`/`CourseId`/`TrackId`/`PaymentMethod`/`CouponCode`/
+  `PaymentProof`) and the `?courseId=…&name=…&price=…&currency=…` handoff from course-detail
+  are unchanged. Two real gaps closed, both from `DESIGN_LANGUAGE.md` §4 #9's note:
+  1. **Login was a dead end.** `signIn()` never navigated on its own — the page used to just
+     show an inline "Signed in as…" banner and sit on `/login`. It now redirects via
+     `router.replace()`, role-aware (mirroring `change-password/page.tsx`'s existing
+     `landingPathFor`, duplicated locally rather than imported since it's a 5-line pure
+     function and this page has no other reason to reach into that module): admin →
+     `/admin/courses`, instructor → `/instructor`, student → `/dashboard`, or
+     `/change-password` first if `mustChangePassword` is set (`PasswordChangeGate` would also
+     catch this on the next render, but redirecting here directly avoids a visible
+     dashboard-then-change-password flash). The now-unreachable inline success banner and its
+     `login.success`/`login.mustChange` strings were removed as a direct consequence.
+  2. **The "first-time visitor" path was missing at the point of sign-in.** `home.newHereHint`
+     ("New here? Browse courses and enroll — no account needed.") existed in both locales but
+     was referenced nowhere in the app — it's now a link to `/catalog` in the login card's
+     footer, the real start of the request flow (catalog → course detail → `/enroll?courseId=…`).
+  Also confirmed dead and removed: the `sessionExpired` query-param branch in `login/page.tsx`
+  (and its `login.sessionExpired` string) — nothing in the frontend sets `?sessionExpired=` since
+  `middleware.ts`'s protected-route redirect logic was stripped (§6 above); the comment claiming
+  otherwise was stale.
+  `EnrollForm.tsx` adopts the existing `useFormErrors`/`FieldError`/`fieldErrorProps` pattern
+  (already proven on `admin/tracks/page.tsx`) for real per-field validation display, replacing
+  the old flat `Object.values(...).flat().join(" ")` message-mashing — no new architecture, just
+  reuse. Two i18n copy changes ship with this step, both flagged for review rather than silent:
+  `enroll.success` is reworded to name the real mechanism explicitly ("we'll create your account
+  automatically and email you your login details"), echoing the tone already established by
+  `landing.hiwStep4Body`, since the previous wording ("email you once approved") was honest but
+  vague; and a new key, `enroll.missingTarget`, replaces reusing the submission-failure string
+  (`enroll.error`) for the unrelated case of landing on `/enroll` with no `courseId`/`trackId` in
+  the query string. Both Arabic values are drafted, not yet reviewed by a native speaker —
+  `TODO(i18n-review)` in `lib/i18n.ts`, same convention as the gradebook's fraction label.
+  **Steps 2 (authenticated shell/nav) and 3 (mobile nav + touch-target sizing) remain open** —
+  see §7's "Authenticated shell/nav rebuild" entry below; do not mark surface #9 fully migrated
+  until both land.
+
 ## 7. Deferred / Open Architectural Decisions
 
 - **Authenticated shell/nav rebuild** — deferred, out of scope for the dashboard rebuild
