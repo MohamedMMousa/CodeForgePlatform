@@ -673,3 +673,36 @@ a {
 .notice.err {
   border-color: var(--err);
 }
+
+/* ---------------------------------------------------------------------------
+   Print — the app's first @media print block (surface #8, my-certificates'
+   printable certificate). `print:hidden` / `print:block` (Tailwind utilities)
+   handle which elements reach paper; @page can only be set here, not via a
+   utility class. Known, unfixable-in-CSS limitation: some browsers still add
+   their own page header/footer (URL, date) — that's a browser print-setting,
+   not something a stylesheet can suppress.
+   --------------------------------------------------------------------------- */
+@media print {
+  @page {
+    margin: 2cm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  /* Browsers default to an "economy" print color mode that washes out
+     backgrounds/borders to save ink — without this, the certificate's black
+     border and text render as pale grey on paper. */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* The legacy topbar (app/[locale]/layout.tsx) is a layout-level sibling a
+     page component can't reach with a wrapping print:hidden div — hidden
+     globally here so no page ever prints the site nav. */
+  .topbar {
+    display: none !important;
+  }
+}
